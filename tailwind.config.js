@@ -12,8 +12,10 @@ export default {
         Poppins: ['Poppins', 'sans-serif'],
       },
       colors: {
+        sides: 'var(--sides-color)',
         background: 'var(--background-color)',
         text: 'var(--text-color)',
+        'text-muted': 'var(--text-muted)',
         primary: 'var(--primary-color)',
         'primary-hover': 'var(--primary-hover-color)',
         secondary: 'var(--secondary-color)',
@@ -34,6 +36,8 @@ export default {
         'input-background': 'var(--input-background-color)',
         'input-border': 'var(--input-border-color)',
         'input-focus-border': 'var(--input-focus-border-color)',
+        'wrench-color': 'var(--wrench-color)',
+        'hand-color': 'var(--hand-color)',
       }
     },
   },
