@@ -1,7 +1,8 @@
 <script setup></script>
 
 <template>
+    <Head title="| Home"/>
     <div>
-        <p>This is a simple starter kit for Laravel 11, Inertia JS, and Vue JS, without authentication. Tailwind and ZiggyVue are installed.</p>
+        <p>Sidebar will be placed next and the content will occupy the remaining space.</p>
     </div>
 </template>
