@@ -21,16 +21,16 @@
 <template>
     <div>
         <label
-        :for="label"
-        class="block text-sm font-semibold mb-2 text-text"
+            :for="label"
+            class="block text-sm font-semibold mb-2 text-foreground" 
         >
-        {{ label }}
+            {{ label }}
         </label>
 
         <div class="relative mt-1 rounded-md">
-            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <span class="grid place-content-center text-sm text-text-muted">
-                <i :class="`fa-solid fa-${icon}`"></i>
+            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                <span class="grid place-content-center text-sm text-muted-foreground">
+                    <i :class="`fa-solid fa-${icon}`"></i>
                 </span>
             </div>
             <input
@@ -39,13 +39,12 @@
                 :name="label"
                 :placeholder="placeholder"
                 v-model="model"
-                :class="[
-                    'block w-full rounded-md bg-secondary text-text border-border outline-0 py-2 pr-3 pl-9 text-sm shadow-sm focus:ring-2 focus:ring-inset focus:ring-primary focus:border-primary placeholder:text-text-muted transition-all',
-                    error ? 'border-warning focus:ring-warning' : ''
-                ]"
+                :class="[ 
+                    'block w-full rounded-lg bg-transparent text-foreground border-input py-4 pr-4 pl-9 text-sm focus:ring-transparent focus:border-primary placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50', 
+                    error ? 'border-destructive focus:ring-destructive' : '' 
+                ]" 
             />
         </div>
-        
-        <p v-if="error" class="text-warning text-sm mt-1">{{ error }}</p>
+        <p v-if="error" class="text-destructive text-sm mt-1">{{ error }}</p>
     </div>
 </template>
