@@ -2,67 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-    --sides-color: #F7F7F7;
-    --background-color: #FAFAFA; 
-    --text-color: #1E1E1E; 
-    --text-muted: #6D6D6D;
-    --primary-color: #d93e3e; 
-    --primary-hover-color: #e44141; 
-    --secondary-color: #F1F1F1; 
-    --secondary-hover-color: #E6E6E6; 
-    --accent-color: #007BFF; 
-    --accent-hover-color: #005BB5; 
-    --warning-color: #EF4444; 
-    --warning-hover-color: #C53030;
-    --success-color: #10A37F; 
-    --success-hover-color: #0D8563; 
-    --border-color: #D9D9D9;
-    --border-color-hover: #B8B8B8;
-    --disabled-color: #F0F0F0; 
-    --disabled-text-color: #A3A3A3; 
-    --focus-color: #3399FF; 
-    --card-color: #FFFFFF; 
-    --card-hover-color: #F2F2F2; 
-    --input-background-color: #FFFFFF; 
-    --input-border-color: #D1D1D1; 
-    --input-focus-border-color: #3399FF; 
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
 
-    --wrench-color: #C04848;
-    --hand-color: #121212;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+
+    --primary: 0 83% 47%;
+    --primary-foreground: 0 0% 98%; 
+
+    --secondary: 0 10% 90%; 
+    --secondary-foreground: 240 5.9% 10%;
+
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+
+    --destructive: 0 84.2% 60.2%; 
+    --destructive-foreground: 0 0% 98%;
+
+    --ring: 0 83% 47%; 
+
+    --radius: 0.5rem;
+  }
+
+  [data-theme="dark"] {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+
+    --primary: 0 83% 47%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 240 5% 25%; 
+    --secondary-foreground: 0 0% 98%;
+
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --ring: 0 83% 47%; 
+  }
 }
 
-[data-theme="dark"] {
-    --sides-color: #121212;
-    --background-color: #1C1C1C; 
-    --text-color: #ECECEC; 
-    --text-muted: #B8B8B8; 
-    --primary-color: #C04848; 
-    --primary-hover-color: #ca4c4c; 
-    --secondary-color: #2C2C2C; 
-    --secondary-hover-color: #3E3E3E; 
-    --accent-color: #64B5F6; 
-    --accent-hover-color: #42A5F5; 
-    --warning-color: #EF4444; 
-    --warning-hover-color: #D32F2F; 
-    --success-color: #10A37F; 
-    --success-hover-color: #0D8563;
-    --border-color: #2F2F2F; 
-    --border-color-hover: #474747; 
-    --disabled-color: #242424; 
-    --disabled-text-color: #757575; 
-    --focus-color: #64B5F6; 
-    --card-color: #242424; 
-    --card-hover-color: #383838;
-    --input-background-color: #1F1F1F;
-    --input-border-color: #343434;
-    --input-focus-border-color: #64B5F6; 
 
-    --wrench-color: #D93E3E;
-    --hand-color: #F7F7F7;
-}
-
-body {
-    background-color: var(--background-color);
-    color: var(--text-color);
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }
