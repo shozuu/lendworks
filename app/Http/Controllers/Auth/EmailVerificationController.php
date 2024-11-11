@@ -9,5 +9,9 @@ use Inertia\Inertia;
 
 class EmailVerificationController extends Controller
 {
-
+    public function notice() {
+        return Inertia::render('Auth/VerifyEmail', [
+            'status' => session('status')
+        ]);
+    }
 }
