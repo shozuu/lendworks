@@ -1,8 +1,7 @@
 <script setup>
-    import Title from '../../Components/Title.vue';
     import TextLink from '../../Components/TextLink.vue';
     import InputField from '../../Components/InputField.vue';
-    import PrimaryBtn from '../../Components/PrimaryBtn.vue';
+    import { Button } from '@/components/ui/button'
     import { useForm } from '@inertiajs/vue3';
     import AuthLayout from '../../Layouts/AuthLayout.vue';
 
@@ -26,7 +25,7 @@
     <Head title="| Register"/>
     <div class="mx-auto max-w-md mt-20">
         <div class="mb-8 text-center">
-            <Title>Register a new account</Title>
+            <h1 class="text-3xl font-bold mb-2">Register a new account</h1>
             <p>Already have an account?
                 <TextLink routeName="login" label="Login"/>
             </p>
@@ -37,13 +36,15 @@
                 label="Name"
                 icon="id-badge"
                 v-model="form.name"
+                placeholder="Full Name"
                 :error="form.errors.name"
             />
 
             <InputField
                 label="Email"
-                icon="at"
+                icon="envelope"
                 v-model="form.email"
+                placeholder="email@example.com"
                 :error="form.errors.email"
             />
 
@@ -52,6 +53,7 @@
                 type="password"
                 icon="key"
                 v-model="form.password"
+                placeholder="must be at least 8 characters"
                 :error="form.errors.password"
             />
 
@@ -59,6 +61,7 @@
                 label="Confirm Password"
                 type="password" icon="key"
                 v-model="form.password_confirmation"
+                placeholder="must be at least 8 characters"
                 :error="form.errors.password"
             />
 
@@ -67,11 +70,12 @@
                 <TextLink routeName="home" label="Privacy Policy"/>.
             </p>
 
-            <PrimaryBtn
-                class="w-full text"
+            <Button 
                 :disabled="form.processing"
-                :style="{ color: '#ECECEC' }">Register
-            </PrimaryBtn>
+                class="w-full rounded-lg"
+                size="lg">
+                Register
+            </Button>
         </form>
     </div>
 </template>
