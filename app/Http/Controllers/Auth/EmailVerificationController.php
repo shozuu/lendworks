@@ -14,4 +14,15 @@ class EmailVerificationController extends Controller
             'status' => session('status')
         ]);
     }
+
+    public function handler(EmailVerificationRequest $request) {
+        $request->fulfill();
+     
+        return redirect()->route('home');
+    }
+
+    public function resend(Request $request) {
+        $request->user()->sendEmailVerificationNotification();
+        return back()->with('status', 'A new verification link has been sent to your email.');
+    }
 }
