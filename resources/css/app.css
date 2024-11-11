@@ -19,21 +19,19 @@
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
 
-    /* Updated primary color to DC2626 with contrasting foreground */
-    --primary: 0 82% 49%; /* #DC2626 */
-    --primary-foreground: 0 0% 98%; /* White or very light */
+    --primary: 0 83% 47%;
+    --primary-foreground: 0 0% 98%; 
 
-    /* Adjusted secondary to complement primary */
-    --secondary: 0 10% 90%; /* Light gray for a more neutral secondary */
+    --secondary: 0 10% 90%; 
     --secondary-foreground: 240 5.9% 10%;
 
     --accent: 240 4.8% 95.9%;
     --accent-foreground: 240 5.9% 10%;
 
-    --destructive: 0 84.2% 60.2%; /* Remains the same */
+    --destructive: 0 84.2% 60.2%; 
     --destructive-foreground: 0 0% 98%;
 
-    --ring: 0 82% 49%; /* Matches primary color for a consistent outline */
+    --ring: 0 83% 47%; 
 
     --radius: 0.5rem;
   }
@@ -54,12 +52,10 @@
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
 
-    /* Updated primary color for dark mode */
-    --primary: 0 82% 49%; /* #DC2626 */
+    --primary: 0 83% 47%;
     --primary-foreground: 0 0% 98%;
 
-    /* Adjusted secondary for contrast in dark mode */
-    --secondary: 240 5% 25%; /* Darker gray for a low-profile secondary */
+    --secondary: 240 5% 25%; 
     --secondary-foreground: 0 0% 98%;
 
     --accent: 240 3.7% 15.9%;
@@ -68,7 +64,7 @@
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
-    --ring: 0 82% 49%; /* Consistent with primary color */
+    --ring: 0 83% 47%; 
   }
 }
 
