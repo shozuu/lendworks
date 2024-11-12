@@ -1,12 +1,15 @@
 <script setup>
     import { Button } from '@/components/ui/button'
     import { Checkbox } from '@/components/ui/checkbox'
+    import { KeyRound  } from 'lucide-vue-next'
+    import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
     import TextLink from '../../Components/TextLink.vue';
     import InputField from '../../Components/InputField.vue';
     import { useForm } from '@inertiajs/vue3';
     import AuthLayout from '../../Layouts/AuthLayout.vue';
 
     defineOptions({ layout: AuthLayout })
+    defineProps({ status: String })
 
     const form = useForm({
         email: "",
@@ -30,6 +33,14 @@
                 <TextLink routeName="register" label="Register"/>
             </p>
         </div>
+
+        <Alert v-if="status" variant="success" class="mb-6">
+            <KeyRound/>
+            <AlertTitle>Success!</AlertTitle>
+            <AlertDescription>
+                {{ status }}
+            </AlertDescription>
+        </Alert>
 
         <form @submit.prevent="submit" class="space-y-6">
             <InputField 
@@ -60,7 +71,7 @@
                     </label>
                 </div>
 
-                <TextLink class="text-sm" routeName="home" label="Forgot Password?" />
+                <TextLink class="text-sm" routeName="password.request" label="Forgot Password?" />
             </div>
 
             <p v-if="form.errors.failed" class="text-warning text-sm text-center mt-1">{{ form.errors.failed }}</p>
