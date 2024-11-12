@@ -15,6 +15,10 @@
             type: String,
             default: null,
         },
+        readonly: {
+            type: Boolean,
+            required: false,
+        },
     });
 </script>
 
@@ -34,6 +38,7 @@
                 </span>
             </div>
             <input
+                :readonly="readonly"
                 :type="type"
                 :id="label"
                 :name="label"
