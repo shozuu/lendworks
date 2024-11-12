@@ -70,7 +70,7 @@
 
             <!-- sidebar footer -->
             <div class="mt-auto">
-                <Button size="lg" class="w-full">Create Listing</Button>
+                <Button size="sm" class="w-full">Create Listing</Button>
             </div>
 
         </SheetContent>

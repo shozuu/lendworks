@@ -73,7 +73,7 @@
 
             <!-- sidebar footer -->
             <div class="mt-auto p-4">
-                <Button size="lg" class="w-full">Create Listing</Button>
+                <Button size="sm" class="w-full">Create Listing</Button>
             </div>
         </div>
     </div>
