@@ -18,6 +18,10 @@ Route::middleware('guest')->group(function() {
 
     // reset password
     Route::get('/forgot-password', [ResetPasswordController::class, 'requestPass'])->name('password.request');
+
+    Route::post('/forgot-password', [ResetPasswordController::class, 'sendEmail'])->name('password.email');
+
+
 });
 
 // available for auth users
