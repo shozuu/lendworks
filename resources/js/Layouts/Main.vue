@@ -18,7 +18,7 @@
         <!-- main content (1fr)-->
         <div class="flex flex-col">
             <!-- header -->
-            <header class="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+            <header class="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-muted/40 backdrop-blur-lg px-4 lg:h-[60px] lg:px-6">
                 
                 <!-- mobile sidebar -->
                 <MobileSidebar />
