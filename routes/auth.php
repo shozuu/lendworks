@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticateController;
+use App\Http\Controllers\Auth\ConfirmPasswordController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ResetPasswordController;
@@ -29,12 +30,21 @@ Route::middleware('guest')->group(function() {
 // available for auth users
 Route::middleware('auth')->group(function() {
     // logout
-    Route::post('/logout', [AuthenticateController::class, 'destroy'])->name('logout');
+    Route::post('/logout', [AuthenticateController::class, 'destroy'])->name('logout'); 
 
-    // email verification notice can be triggered if the user tries to access other features of the website. this logic can also be used to fully verify user in the future (other credentials/documents)
+    // by using password.confirm as middleware, we enable the password confirmation routes that confirm user's password before accessing a page/view
+
+    // notice can be triggered if the user tries to access other features of the website. this logic can also be used to fully verify user in the future (other credentials/documents)
+
+    // email verification 
     Route::get('/email/verify', [EmailVerificationController::class, 'notice'])->name('verification.notice');
 
     Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'handler'])->middleware('signed')->name('verification.verify');
 
     Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])->middleware('throttle:6,1')->name('verification.send');
+
+    // password confirmation
+    Route::get('/confirm-password', [ConfirmPasswordController::class, 'create'])->name('password.confirm');
+
+    Route::post('/confirm-password', [ConfirmPasswordController::class, 'store'])->middleware('throttle:6,1')->name('password.confirm');
 });
