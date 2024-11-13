@@ -20,10 +20,12 @@
     <div class="max-w-md m-auto flex flex-col gap-5">
         <Alert v-if="status" variant="success" >
             <MailCheck/>
-            <AlertTitle>Success!</AlertTitle>
-            <AlertDescription>
-                {{ status }}
-            </AlertDescription>
+            <div>
+                <AlertTitle>Success!</AlertTitle>
+                <AlertDescription>
+                    {{ status }}
+                </AlertDescription>
+            </div>
         </Alert>
 
         <Card>

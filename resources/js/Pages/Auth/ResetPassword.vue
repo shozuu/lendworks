@@ -34,10 +34,12 @@
 
         <Alert v-if="status" variant="info" >
             <MailCheck/>
-            <AlertTitle>Success!</AlertTitle>
-            <AlertDescription>
-                {{ status }}
-            </AlertDescription>
+            <div>
+                <AlertTitle>Success!</AlertTitle>
+                <AlertDescription>
+                    {{ status }}
+                </AlertDescription>
+            </div>
         </Alert>
 
         <form @submit.prevent="submit" class="space-y-6">
