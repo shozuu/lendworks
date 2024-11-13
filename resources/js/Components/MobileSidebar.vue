@@ -40,16 +40,19 @@
         </SheetTrigger>
 
         <!-- mobile sidebar contents -->
-        <SheetContent side="left" class="flex h-full max-h-screen flex-col gap-2">
-            <nav class="grid gap-2 text-lg font-medium">
-                                
-                <!-- logo -->
-                <Link :href="route('home')" class="px-3">
+        <SheetContent side="left" class="flex h-full max-h-screen flex-col gap-2 p-0">
+
+            <!-- logo section (fixed at the top) -->
+            <div class="flex items-center justify-center h-14 border-b sticky top-0">
+                <Link :href="route('home')">
                     <Logo 
-                        class="h-10 w-10"
+                        class="h-11 w-11"
                         :fill="theme === 'dark' ? '#FFFFFF' : '#09090B'"
                     />
                 </Link>
+            </div>
+
+            <nav class="flex-1 px-4 overflow-y-auto text-lg font-medium">
 
                 <!-- nav links -->
                 <NavLink routeName="home" componentName="Home" size="sm">
@@ -69,7 +72,7 @@
             </nav>
 
             <!-- sidebar footer -->
-            <div class="mt-auto">
+            <div class="p-4 sticky bottom-0 border-t">
                 <Button size="sm" class="w-full">Create Listing</Button>
             </div>
 

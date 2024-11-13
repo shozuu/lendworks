@@ -30,11 +30,11 @@
 
 <template>
     <!-- sidebar (visible on md and up) -->
-    <div class="hidden border-r bg-muted/40 md:block">
-        <div class="flex h-full max-h-screen flex-col gap-2">
+    <div class="hidden border-r bg-muted/40 md:block h-screen sticky top-0">
+        <div class="flex h-full flex-col gap-2">
                 
             <!-- sidebar header -->
-            <div class="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+            <div class="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6 sticky top-0 z-10">
                 <Link :href="route('home')" class="flex items-center gap-2 font-semibold">
                     <Logo 
                         class="h-8 w-8"
@@ -49,7 +49,7 @@
             </div>
 
             <!-- sidebar navigation -->
-            <div class="flex-1">
+            <div class="flex-1 overflow-y-auto">
                 <nav class="grid items-start px-2 text-sm font-medium lg:px-4">
 
                     <!-- nav links -->
@@ -67,12 +67,12 @@
                         <HandHelping  class="h-5 w-5" />
                         My Rentals
                     </NavLink>
-    
+                                            
                 </nav>
             </div>
 
             <!-- sidebar footer -->
-            <div class="mt-auto p-4">
+            <div class="mt-auto p-4 sticky bottom-0 border-t">
                 <Button size="sm" class="w-full">Create Listing</Button>
             </div>
         </div>
