@@ -13,6 +13,7 @@ Route::middleware(['auth'])->group(function() {
     // profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');   
     Route::patch('/profile', [ProfileController::class, 'updateInfo'])->name('profile.info');
+    Route::put('/profile', [ProfileController::class, 'updatePassword'])->name('profile.password');
 
     // my rentals
     Route::inertia('/my-rentals', 'MyRentals')->middleware('verified')->name('my-rentals');
