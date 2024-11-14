@@ -1,9 +1,6 @@
 <script setup>
     import { Button } from '@/components/ui/button'
-    import { Checkbox } from '@/components/ui/checkbox'
-    import TextLink from '../../Components/TextLink.vue';
     import InputField from '../../Components/InputField.vue';
-
     import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
     import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
     import { MailCheck } from 'lucide-vue-next'
@@ -28,10 +25,12 @@
     <div class="max-w-md m-auto flex flex-col gap-5">
         <Alert v-if="status" variant="success" >
             <MailCheck/>
-            <AlertTitle>Success!</AlertTitle>
-            <AlertDescription>
-                {{ status }}
-            </AlertDescription>
+            <div>
+                <AlertTitle>Success!</AlertTitle>
+                <AlertDescription>
+                    {{ status }}
+                </AlertDescription>
+            </div>
         </Alert>
 
         <Card>

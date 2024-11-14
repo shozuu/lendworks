@@ -26,13 +26,15 @@
             </Button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Hi, {{ user.name }}!</DropdownMenuLabel>
+        <DropdownMenuContent class="min-w-40" align="end">
+            <DropdownMenuLabel >{{ user.name }}
+                <p class="text-xs mt-1 leading-none text-muted-foreground">{{ user.email }}</p>
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
                 as-child
-                routeName="home"
-            >View Profile
+                routeName="profile.edit"
+            >Profile
             </DropdownMenuItem>
             <DropdownMenuItem 
                 as-child

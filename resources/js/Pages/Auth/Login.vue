@@ -36,10 +36,12 @@
 
         <Alert v-if="status" variant="success" class="mb-6">
             <KeyRound/>
-            <AlertTitle>Success!</AlertTitle>
-            <AlertDescription>
-                {{ status }}
-            </AlertDescription>
+            <div>
+                <AlertTitle>Success!</AlertTitle>
+                <AlertDescription>
+                    {{ status }}
+                </AlertDescription>
+            </div>
         </Alert>
 
         <form @submit.prevent="submit" class="space-y-6">

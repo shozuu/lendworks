@@ -26,14 +26,14 @@
     <div>
         <label
             :for="label"
-            class="block text-sm font-semibold mb-2 text-foreground" 
+            class="block mb-2 text-sm font-medium text-foreground" 
         >
             {{ label }}
         </label>
 
         <div class="relative mt-1 rounded-md">
-            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                <span class="grid place-content-center text-sm text-muted-foreground">
+            <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                <span class="grid text-sm place-content-center text-muted-foreground">
                     <i :class="`fa-solid fa-${icon}`"></i>
                 </span>
             </div>
@@ -50,6 +50,6 @@
                 ]" 
             />
         </div>
-        <p v-if="error" class="text-destructive text-sm mt-1">{{ error }}</p>
+        <p v-if="error" class="mt-1 text-sm text-destructive">{{ error }}</p>
     </div>
 </template>
