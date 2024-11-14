@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
@@ -31,6 +32,24 @@ class ProfileController extends Controller
         }
 
         $request->user()->save();
+
+        return redirect()->route('profile.edit');
+    }
+
+    public function updatePassword(Request $request) {
+        $fields = $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', 'confirmed', 'min:8', 
+                'regex:/[a-z]/', 
+                'regex:/[A-Z]/', 
+                'regex:/[0-9]/',
+                'regex:/[@$!%*?&]/'
+            ]
+        ]);
+
+        $request->user()->update([
+            'password' => Hash::make($fields['password'])
+        ]);
 
         return redirect()->route('profile.edit');
     }
