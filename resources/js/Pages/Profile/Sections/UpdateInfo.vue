@@ -42,7 +42,7 @@
             </p>
             <Alert 
                 v-if="user.email_verified_at === null" 
-                variant="warning" class="w-1/2 mb-5">
+                variant="warning" class="w-full lg:w-1/2 mb-5">
                 <MailWarning class="shrink-0"/>
                 <div>
                     <AlertTitle>Reminder</AlertTitle>
@@ -61,7 +61,7 @@
                 <InputField 
                     label="Name" 
                     icon="id-badge" 
-                    class="w-1/2" 
+                    class="w-full lg:w-1/2" 
                     v-model="form.name"
                     :error="form.errors.name"
                 />
@@ -69,7 +69,7 @@
                 <InputField 
                     label="Email" 
                     icon="id-badge" 
-                    class="w-1/2" v-model="form.email"
+                    class="w-full lg:w-1/2" v-model="form.email"
                     :error="form.errors.email"
                 />
 
