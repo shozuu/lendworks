@@ -24,14 +24,14 @@
                 <MobileSidebar />
 
                 <!-- search bar -->
-                <div class="w-full flex-1">
+                <div class="flex-1 w-full">
                     <form>
                         <div class="relative">
                             <Search class="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input
                                 type="search"
                                 placeholder="Search anything..."
-                                class="w-full appearance-none bg-background pl-8 shadow-none md:w-2/3 lg:w-1/3"
+                                class="w-full pl-8 shadow-none appearance-none bg-background md:w-2/3 lg:w-1/3"
                             />
                         </div>
                     </form>
@@ -53,7 +53,7 @@
             </header>
 
             <!-- Main Content Area -->
-            <main class="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
+            <main class="flex flex-col flex-1 gap-4 p-4 lg:gap-6 lg:p-6">
                 
                 <!-- Page Title -->
                 <div class="flex items-center">

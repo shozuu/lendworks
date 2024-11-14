@@ -22,17 +22,18 @@
 </script>
 
 <template>
-    <Card>
+    <Card class="flex flex-col">
         <CardHeader>
             <CardTitle>Update Password</CardTitle>
-            <CardDescription class="w-full lg:w-1/2">Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.</CardDescription>
+            <CardDescription class="lg:w-2/5">Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.</CardDescription>
         </CardHeader>
         
-        <CardContent>
+        <CardContent class="flex-1 lg:w-3/5 lg:self-end">
 
             <Alert 
                 v-if="form.recentlySuccessful === true" 
-                variant="success" class="w-full lg:w-1/2 mb-5">
+                class="mb-5"
+                variant="success">
                 <KeyRound class="shrink-0"/>
                 <div>
                     <AlertTitle>Success!</AlertTitle>
@@ -45,8 +46,7 @@
             <form @submit.prevent="submit" class="space-y-6">
                 <InputField 
                     label="Current Password" 
-                    icon="key" 
-                    class="w-full lg:w-1/2" 
+                    icon="key"
                     type="password"
                     v-model="form.current_password"
                     :error="form.errors.current_password"
@@ -55,7 +55,6 @@
                 <InputField 
                     label="New Password" 
                     icon="key" 
-                    class="w-full lg:w-1/2" 
                     type="password"
                     v-model="form.password"
                     :error="form.errors.password"
@@ -63,16 +62,13 @@
 
                 <InputField 
                     label="Confirm New Password" 
-                    icon="key" 
-                    class="w-full lg:w-1/2" 
+                    icon="key"
                     type="password"
                     v-model="form.password_confirmation"
                     :error="form.errors.password"
                 />
 
-                <Button
-                    :disabled="form.processing"
-                    class="">
+                <Button :disabled="form.processing">
                     Save
                 </Button>
             </form>

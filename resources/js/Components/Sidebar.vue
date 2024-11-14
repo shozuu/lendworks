@@ -30,20 +30,20 @@
 
 <template>
     <!-- sidebar (visible on md and up) -->
-    <div class="hidden border-r bg-muted/40 md:block h-screen sticky top-0">
-        <div class="flex h-full flex-col gap-2">
+    <div class="sticky top-0 hidden h-screen border-r bg-muted/40 md:block">
+        <div class="flex flex-col h-full gap-2">
                 
             <!-- sidebar header -->
             <div class="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6 sticky top-0 z-10">
                 <Link :href="route('home')" class="flex items-center gap-2 font-semibold">
                     <Logo 
-                        class="h-8 w-8"
+                        class="w-8 h-8"
                         :fill="theme === 'dark' ? '#FFFFFF' : '#09090B'"
                     />
                     <span>LendWorks</span>
                 </Link>
-                <Button variant="outline" size="icon" class="ml-auto h-8 w-8">
-                    <Bell class="h-4 w-4" />
+                <Button variant="outline" size="icon" class="w-8 h-8 ml-auto">
+                    <Bell class="w-4 h-4" />
                     <span class="sr-only">Toggle notifications</span>
                 </Button>
             </div>
@@ -54,17 +54,17 @@
 
                     <!-- nav links -->
                     <NavLink routeName="home" componentName="Home">
-                        <Home class="h-5 w-5" />
+                        <Home class="w-5 h-5" />
                         Home
                     </NavLink>
 
                     <NavLink routeName="explore" componentName="Explore">
-                        <Telescope class="h-5 w-5" />
+                        <Telescope class="w-5 h-5" />
                         Explore
                     </NavLink>
 
                     <NavLink routeName="my-rentals" componentName="MyRentals">
-                        <HandHelping  class="h-5 w-5" />
+                        <HandHelping  class="w-5 h-5" />
                         My Rentals
                     </NavLink>
                                             
@@ -72,8 +72,14 @@
             </div>
 
             <!-- sidebar footer -->
-            <div class="mt-auto p-4 sticky bottom-0 border-t">
-                <Button size="sm" class="w-full">Create Listing</Button>
+            <div class="sticky bottom-0 p-4 mt-auto border-t">
+                <Button 
+                    size="lg" 
+                    class="w-full"
+                    variant="outline"
+                >
+                    Create Listing
+                </Button>
             </div>
         </div>
     </div>
