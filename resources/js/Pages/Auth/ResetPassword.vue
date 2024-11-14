@@ -1,5 +1,5 @@
 <script setup>
-    import TextLink from '../../Components/TextLink.vue';
+    import { Info } from 'lucide-vue-next'
     import InputField from '../../Components/InputField.vue';
     import { Button } from '@/components/ui/button'
     import { useForm } from '@inertiajs/vue3';
@@ -33,9 +33,9 @@
         </div>
 
         <Alert v-if="status" variant="info" >
-            <MailCheck/>
+            <Info/>
             <div>
-                <AlertTitle>Success!</AlertTitle>
+                <AlertTitle>Info</AlertTitle>
                 <AlertDescription>
                     {{ status }}
                 </AlertDescription>
