@@ -26,9 +26,9 @@
 
 <template>
     <Head title="| Login"/>
-    <div class="mx-auto max-w-md mt-20">
+    <div class="max-w-md mx-auto mt-20">
         <div class="mb-8 text-center">
-            <h1 class="text-3xl font-bold mb-2">Welcome Back</h1>
+            <h1 class="mb-2 text-3xl font-bold">Welcome Back</h1>
             <p>Don't have an account?
                 <TextLink routeName="register" label="Register"/>
             </p>
@@ -67,7 +67,7 @@
                     <Checkbox name="remember" v-model:checked="form.remember" class="w-5 h-5" id="remember"/>
                     <label
                         for="remember"
-                        class="text-sm text-text cursor-pointer select-none"
+                        class="text-sm cursor-pointer select-none text-text"
                     >
                         Remember Me
                     </label>
@@ -76,7 +76,7 @@
                 <TextLink class="text-sm" routeName="password.request" label="Forgot Password?" />
             </div>
 
-            <p v-if="form.errors.failed" class="text-warning text-sm text-center mt-1">{{ form.errors.failed }}</p>
+            <p v-if="form.errors.failed" class="mt-1 text-sm text-center text-warning">{{ form.errors.failed }}</p>
 
             <Button 
                 :disabled="form.processing"
