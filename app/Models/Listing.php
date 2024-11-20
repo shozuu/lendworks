@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Models;
@@ -23,4 +24,26 @@ class Listing extends Model
         
         return $this->belongsTo(User::class);
     }
+
+    // always include scope in func name to trigger laravel query builder
+    // to use the function in controller, use it as defined but after the word scope
+
+    public function scopeFilter($query, array $filters) {
+
+        // search input query
+        if ($filters['search'] ?? false) {
+            // wrap in a cb func to treat and return them as one query if chaining where is needed
+            $query->where(function ($q) {
+                $q->where('title', 'like', '%' . request('search') . '%')
+                ->orWhere('desc', 'like', '%' . request('search') . '%');
+                // add more search params 
+            });
+        }
+
+        // username click query
+        // for user's listings
+        if ($filters['user_id'] ?? false) {
+            $query->where('user_id', request('user_id'));
+        }
+    } 
 }
