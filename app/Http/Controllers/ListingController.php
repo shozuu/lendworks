@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Listing;
 use App\Http\Requests\StoreListingRequest;
 use App\Http\Requests\UpdateListingRequest;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class ListingController extends Controller
@@ -12,14 +14,21 @@ class ListingController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
+    // if this will render home, we should return the popular tools, categories, and newly listed for rent
     {
-        $listings = Listing::with('user')->latest()->paginate(8);
+        $listings = Listing::whereHas('user', function (Builder $query) {
+        $query->where('role', '!=', 'suspended');
+    })
+            ->with('user')
+            ->where('approved', true)
+            ->latest()
+            ->limit(8)
+            ->get();
 
         return Inertia::render('Home', [
             'listings' => $listings,
             'CTAImage' => asset('storage/images/listing/CTA/mainCTA.jpg'),
-
         ]);
     }
 
