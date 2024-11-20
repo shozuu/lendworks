@@ -1,11 +1,29 @@
 <script setup>
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SunMoon, Search } from "lucide-vue-next";
 import Sidebar from "../Components/Sidebar.vue";
 import MobileSidebar from "../Components/MobileSidebar.vue";
 import UserDropdownMenu from "../Components/UserDropdownMenu.vue";
 import { switchTheme } from "../theme";
+import { useForm, router } from "@inertiajs/vue3";
+import InputField from "@/Components/InputField.vue";
+
+// use route.params() to 'stack' search query parameters coming from different components and pass them as one parameter
+
+const params = route().params;
+// searchTerm is automatically passed from controller->view->layout
+
+const props = defineProps({ searchTerm: String });
+
+const form = useForm({
+	search: props.searchTerm,
+});
+
+const search = () => {
+	router.get(route("explore"), {
+		search: form.search,
+	});
+};
 </script>
 
 <template>
@@ -26,13 +44,17 @@ import { switchTheme } from "../theme";
 
 					<!-- Search Bar -->
 					<div class="flex-1">
-						<form>
+						<form @submit.prevent="search">
 							<div class="relative">
-								<Search class="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-								<Input
+								<Search
+									class="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground z-10"
+								/>
+								<InputField
 									type="search"
 									placeholder="Search anything..."
-									class="w-full pl-8 appearance-none bg-muted md:w-2/3 lg:w-1/3"
+									bg="bg-muted"
+									addedClass="m-0 py-2 w-full pl-8 appearance-none bg-muted md:w-2/3 lg:w-1/3 h-10"
+									v-model="form.search"
 								/>
 							</div>
 						</form>
@@ -53,7 +75,7 @@ import { switchTheme } from "../theme";
 			</header>
 
 			<!-- main content -->
-			<main class="w-full px-4 py-6 mx-auto lg:max-w-screen-2xl lg:px-8 lg:py-8">
+			<main class="flex-1 w-full px-4 py-6 mx-auto lg:max-w-screen-2xl lg:px-8 lg:py-8">
 				<!-- slot content -->
 				<slot />
 			</main>
