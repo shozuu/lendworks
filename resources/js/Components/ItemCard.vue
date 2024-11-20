@@ -1,9 +1,19 @@
 <script setup>
-import { Badge } from "@/components/ui/badge";
+import { router } from "@inertiajs/vue3";
+
+// use route.params() to 'stack' search query parameters coming from different components and pass them as one parameter
+const params = route().params;
 
 defineProps({
 	listing: Object,
 });
+
+const selectUser = (id) => {
+	router.get(route('home'), {
+		// this should redirect to a dedicated profile page for that user
+		user_id: id,
+	})
+}
 </script>
 
 <template>
@@ -32,15 +42,16 @@ defineProps({
 		</Link>
 
 		<!-- details -->
-		<div class="mt-2">
+		<div class="mt-2 space-y-2">
 			<h3 class="text-sm font-medium line-clamp-1">
 				{{ listing.title }}
 			</h3>
 			
             <!-- owner and location -->
-			<p class="mt-3 text-xs text-muted-foreground">
+			<p class="text-xs text-muted-foreground">
 				Listed By
 				<Link
+					@click="selectUser(listing.user.id)"
 					:href="route('home')"
 					class="hover:text-foreground underline-offset-4 hover:underline"
 				>
@@ -49,15 +60,6 @@ defineProps({
 
                 <p class="flex items-center gap-1">Baliwasan, ZC</p>
 			</p>
-            
-			<!-- tags -->
-			<div v-if="listing.tags" class="flex items-center gap-1 mt-4">
-				<div v-for="tag in listing.tags.split(',')" :key="tag">
-					<Badge variant="secondary" class="font-medium">
-						{{ tag }}
-					</Badge>
-				</div>
-			</div>
 		</div>
 	</div>
 </template>
