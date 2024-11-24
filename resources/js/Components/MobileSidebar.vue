@@ -79,11 +79,13 @@ onMounted(() => {
             </nav>
 
             <!-- sidebar footer -->
-            <div class="sticky bottom-0 p-4 border-t">
+            <Link 
+                :href="route('listing.create')"
+                class="sticky bottom-0 p-4 border-t">
                 <Button size="sm" class="w-full" variant="outline">
                     Create Listing
                 </Button>
-            </div>
+            </Link>
         </SheetContent>
     </Sheet>
 </template>

@@ -27,7 +27,7 @@ const selectUser = (id) => {
 						: '/storage/images/listing/default.png'
 				"
 				alt=""
-				class="object-cover object-center w-full rounded-md aspect-square lg:aspect-auto lg:h-60"
+				class="object-cover object-center w-full rounded-md aspect-[4/3] lg:aspect-auto lg:h-60"
 			/>
 
 			<!-- overlay -->
@@ -37,7 +37,7 @@ const selectUser = (id) => {
 
 			<!-- daily rate -->
 			<div class="absolute px-3 py-1 text-sm font-medium text-slate-100 bottom-2 right-2">
-				₱345/day
+				₱{{listing.price}}/day
 			</div>
 		</Link>
 

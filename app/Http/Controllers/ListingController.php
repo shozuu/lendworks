@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Listing;
-use App\Http\Requests\StoreListingRequest;
 use App\Http\Requests\UpdateListingRequest;
+use App\Models\Category;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -37,15 +37,19 @@ class ListingController extends Controller
      */
     public function create()
     {
-        //
+        $categories = Category::select('id', 'name')->get();
+        return Inertia::render('Listing/Create', [
+            'categories' => $categories,
+        ]);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreListingRequest $request)
+    public function store(Request $request)
     {
-        //
+        dd($request);
+        
     }
 
     /**
