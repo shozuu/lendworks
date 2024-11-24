@@ -16,10 +16,9 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete(); 
             $table->string('title');
             $table->text('desc');
-            $table->string('tags')->nullable();
-            $table->string('email')->nullable();
-            $table->string('link')->nullable();
-            $table->string('image')->nullable();
+            $table->foreignId('category_id')->nullable()->constrained()->nullOnDelete();
+            $table->decimal('value')->nullable();
+            $table->decimal('price')->nullable();
             $table->boolean('approved')->default(false);
             $table->timestamps();
         });
