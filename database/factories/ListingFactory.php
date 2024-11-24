@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Models\Category;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -17,17 +19,12 @@ class ListingFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id' => fake()->randomElement([1, 2]),
+            'user_id' => User::inRandomOrder()->first()->id,
             'title' => fake()->sentence(10),
             'desc' => fake()->paragraph(12),
-            'email' => fake()->email(),
-            'link' => fake()->url(),
-            'tags' => fake()->randomElement([
-                'dev,game',
-                'game',
-                'biz,tech',
-                'tech,game,biz',
-            ]),
+            'category_id' => Category::inRandomOrder()->first()->id,
+            'value' => $this->faker->randomFloat(2, 1000, 10000),
+            'price' => $this->faker->randomFloat(2, 500, 5000),
             'approved' => 1
         ];
     }
