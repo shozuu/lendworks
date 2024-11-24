@@ -6,6 +6,7 @@ import Textarea from "@/Components/ui/textarea/Textarea.vue";
 import { Inertia } from "@inertiajs/inertia";
 import { useForm } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
+import { vAutoAnimate } from "@formkit/auto-animate";
 import * as z from "zod";
 import {
 	FormControl,
@@ -58,7 +59,6 @@ const onSubmit = form.handleSubmit((values) => {
 });
 
 const props = defineProps({ categories: Array });
-console.log(props.categories);
 </script>
 
 <template>
@@ -70,7 +70,7 @@ console.log(props.categories);
 
 	<form @submit="onSubmit" class="space-y-4" enctype="multipart/form-data">
 		<FormField v-slot="{ componentField }" name="title">
-			<FormItem>
+			<FormItem v-auto-animate>
 				<FormLabel>Title</FormLabel>
 				<FormDescription>
 					A short, clear name for your listing (e.g., "Bosche Cordless 18v Drill ").
@@ -83,7 +83,7 @@ console.log(props.categories);
 		</FormField>
 
 		<FormField v-slot="{ componentField }" name="desc">
-			<FormItem>
+			<FormItem v-auto-animate>
 				<FormLabel>Description</FormLabel>
 				<FormDescription>
 					Describe your tool, its features, and condition.
@@ -96,7 +96,7 @@ console.log(props.categories);
 		</FormField>
 
 		<FormField v-slot="{ componentField }" name="category">
-			<FormItem>
+			<FormItem v-auto-animate>
 				<FormLabel>Category</FormLabel>
 				<FormDescription> Choose the category that fits your listing. </FormDescription>
 				<Select v-bind="componentField">
@@ -122,7 +122,7 @@ console.log(props.categories);
 		</FormField>
 
 		<FormField v-slot="{ componentField }" name="value">
-			<FormItem>
+			<FormItem v-auto-animate>
 				<FormLabel>Value</FormLabel>
 				<FormDescription> The estimated value of your tool. </FormDescription>
 				<FormControl>
@@ -133,7 +133,7 @@ console.log(props.categories);
 		</FormField>
 
 		<FormField v-slot="{ componentField }" name="price">
-			<FormItem>
+			<FormItem v-auto-animate>
 				<FormLabel>Daily Rental Rate</FormLabel>
 				<FormDescription> Set your daily rental price. </FormDescription>
 				<FormControl>
@@ -144,7 +144,7 @@ console.log(props.categories);
 		</FormField>
 
 		<FormField v-slot="{ componentField }" name="images">
-			<FormItem>
+			<FormItem v-auto-animate>
 				<FormLabel>Images</FormLabel>
 				<FormDescription>
 					Upload clear images of your tool. Preferably in landscape format (4:3).
