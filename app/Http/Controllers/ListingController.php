@@ -26,10 +26,22 @@ class ListingController extends Controller
             ->limit(8)
             ->get();
 
-        return Inertia::render('Home', [
-            'listings' => $listings,
-            'CTAImage' => asset('storage/images/listing/CTA/mainCTA.jpg'),
-        ]);
+        // Fetch newly listed for rent
+        $NewlyListed = Listing::whereHas('user', function (Builder $query) {
+            $query->where('role', '!=', 'suspended');
+        })
+        ->with('user')
+        ->where('approved', true)
+        ->orderBy('created_at', 'desc') 
+        ->limit(8)
+        ->get();
+
+    return Inertia::render('Home', [
+        'listings' => $listings,
+        'NewlyListed' =>$NewlyListed,
+        'CTAImage' => asset('storage/images/listing/CTA/mainCTA.jpg'),
+    ]);
+
     }
 
     /**
