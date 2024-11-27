@@ -12,16 +12,23 @@ class Listing extends Model
     protected $fillable = [
         'title',
         'desc',
-        'tags',
-        'email',
-        'link',
-        'image',
+        'category_id',
+        'value',
+        'price',
         'approved',
     ];
 
-    public function user(){
-        
+    public function user() {
         return $this->belongsTo(User::class);
+    }
+
+    public function category() {
+        return $this->belongsTo(Category::class);
+    }
+
+    public function images()
+    {
+        return $this->hasMany(ListingImage::class);
     }
 
     // always include scope in func name to trigger laravel query builder

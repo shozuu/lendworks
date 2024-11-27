@@ -82,12 +82,14 @@ onMounted(() => {
             </div>
 
             <!-- sidebar footer -->
-            <div class="sticky bottom-0 p-4 mt-auto border-t">
+            <Link 
+                :href="route('listing.create')"
+                class="sticky bottom-0 p-4 mt-auto border-t">
                 <Button size="lg" class="w-full font-light" variant="outline">
                     <PackagePlus />
                     Create Listing
                 </Button>
-            </div>
+            </Link>
         </div>
     </div>
 </template>
