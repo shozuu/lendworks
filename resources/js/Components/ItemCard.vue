@@ -22,8 +22,8 @@ const selectUser = (id) => {
 		<Link href="" class="relative overflow-hidden">
 			<img
 				:src="
-					listing.image
-						? `/storage/${listing.image}`
+					listing.images.length
+						? `/storage/${listing.images[0].image_path}`
 						: '/storage/images/listing/default.png'
 				"
 				alt=""
@@ -46,7 +46,7 @@ const selectUser = (id) => {
 			<h3 class="text-sm font-medium line-clamp-1">
 				{{ listing.title }}
 			</h3>
-			
+
             <!-- owner and location -->
 			<p class="text-xs text-muted-foreground">
 				Listed By
