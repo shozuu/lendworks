@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Listing;
-use App\Http\Requests\UpdateListingRequest;
 use App\Models\Category;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class ListingController extends Controller
@@ -48,8 +48,31 @@ class ListingController extends Controller
      */
     public function store(Request $request)
     {
-        dd($request);
-        
+        $fields = $request->validate([
+            'title' => ['required', 'string', 'min:5', 'max:100'],
+            'desc' => ['required', 'string', 'min:10', 'max:1000'],
+            'category_id' => ['required', 'string', 'exists:categories,id'],
+            'value' => ['required', 'numeric', 'gt:0'],
+            'price' => ['required', 'numeric', 'gt:0'],
+            'images' => ['required', 'array', 'min:1'],
+            'images.*' => ['required', 'image', 'file', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
+        ]);
+
+        $listing = $request->user()->listings()->create($fields);
+
+        if ($request->hasFile('images')) {
+            foreach ($request->images as $index => $image) {
+                $path = $image->store('images/listing', 'public');
+
+                // save image details to the database
+                $listing->images()->create([
+                    'image_path' => $path,
+                    'order' => $index,
+                ]);
+            }
+        }
+
+        return redirect()->route('my-rentals')->with('status', 'Listing created successfully.');
     }
 
     /**
@@ -71,7 +94,7 @@ class ListingController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateListingRequest $request, Listing $listing)
+    public function update(Request $request, Listing $listing)
     {
         //
     }
