@@ -51,11 +51,7 @@ defineProps({
 
 		<!-- Browse Categories Section -->
 		<div>
-			<DummyCategories>
-				<template #default="{ categories }">
-					<BrowseCategories :categories="categories" />
-				</template>
-			</DummyCategories>
+			<BrowseCategories />
 		</div>
 
 		<br />
