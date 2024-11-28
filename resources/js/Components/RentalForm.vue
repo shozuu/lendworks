@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import Separator from "@/Components/ui/separator/Separator.vue";
 import Button from "@/Components/ui/button/Button.vue";
-import Copy from "./copy.vue";
+import RentalDatesPicker from "./RentalDatesPicker.vue";
 
 defineProps({ listing: Object });
 const formatNumber = (value) => {
@@ -29,7 +29,7 @@ const formatNumber = (value) => {
 
 			<div class="space-y-2">
 				<div class="font-semibold">Rental Dates</div>
-				<Copy />
+				<RentalDatesPicker />
 			</div>
 
 			<Separator class="my-4" />
