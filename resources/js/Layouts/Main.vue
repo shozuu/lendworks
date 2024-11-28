@@ -37,7 +37,7 @@ const search = () => {
 			<!-- header -->
 			<header class="sticky top-0 z-10 border-b bg-background">
 				<div
-					class="mx-auto flex h-14 max-w-screen-2xl items-center gap-4 px-4 lg:h-[60px] lg:px-6"
+					class="mx-auto flex h-14 max-w-screen-2xl items-center gap-4 px-6 lg:h-[60px]"
 				>
 					<!-- Mobile Sidebar -->
 					<MobileSidebar />
@@ -75,7 +75,7 @@ const search = () => {
 			</header>
 
 			<!-- main content -->
-			<main class="flex-1 w-full px-4 py-6 mx-auto lg:max-w-screen-2xl lg:px-8 lg:py-8">
+			<main class="flex-1 w-full p-6 mx-auto lg:max-w-screen-2xl lg:p-8">
 				<!-- slot content -->
 				<slot />
 			</main>

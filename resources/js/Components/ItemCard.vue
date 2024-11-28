@@ -17,9 +17,9 @@ const selectUser = (id) => {
 </script>
 
 <template>
-	<div>
+	<Link :href="route('listing.show', listing.id)">
 		<!-- image -->
-		<Link href="" class="relative overflow-hidden">
+		<div class="relative overflow-hidden">
 			<img
 				:src="
 					listing.images.length
@@ -39,7 +39,7 @@ const selectUser = (id) => {
 			<div class="absolute px-3 py-1 text-sm font-medium text-slate-100 bottom-2 right-2">
 				₱{{listing.price}}/day
 			</div>
-		</Link>
+		</div>
 
 		<!-- details -->
 		<div class="mt-2 space-y-2">
@@ -61,5 +61,5 @@ const selectUser = (id) => {
                 <p class="flex items-center gap-1">Baliwasan, ZC</p>
 			</p>
 		</div>
-	</div>
+	</Link>
 </template>
