@@ -6,7 +6,6 @@ import { ScrollArea, ScrollBar } from "@/Components/ui/scroll-area/index";
 import BrowseCategories from "@/Components/BrowseCategory.vue";
 import HowitWorks from "@/Components/HowitWorks.vue";
 import Footer from "@/Components/footer.vue";
-import DummyCategories from "@/Components/DummyCategories.vue";
 
 defineProps({
 	listings: Array,
