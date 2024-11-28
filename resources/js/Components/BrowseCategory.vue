@@ -28,12 +28,25 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from "vue";
 import { Separator } from "@/components/ui/separator";
 
-defineProps({
-	categories: {
-		type: Array,
-		required: true,
-	},
+// Holds the fetched categories
+const categories = ref([]);
+
+// Fetch categories from the API endpoint
+const fetchCategories = async () => {
+	try {
+		const response = await fetch("/api/categories");
+		const data = await response.json();
+		categories.value = data;
+	} catch (error) {
+		console.error("Error fetching categories:", error);
+	}
+};
+
+// Fetch categories when the component is mounted
+onMounted(() => {
+	fetchCategories();
 });
 </script>
