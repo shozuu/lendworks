@@ -1,12 +1,9 @@
 <script setup>
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import ImageUpload from "@/Components/ImageUpload.vue";
-import Textarea from "@/Components/ui/textarea/Textarea.vue";
+import { ref, watch } from "vue";
 import { Inertia } from "@inertiajs/inertia";
+import axios from "axios";
 import { useForm } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
-import { vAutoAnimate } from "@formkit/auto-animate";
 import * as z from "zod";
 import {
 	FormControl,
@@ -16,6 +13,9 @@ import {
 	FormLabel,
 	FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import Textarea from "@/Components/ui/textarea/Textarea.vue";
+import ImageUpload from "@/Components/ImageUpload.vue";
 import {
 	Select,
 	SelectContent,
@@ -24,6 +24,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 const formSchema = toTypedSchema(
 	z.object({
@@ -54,9 +55,31 @@ const form = useForm({
 	validationSchema: formSchema,
 });
 
+const minRate = ref(null);
+const maxRate = ref(null);
+
 const onSubmit = form.handleSubmit((values) => {
 	Inertia.post(route("listing.store"), values);
 });
+
+// Watch the value field and trigger the rate calculation when it changes
+watch(
+	() => form.values.value,
+	async (newValue) => {
+		if (newValue) {
+			try {
+				const response = await axios.post(route("rates.calculate"), {
+					itemValue: newValue,
+				});
+				minRate.value = response.data.minRate;
+				maxRate.value = response.data.maxRate;
+			} catch (error) {
+				console.error("Error calculating rates:", error);
+				alert("An error occurred while calculating the rates. Please try again.");
+			}
+		}
+	}
+);
 
 const props = defineProps({ categories: Array });
 </script>
@@ -70,7 +93,7 @@ const props = defineProps({ categories: Array });
 
 	<form @submit="onSubmit" class="space-y-4" enctype="multipart/form-data">
 		<FormField v-slot="{ componentField }" name="title">
-			<FormItem v-auto-animate>
+			<FormItem>
 				<FormLabel>Title</FormLabel>
 				<FormDescription>
 					A short, clear name for your listing (e.g., "Bosche Cordless 18v Drill ").
@@ -83,7 +106,7 @@ const props = defineProps({ categories: Array });
 		</FormField>
 
 		<FormField v-slot="{ componentField }" name="desc">
-			<FormItem v-auto-animate>
+			<FormItem>
 				<FormLabel>Description</FormLabel>
 				<FormDescription>
 					Describe your tool, its features, and condition.
@@ -96,7 +119,7 @@ const props = defineProps({ categories: Array });
 		</FormField>
 
 		<FormField v-slot="{ componentField }" name="category">
-			<FormItem v-auto-animate>
+			<FormItem>
 				<FormLabel>Category</FormLabel>
 				<FormDescription> Choose the category that fits your listing. </FormDescription>
 				<Select v-bind="componentField">
@@ -122,7 +145,7 @@ const props = defineProps({ categories: Array });
 		</FormField>
 
 		<FormField v-slot="{ componentField }" name="value">
-			<FormItem v-auto-animate>
+			<FormItem>
 				<FormLabel>Value</FormLabel>
 				<FormDescription> The estimated value of your tool. </FormDescription>
 				<FormControl>
@@ -132,8 +155,27 @@ const props = defineProps({ categories: Array });
 			</FormItem>
 		</FormField>
 
+		<FormField
+			v-if="form.values.value && minRate !== null && maxRate !== null"
+			name="suggestedRate"
+		>
+			<FormItem>
+				<FormLabel>Suggested Daily Rate</FormLabel>
+				<FormDescription>
+					The estimated suggested daily rate range for your tool based on its value.
+				</FormDescription>
+				<FormControl>
+					<p class="text-gray-700">Suggested Daily Rate:</p>
+					<p class="font-semibold">
+						₱{{ minRate.toFixed(2) }} - ₱{{ maxRate.toFixed(2) }}
+					</p>
+				</FormControl>
+				<FormMessage />
+			</FormItem>
+		</FormField>
+
 		<FormField v-slot="{ componentField }" name="price">
-			<FormItem v-auto-animate>
+			<FormItem>
 				<FormLabel>Daily Rental Rate</FormLabel>
 				<FormDescription> Set your daily rental price. </FormDescription>
 				<FormControl>
@@ -144,7 +186,7 @@ const props = defineProps({ categories: Array });
 		</FormField>
 
 		<FormField v-slot="{ componentField }" name="images">
-			<FormItem v-auto-animate>
+			<FormItem>
 				<FormLabel>Images</FormLabel>
 				<FormDescription>
 					Upload clear images of your tool. Preferably in landscape format (4:3).
