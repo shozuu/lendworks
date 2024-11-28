@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ImageUpload from "@/Components/ImageUpload.vue";
 import Textarea from "@/Components/ui/textarea/Textarea.vue";
-import { Inertia } from "@inertiajs/inertia";
-import { useForm } from "vee-validate";
+import { useForm as useVeeForm } from "vee-validate";
+import { useForm as useInertiaForm } from "@inertiajs/vue3";
 import { toTypedSchema } from "@vee-validate/zod";
 import { vAutoAnimate } from "@formkit/auto-animate";
 import * as z from "zod";
@@ -64,15 +64,23 @@ const formSchema = toTypedSchema(
 	})
 );
 
-const form = useForm({
+const form = useVeeForm({
 	validationSchema: formSchema,
 });
 
 const onSubmit = form.handleSubmit((values) => {
-	Inertia.post(route("listing.store"), values);
+	const inertiaForm = useInertiaForm({
+		title: values.title,
+		desc: values.desc,
+		category_id: values.category,
+		value: values.value,
+		price: values.price,
+		images: values.images,
+	});
+	inertiaForm.post(route("listing.store"));
 });
 
-const props = defineProps({ categories: Array });
+defineProps({ categories: Array });
 </script>
 
 <template>
@@ -138,7 +146,7 @@ const props = defineProps({ categories: Array });
 		<FormField v-slot="{ componentField }" name="value">
 			<FormItem v-auto-animate>
 				<FormLabel>Value</FormLabel>
-				<FormDescription> The estimated value of your tool. </FormDescription>
+				<FormDescription> The estimated value of your tool. (In Php)</FormDescription>
 				<FormControl>
 					<Input type="number" v-bind="componentField" />
 				</FormControl>
@@ -149,7 +157,7 @@ const props = defineProps({ categories: Array });
 		<FormField v-slot="{ componentField }" name="price">
 			<FormItem v-auto-animate>
 				<FormLabel>Daily Rental Rate</FormLabel>
-				<FormDescription> Set your daily rental price. </FormDescription>
+				<FormDescription> Set your daily rental price. (In Php)</FormDescription>
 				<FormControl>
 					<Input type="number" v-bind="componentField" />
 				</FormControl>
