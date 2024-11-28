@@ -1,10 +1,10 @@
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch, watchEffect } from "vue";
 import { Inertia } from "@inertiajs/inertia";
-import axios from "axios";
 import { useForm } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
 import * as z from "zod";
+import calculateDailyRate from "../../suggestRate";
 import {
 	FormControl,
 	FormDescription,
@@ -62,24 +62,10 @@ const onSubmit = form.handleSubmit((values) => {
 	Inertia.post(route("listing.store"), values);
 });
 
-// Watch the value field and trigger the rate calculation when it changes
-watch(
-	() => form.values.value,
-	async (newValue) => {
-		if (newValue) {
-			try {
-				const response = await axios.post(route("rates.calculate"), {
-					itemValue: newValue,
-				});
-				minRate.value = response.data.minRate;
-				maxRate.value = response.data.maxRate;
-			} catch (error) {
-				console.error("Error calculating rates:", error);
-				alert("An error occurred while calculating the rates. Please try again.");
-			}
-		}
-	}
-);
+let dailyRate;
+watchEffect(() => {
+	dailyRate = calculateDailyRate(form.values.value);
+});
 
 const props = defineProps({ categories: Array });
 </script>
@@ -155,7 +141,7 @@ const props = defineProps({ categories: Array });
 			</FormItem>
 		</FormField>
 
-		<FormField
+		<!-- <FormField
 			v-if="form.values.value && minRate !== null && maxRate !== null"
 			name="suggestedRate"
 		>
@@ -172,7 +158,7 @@ const props = defineProps({ categories: Array });
 				</FormControl>
 				<FormMessage />
 			</FormItem>
-		</FormField>
+		</FormField> -->
 
 		<FormField v-slot="{ componentField }" name="price">
 			<FormItem>
@@ -182,6 +168,12 @@ const props = defineProps({ categories: Array });
 					<Input type="number" v-bind="componentField" />
 				</FormControl>
 				<FormMessage />
+				<FormDescription v-if="form.values.value > 0">
+					We suggest a daily rental price between ₱{{ dailyRate.minRate }} and ₱{{
+						dailyRate.maxRate
+					}}
+					based on your item's value
+				</FormDescription>
 			</FormItem>
 		</FormField>
 
