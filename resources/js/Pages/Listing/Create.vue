@@ -30,8 +30,18 @@ const formSchema = toTypedSchema(
 		title: z.string().min(5).max(100),
 		desc: z.string().min(10).max(1000),
 		category: z.preprocess((value) => parseInt(value, 10), z.number().int()),
-		value: z.number().positive(),
-		price: z.number().positive(),
+		value: z
+			.number()
+			.positive()
+			.refine((val) => Number.isInteger(val), {
+				message: "Value must be a whole number (no decimals).",
+			}),
+		price: z
+			.number()
+			.positive()
+			.refine((val) => Number.isInteger(val), {
+				message: "Price must be a whole number (no decimals).",
+			}),
 		images: z.preprocess(
 			(value) => {
 				if (Array.isArray(value) && value.length > 0) {

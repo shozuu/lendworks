@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::create('listings', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete(); 
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('title');
             $table->text('desc');
             $table->foreignId('category_id')->nullable()->constrained()->nullOnDelete();
-            $table->decimal('value')->nullable();
-            $table->decimal('price')->nullable();
+            $table->unsignedInteger('value')->nullable();
+            $table->unsignedInteger('price')->nullable();
             $table->boolean('approved')->default(false);
             $table->timestamps();
         });
