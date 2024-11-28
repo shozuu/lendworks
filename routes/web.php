@@ -18,13 +18,20 @@ Route::get('/api/categories', [CategoryController::class, 'index']);
 
 Route::middleware(['auth'])->group(function() {
     // profile
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');   
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'updateInfo'])->name('profile.info');
     Route::put('/profile', [ProfileController::class, 'updatePassword'])->name('profile.password');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // my rentals
     Route::inertia('/my-rentals', 'MyRentals')->middleware('verified')->name('my-rentals');
+
+    // listing crud 
+    Route::resource('listing', ListingController::class)->except(['index', 'show'])->middleware('verified');
 });
+
+Route::get('/', [ListingController::class, 'index'])->name('home');
+Route::get('listing/{listing}', [ListingController::class, 'show'])->name('listing.show');
+Route::get('/explore', [ExploreController::class, 'index'])->name('explore');
  
 require __DIR__ . '/auth.php';

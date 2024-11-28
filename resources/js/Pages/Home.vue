@@ -34,7 +34,7 @@ defineProps({
 
 			<Separator class="my-4" />
 
-			<div v-if="listings.length">
+			<div v-if="listings && listings.length">
 				<div
 					class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-y-6 xl:gap-6 xl:gap-y-8 auto-rows-fr"
 				>
@@ -72,7 +72,6 @@ defineProps({
 			<ScrollArea class="h-[360px] overflow-x-auto border rounded-md">
 				<div class="flex p-4 space-x-4 max-w-screen-lg">
 					<div v-for="item in NewlyListed" :key="item.id" class="shrink-0">
-						<!-- Horizontal format -->
 						<div class="overflow-hidden rounded-md max-w-xs h-auto">
 							<ItemCard :listing="item" />
 						</div>
