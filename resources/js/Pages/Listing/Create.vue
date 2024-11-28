@@ -32,21 +32,35 @@ const formSchema = toTypedSchema(
 		category: z.preprocess((value) => parseInt(value, 10), z.number().int()),
 		value: z.number().positive(),
 		price: z.number().positive(),
-		images: z
-			.array(
-				z
-					.instanceof(File)
-					.refine((file) => file.size <= 3 * 1024 * 1024, {
-						message: "Each image must be less than 3MB",
-					})
-					.refine(
-						(file) => ["image/jpeg", "image/png", "image/jpg"].includes(file.type),
-						{
-							message: "Only JPEG, PNG, and JPG images are allowed.",
-						}
-					)
-			)
-			.min(1, { message: "At least one image is required." }),
+		images: z.preprocess(
+			(value) => {
+				if (Array.isArray(value) && value.length > 0) {
+					const notFileInstance = value.every((item) => !(item instanceof File));
+					if (notFileInstance) {
+						value = value.map((item) => item.file);
+					}
+				}
+				return value;
+			},
+			z
+				.array(
+					z
+						.instanceof(File)
+						.refine((file) => file.size <= 3 * 1024 * 1024, {
+							message: "Each image must be less than 3MB",
+						})
+						.refine(
+							(file) =>
+								["image/jpeg", "image/png", "image/jpg", "image/webp"].includes(
+									file.type
+								),
+							{
+								message: "Only JPEG, PNG, JPG, and WEBP images are allowed.",
+							}
+						)
+				)
+				.min(1, { message: "At least one image is required." })
+		),
 	})
 );
 
