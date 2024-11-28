@@ -18,12 +18,7 @@ const emit = defineEmits(["images"]);
 const files = ref([]);
 
 const onUpdateFiles = (fileItems) => {
-	console.log(fileItems);
-	const imagesArray = fileItems.map(
-		(item) => item.file
-		// console.log(item.file);
-	);
-	console.log(imagesArray);
+	const imagesArray = fileItems.map((item) => item.file);
 	emit("images", imagesArray);
 };
 </script>
@@ -33,7 +28,7 @@ const onUpdateFiles = (fileItems) => {
 		allow-multiple="true"
 		allow-reorder="true"
 		allow-remove="true"
-		accepted-file-types="image/jpeg, image/png, image/jpg"
+		accepted-file-types="image/jpeg, image/png, image/jpg, image/webp"
 		max-file-size="3MB"
 		label-idle="Drag & Drop your files or <span class='filepond--label-action'>Browse</span>"
 		@updatefiles="onUpdateFiles"

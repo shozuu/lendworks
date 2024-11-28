@@ -14,7 +14,7 @@ class ExploreController extends Controller
         $listings = Listing::whereHas('user', function(Builder $query) {
             $query->where('role', '!=', 'suspended');
         })
-            ->with('user')
+            ->with(['user', 'images'])
             ->where('approved', true)
             ->filter(request( ['search'] )) // or [$request->search]
             ->latest() // sort by created_at
