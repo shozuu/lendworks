@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ImageUpload from "@/Components/ImageUpload.vue";
 import Textarea from "@/Components/ui/textarea/Textarea.vue";
-import { Inertia } from "@inertiajs/inertia";
-import { useForm } from "vee-validate";
+import { useForm as useVeeForm } from "vee-validate";
+import { useForm as useInertiaForm } from "@inertiajs/vue3";
 import { toTypedSchema } from "@vee-validate/zod";
 import { vAutoAnimate } from "@formkit/auto-animate";
 import * as z from "zod";
@@ -30,35 +30,67 @@ const formSchema = toTypedSchema(
 		title: z.string().min(5).max(100),
 		desc: z.string().min(10).max(1000),
 		category: z.preprocess((value) => parseInt(value, 10), z.number().int()),
-		value: z.number().positive(),
-		price: z.number().positive(),
-		images: z
-			.array(
-				z
-					.instanceof(File)
-					.refine((file) => file.size <= 3 * 1024 * 1024, {
-						message: "Each image must be less than 3MB",
-					})
-					.refine(
-						(file) => ["image/jpeg", "image/png", "image/jpg"].includes(file.type),
-						{
-							message: "Only JPEG, PNG, and JPG images are allowed.",
-						}
-					)
-			)
-			.min(1, { message: "At least one image is required." }),
+		value: z
+			.number()
+			.positive()
+			.refine((val) => Number.isInteger(val), {
+				message: "Value must be a whole number (no decimals).",
+			}),
+		price: z
+			.number()
+			.positive()
+			.refine((val) => Number.isInteger(val), {
+				message: "Price must be a whole number (no decimals).",
+			}),
+		images: z.preprocess(
+			(value) => {
+				if (Array.isArray(value) && value.length > 0) {
+					const notFileInstance = value.every((item) => !(item instanceof File));
+					if (notFileInstance) {
+						value = value.map((item) => item.file);
+					}
+				}
+				return value;
+			},
+			z
+				.array(
+					z
+						.instanceof(File)
+						.refine((file) => file.size <= 3 * 1024 * 1024, {
+							message: "Each image must be less than 3MB",
+						})
+						.refine(
+							(file) =>
+								["image/jpeg", "image/png", "image/jpg", "image/webp"].includes(
+									file.type
+								),
+							{
+								message: "Only JPEG, PNG, JPG, and WEBP images are allowed.",
+							}
+						)
+				)
+				.min(1, { message: "At least one image is required." })
+		),
 	})
 );
 
-const form = useForm({
+const form = useVeeForm({
 	validationSchema: formSchema,
 });
 
 const onSubmit = form.handleSubmit((values) => {
-	Inertia.post(route("listing.store"), values);
+	const inertiaForm = useInertiaForm({
+		title: values.title,
+		desc: values.desc,
+		category_id: values.category,
+		value: values.value,
+		price: values.price,
+		images: values.images,
+	});
+	inertiaForm.post(route("listing.store"));
 });
 
-const props = defineProps({ categories: Array });
+defineProps({ categories: Array });
 </script>
 
 <template>
@@ -124,7 +156,7 @@ const props = defineProps({ categories: Array });
 		<FormField v-slot="{ componentField }" name="value">
 			<FormItem v-auto-animate>
 				<FormLabel>Value</FormLabel>
-				<FormDescription> The estimated value of your tool. </FormDescription>
+				<FormDescription> The estimated value of your tool. (In Php)</FormDescription>
 				<FormControl>
 					<Input type="number" v-bind="componentField" />
 				</FormControl>
@@ -135,7 +167,7 @@ const props = defineProps({ categories: Array });
 		<FormField v-slot="{ componentField }" name="price">
 			<FormItem v-auto-animate>
 				<FormLabel>Daily Rental Rate</FormLabel>
-				<FormDescription> Set your daily rental price. </FormDescription>
+				<FormDescription> Set your daily rental price. (In Php)</FormDescription>
 				<FormControl>
 					<Input type="number" v-bind="componentField" />
 				</FormControl>
