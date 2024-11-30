@@ -7,6 +7,7 @@ import UserDropdownMenu from "../Components/UserDropdownMenu.vue";
 import { switchTheme } from "../theme";
 import { useForm, router } from "@inertiajs/vue3";
 import InputField from "@/Components/InputField.vue";
+import Footer from "@/Components/Footer.vue";
 
 // use route.params() to 'stack' search query parameters coming from different components and pass them as one parameter
 
@@ -37,12 +38,12 @@ const search = () => {
 			<!-- header -->
 			<header class="sticky top-0 z-10 border-b bg-background">
 				<div
-					class="mx-auto flex h-14 max-w-screen-2xl items-center gap-4 px-4 lg:h-[60px] lg:px-6"
+					class="mx-auto flex h-14 max-w-screen-2xl items-center gap-4 px-6 lg:h-[60px]"
 				>
-					<!-- Mobile Sidebar -->
+					<!-- mobile sidebar -->
 					<MobileSidebar />
 
-					<!-- Search Bar -->
+					<!-- search bar -->
 					<div class="flex-1">
 						<form @submit.prevent="search">
 							<div class="relative">
@@ -60,25 +61,28 @@ const search = () => {
 						</form>
 					</div>
 
-					<!-- Header Actions -->
+					<!-- header actions -->
 					<div class="flex items-center gap-1">
-						<!-- Theme Toggle -->
+						<!-- theme toggle -->
 						<Button @click="switchTheme()" variant="ghost" size="icon">
 							<SunMoon class="h-9 w-9" />
 							<span class="sr-only">Toggle dark mode</span>
 						</Button>
 
-						<!-- User Dropdown Menu -->
+						<!-- user dropdown menu -->
 						<UserDropdownMenu />
 					</div>
 				</div>
 			</header>
 
 			<!-- main content -->
-			<main class="flex-1 w-full px-4 py-6 mx-auto lg:max-w-screen-2xl lg:px-8 lg:py-8">
+			<main class="flex-1 w-full p-6 mx-auto lg:max-w-screen-2xl lg:p-8">
 				<!-- slot content -->
 				<slot />
 			</main>
+
+			<!-- footer -->
+			<Footer />
 		</div>
 	</div>
 </template>

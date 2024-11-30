@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Listing;
-use App\Http\Requests\UpdateListingRequest;
 use App\Models\Category;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class ListingController extends Controller
@@ -15,33 +15,34 @@ class ListingController extends Controller
      * Display a listing of the resource.
      */
     public function index(Request $request)
-    // if this will render home, we should return the popular tools, categories, and newly listed for rent
     {
         $listings = Listing::whereHas('user', function (Builder $query) {
-        $query->where('role', '!=', 'suspended');
-    })
-            ->with('user')
+            $query->where('role', '!=', 'suspended');
+        })
+            ->with(['user', 'images'])
             ->where('approved', true)
             ->latest()
             ->limit(8)
             ->get();
 
-        // Fetch newly listed for rent
-        $NewlyListed = Listing::whereHas('user', function (Builder $query) {
+        // fetch newly listed for rent
+        $newlyListed = Listing::whereHas('user', function (Builder $query) {
             $query->where('role', '!=', 'suspended');
         })
-        ->with('user')
-        ->where('approved', true)
-        ->orderBy('created_at', 'desc') 
-        ->limit(8)
-        ->get();
+            ->with(['user', 'images'])
+            ->where('approved', true)
+            ->latest()
+            ->limit(8)
+            ->get();
 
-    return Inertia::render('Home', [
-        'listings' => $listings,
-        'NewlyListed' =>$NewlyListed,
-        'CTAImage' => asset('storage/images/listing/CTA/mainCTA.jpg'),
-    ]);
-
+        $categories = Category::select('id', 'name', 'description')->get();
+        
+        return Inertia::render('Home', [
+            'CTAImage' => asset('storage/images/listing/CTA/mainCTA.jpg'),
+            'listings' => $listings,
+            'newlyListed' => $newlyListed,
+            'categories' => $categories
+        ]);
     }
 
     /**
@@ -60,8 +61,31 @@ class ListingController extends Controller
      */
     public function store(Request $request)
     {
-        dd($request);
-        
+        $fields = $request->validate([
+            'title' => ['required', 'string', 'min:5', 'max:100'],
+            'desc' => ['required', 'string', 'min:10', 'max:1000'],
+            'category_id' => ['required', 'string', 'exists:categories,id'],
+            'value' => ['required', 'integer', 'gt:0'],
+            'price' => ['required', 'integer', 'gt:0'],
+            'images' => ['required', 'array', 'min:1'], 
+            'images.*' => ['required', 'image', 'file', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
+        ]);
+
+        $listing = $request->user()->listings()->create($fields);
+
+        if ($request->hasFile('images')) {
+            foreach ($request->images as $index => $image) {
+                $path = $image->store('images/listing', 'public'); 
+
+                // save image details to the database
+                $listing->images()->create([
+                    'image_path' => $path,
+                    'order' => $index,
+                ]);
+            }
+        }
+
+        return redirect()->route('my-rentals')->with('status', 'Listing created successfully.');
     }
 
     /**
@@ -69,7 +93,27 @@ class ListingController extends Controller
      */
     public function show(Listing $listing)
     {
-        //
+        $listing = Listing::whereHas('user', function (Builder $query) {
+            $query->where('role', '!=', 'suspended');
+        })
+            ->with(['images', 'user', 'category'])
+            ->where('approved', true)
+            ->findOrFail($listing->id); 
+            // find listing or return 404 if not found
+            
+        $relatedListings = Listing::whereHas('user', function (Builder $query) {
+            $query->where('role', '!=', 'suspended');
+        })
+            ->with('images')
+            ->where('category_id', $listing->category_id) 
+            ->where('id', '!=', $listing->id) 
+            ->limit(4)
+            ->get();
+
+        return Inertia::render('Listing/Show', [
+            'listing' => $listing,
+            'relatedListings' => $relatedListings, 
+        ]);
     }
 
     /**
@@ -83,7 +127,7 @@ class ListingController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateListingRequest $request, Listing $listing)
+    public function update(Request $request, Listing $listing)
     {
         //
     }

@@ -1,109 +1,206 @@
+<script setup>
+import Logo from "./Logo.vue";
+import { Link } from "@inertiajs/vue3";
+import { ref, onMounted, onUnmounted } from "vue";
+import { Facebook, Twitter, Instagram, Linkedin } from "lucide-vue-next";
+
+const theme = ref(document.body.getAttribute("data-theme"));
+
+const updateThemeStatus = () => {
+	theme.value = document.body.getAttribute("data-theme");
+};
+
+onMounted(() => {
+	const observer = new MutationObserver(updateThemeStatus);
+	observer.observe(document.body, {
+		attributes: true,
+		attributeFilter: ["data-theme"],
+	});
+	onUnmounted(() => {
+		observer.disconnect();
+	});
+});
+</script>
+
 <template>
-	<footer class="bg-background -tracking-tight py-8">
-		<!-- Parent div-logo -->
-		<div class="container mx-auto flex flex-col items-center mt-9">
-			<div class="flex items-center space-x-2 mb-1 mr-auto">
-				<!-- Logo -->
-				<Logo class="w-10 h-10" :fill="theme === 'dark' ? '#FFFFFF' : '#09090B'" />
+	<footer class="bg-gradient-to-b from-footer to-background mt-12 border-t">
+		<div class="max-w-screen-2xl sm:px-6 px-4 pt-16 mx-auto">
+			<div class="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-12">
+				<!-- logo description social -->
+				<div class="space-y-8">
+					<Link
+						:href="route('home')"
+						class="hover:opacity-80 inline-block transition-opacity"
+					>
+						<Logo class="w-12 h-12" :fill="theme === 'dark' ? '#FFFFFF' : '#09090B'" />
+					</Link>
+					<p class="text-muted-foreground text-sm leading-relaxed">
+						Rent tools locally, save money, and get your projects done faster. Join our
+						community of DIY enthusiasts. Experience hassle-free tool rental with our
+						secure platform.
+					</p>
+					<div class="flex items-center space-x-4">
+						<a
+							href="#"
+							class="hover:text-primary text-muted-foreground p-2 transition-colors"
+						>
+							<span class="sr-only">Facebook</span>
+							<Facebook class="w-5 h-5" />
+						</a>
+						<a
+							href="#"
+							class="hover:text-primary text-muted-foreground p-2 transition-colors"
+						>
+							<span class="sr-only">Twitter</span>
+							<Twitter class="w-5 h-5" />
+						</a>
+						<a
+							href="#"
+							class="hover:text-primary text-muted-foreground p-2 transition-colors"
+						>
+							<span class="sr-only">Instagram</span>
+							<Instagram class="w-5 h-5" />
+						</a>
+						<a
+							href="#"
+							class="hover:text-primary text-muted-foreground p-2 transition-colors"
+						>
+							<span class="sr-only">LinkedIn</span>
+							<Linkedin class="w-5 h-5" />
+						</a>
+					</div>
+				</div>
 
-				<span class="text-md font-semibold">LendWorks</span>
+				<!-- nav links -->
+				<div class="md:grid-cols-4 grid grid-cols-2 gap-8">
+					<!-- about -->
+					<div class="space-y-4">
+						<h3 class="text-foreground text-sm font-semibold tracking-wide uppercase">
+							About
+						</h3>
+						<ul class="space-y-3 text-sm">
+							<li>
+								<Link
+									href="#"
+									class="text-muted-foreground hover:text-primary transition-colors"
+									>Our Story</Link
+								>
+							</li>
+							<li>
+								<Link
+									href="#"
+									class="text-muted-foreground hover:text-primary transition-colors"
+									>Careers</Link
+								>
+							</li>
+							<li>
+								<Link
+									href="#"
+									class="text-muted-foreground hover:text-primary transition-colors"
+									>Press</Link
+								>
+							</li>
+						</ul>
+					</div>
+
+					<!-- quick links -->
+					<div class="space-y-4">
+						<h3 class="text-foreground text-sm font-semibold tracking-wide uppercase">
+							Quick Links
+						</h3>
+						<ul class="space-y-3 text-sm">
+							<li>
+								<Link
+									:href="route('explore')"
+									class="text-muted-foreground hover:text-primary transition-colors"
+									>Explore</Link
+								>
+							</li>
+							<li>
+								<Link
+									:href="route('listing.create')"
+									class="text-muted-foreground hover:text-primary transition-colors"
+									>List a Tool</Link
+								>
+							</li>
+							<li>
+								<Link
+									:href="route('my-rentals')"
+									class="text-muted-foreground hover:text-primary transition-colors"
+									>My Rentals</Link
+								>
+							</li>
+						</ul>
+					</div>
+
+					<!-- support -->
+					<div class="space-y-4">
+						<h3 class="text-foreground text-sm font-semibold tracking-wide uppercase">
+							Support
+						</h3>
+						<ul class="space-y-3 text-sm">
+							<li>
+								<Link
+									href="#"
+									class="text-muted-foreground hover:text-primary transition-colors"
+									>Help Center</Link
+								>
+							</li>
+							<li>
+								<Link
+									href="#"
+									class="text-muted-foreground hover:text-primary transition-colors"
+									>Safety Center</Link
+								>
+							</li>
+							<li>
+								<Link
+									href="#"
+									class="text-muted-foreground hover:text-primary transition-colors"
+									>Contact Us</Link
+								>
+							</li>
+						</ul>
+					</div>
+
+					<!-- legal -->
+					<div class="space-y-4">
+						<h3 class="text-foreground text-sm font-semibold tracking-wide uppercase">
+							Legal
+						</h3>
+						<ul class="space-y-3 text-sm">
+							<li>
+								<Link
+									href="#"
+									class="text-muted-foreground hover:text-primary transition-colors"
+									>Terms of Service</Link
+								>
+							</li>
+							<li>
+								<Link
+									href="#"
+									class="text-muted-foreground hover:text-primary transition-colors"
+									>Privacy Policy</Link
+								>
+							</li>
+							<li>
+								<Link
+									href="#"
+									class="text-muted-foreground hover:text-primary transition-colors"
+									>Cookie Policy</Link
+								>
+							</li>
+						</ul>
+					</div>
+				</div>
 			</div>
 
-			<!-- brand icons-->
-			<div class="flex space-x-4 mb-2 mr-auto">
-				<i class="fab fa-facebook text-md tracking-tight"></i>
-				<i class="fa-brands fa-x-twitter text-md tracking-tight"></i>
-				<i class="fab fa-instagram text-md tracking-tight"></i>
-			</div>
-
-			<ul class="text-[0.5rem] text-gray-500 mt-2 mr-auto">
-				© 2024 LendWorks. All rights reserved.
-			</ul>
-		</div>
-
-		<!-- Parent div -links -->
-		<div class="flex justify-start ml-64 -mt-24">
-			<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 mt-4 sm:mt-0">
-				<div>
-					<h3 class="font-bold mb-2 text-xs">Products</h3>
-					<ul class="space-y-1 text-[0.6rem]">
-						<li><a href="#" class="hover:underline">Rent Tools</a></li>
-						<li><a href="#" class="hover:underline">List Your Tools</a></li>
-						<li><a href="#" class="hover:underline">Popular Listings</a></li>
-						<li><a href="#" class="hover:underline">Explore Categories</a></li>
-						<li><a href="#" class="hover:underline">Saved Items</a></li>
-						<li><a href="#" class="hover:underline">My Rentals</a></li>
-					</ul>
-				</div>
-				<div>
-					<h3 class="font-bold mb-2 text-xs">Company</h3>
-					<ul class="space-y-1 text-[0.6rem]">
-						<li><a href="#" class="hover:underline">About Us</a></li>
-						<li><a href="#" class="hover:underline">Blog</a></li>
-						<li><a href="#" class="hover:underline">Careers</a></li>
-						<li><a href="#" class="hover:underline">Newsroom</a></li>
-					</ul>
-				</div>
-				<div>
-					<h3 class="font-bold mb-2 text-xs">Support</h3>
-					<ul class="space-y-1 text-[0.6rem]">
-						<li><a href="#" class="hover:underline">Help Center</a></li>
-						<li><a href="#" class="hover:underline">FAQs</a></li>
-						<li><a href="#" class="hover:underline">How to Rent/List</a></li>
-						<li><a href="#" class="hover:underline">Payment and Renting Process</a></li>
-						<li><a href="#" class="hover:underline">Cancellation & Refunds</a></li>
-						<li><a href="#" class="hover:underline">Contact Us</a></li>
-						<li><a href="#" class="hover:underline">Report an Issue</a></li>
-					</ul>
-				</div>
-				<div>
-					<h3 class="font-bold mb-2 text-xs">Legal</h3>
-					<ul class="space-y-1 text-[0.6rem]">
-						<li><a href="#" class="hover:underline">Terms and Conditions</a></li>
-						<li><a href="#" class="hover:underline">Privacy Policy</a></li>
-						<li><a href="#" class="hover:underline">Liability Waiver</a></li>
-						<li><a href="#" class="hover:underline">Safety Tips</a></li>
-					</ul>
-				</div>
+			<!-- copyright -->
+			<div class="border-border pt-8 mt-16 mb-8 border-t">
+				<p class="text-muted-foreground text-xs text-center">
+					&copy; {{ new Date().getFullYear() }} LendWorks. All rights reserved.
+				</p>
 			</div>
 		</div>
 	</footer>
 </template>
-
-<script>
-import Logo from "../Components/Logo.vue";
-import "font-awesome/css/font-awesome.min.css";
-import { ref, onMounted, onUnmounted } from "vue";
-
-export default {
-	components: {
-		Logo,
-	},
-	setup() {
-		const theme = ref(document.body.getAttribute("data-theme"));
-
-		const updateThemeStatus = () => {
-			theme.value = document.body.getAttribute("data-theme");
-		};
-
-		onMounted(() => {
-			const observer = new MutationObserver(updateThemeStatus);
-			observer.observe(document.body, {
-				attributes: true,
-				attributeFilter: ["data-theme"],
-			});
-			onUnmounted(() => {
-				observer.disconnect();
-			});
-		});
-
-		return { theme };
-	},
-};
-</script>
-
-<style scoped>
-footer {
-	background-color: hsl(var(--muted));
-}
-</style>

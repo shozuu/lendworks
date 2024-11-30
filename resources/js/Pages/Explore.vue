@@ -7,8 +7,6 @@ const props = defineProps({
 	listings: Object,
 	searchTerm: String,
 });
-
-console.log(props.listings);
 </script>
 
 <template>
