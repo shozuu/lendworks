@@ -8,8 +8,9 @@ import { CalendarDays } from "lucide-vue-next";
 import Button from "@/Components/ui/button/Button.vue";
 import { format } from "date-fns";
 import RentalForm from "@/Components/RentalForm.vue";
+import { Link } from "@inertiajs/vue3";
 
-defineProps({ listing: Object, relatedListings: Object });
+const props = defineProps({ listing: Object, relatedListings: Object });
 </script>
 
 <template>
@@ -109,7 +110,24 @@ defineProps({ listing: Object, relatedListings: Object });
 						</div>
 					</div>
 
-					<Link href="" class="sm:w-auto w-full">
+					<div
+						v-if="listing.user.id === $page.props.auth.user?.id"
+						class="grid grid-cols-2 gap-2 sm:w-auto w-full"
+					>
+						<Link :href="route('listing.edit', listing.id)">
+							<Button variant="outline" class="w-full">Edit</Button>
+						</Link>
+
+						<Link
+							:href="route('listing.destroy', listing.id)"
+							method="delete"
+							as="button"
+						>
+							<Button variant="destructive" class="w-full">Delete</Button>
+						</Link>
+					</div>
+
+					<Link v-else href="" class="sm:w-auto w-full">
 						<Button class="w-full sm:w-auto">Message</Button>
 					</Link>
 				</CardContent>

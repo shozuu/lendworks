@@ -5,7 +5,7 @@ import ImageUpload from "@/Components/ImageUpload.vue";
 import Textarea from "@/Components/ui/textarea/Textarea.vue";
 import { formatNumber } from "@/lib/formatters";
 import calculateDailyRate from "@/lib/suggestRate";
-import { watchEffect, ref } from "vue";
+import { watchEffect } from "vue";
 import { useForm as useVeeForm } from "vee-validate";
 import { useForm as useInertiaForm } from "@inertiajs/vue3";
 import { toTypedSchema } from "@vee-validate/zod";
@@ -77,31 +77,42 @@ const formSchema = toTypedSchema(
 	})
 );
 
+const props = defineProps({
+	listing: Object,
+	categories: Array,
+});
+console.log(props.listing);
+
 const form = useVeeForm({
 	validationSchema: formSchema,
+	initialValues: {
+		title: props.listing.title,
+		desc: props.listing.desc,
+		category: String(props.listing.category.id), // Convert to string since SelectItem expects string values
+		value: props.listing.value,
+		price: props.listing.price,
+		images: [], // Will be populated by ImageUpload component
+	},
 });
 
 const inertiaForm = useInertiaForm({
-	title: "",
-	desc: "",
-	category_id: "",
-	value: "",
-	price: "",
+	title: props.listing.title,
+	desc: props.listing.desc,
+	category_id: props.listing.category.id,
+	value: props.listing.value,
+	price: props.listing.price,
 	images: [],
 });
 
 const onSubmit = form.handleSubmit((values) => {
-	inertiaForm.title = values.title;
-	inertiaForm.desc = values.desc;
-	inertiaForm.category_id = values.category;
-	inertiaForm.value = values.value;
-	inertiaForm.price = values.price;
-	inertiaForm.images = values.images;
-
-	inertiaForm.post(route("listing.store"));
+	inertiaForm.data.title = values.title;
+	inertiaForm.data.desc = values.desc;
+	inertiaForm.data.category_id = values.category;
+	inertiaForm.data.value = values.value;
+	inertiaForm.data.price = values.price;
+	inertiaForm.data.images = values.images;
+	inertiaForm.patch(route("listing.update", props.listing.id));
 });
-
-defineProps({ categories: Array });
 
 let dailyRate;
 watchEffect(() => {
@@ -110,10 +121,10 @@ watchEffect(() => {
 </script>
 
 <template>
-	<Head title="| New Listing" />
+	<Head title="| Edit Listing" />
 
 	<div class="mb-10">
-		<h2 class="text-2xl font-semibold tracking-tight">Create Listing</h2>
+		<h2 class="text-2xl font-semibold tracking-tight">Edit Listing</h2>
 	</div>
 
 	<form @submit="onSubmit" class="space-y-4" enctype="multipart/form-data">
@@ -193,7 +204,7 @@ watchEffect(() => {
 						formatNumber(dailyRate.minRate)
 					}}
 					and ₱{{ formatNumber(dailyRate.maxRate) }}
-					based on your item's value.
+					based on your item's value
 				</FormDescription>
 			</FormItem>
 		</FormField>
@@ -207,6 +218,7 @@ watchEffect(() => {
 				<FormControl>
 					<ImageUpload
 						v-bind="componentField"
+						:initial-files="props.listing.images"
 						@images="
 							(imagesArray) => {
 								form.setFieldValue('images', imagesArray);
@@ -219,7 +231,7 @@ watchEffect(() => {
 		</FormField>
 
 		<Button type="submit" :disabled="inertiaForm.processing">
-			{{ inertiaForm.processing ? "Submitting..." : "Submit" }}
+			{{ inertiaForm.processing ? "Updating..." : "Update" }}
 		</Button>
 	</form>
 </template>
