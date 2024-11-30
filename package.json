@@ -25,7 +25,6 @@
         "@vueuse/core": "^11.3.0",
         "class-variance-authority": "^0.7.0",
         "clsx": "^2.1.1",
-        "font-awesome": "^4.7.0",
         "filepond": "^4.32.1",
         "date-fns": "^4.1.0",
         "embla-carousel-vue": "^8.5.1",
