@@ -25,9 +25,23 @@ class ListingController extends Controller
             ->limit(8)
             ->get();
 
+        // fetch newly listed for rent
+        $newlyListed = Listing::whereHas('user', function (Builder $query) {
+            $query->where('role', '!=', 'suspended');
+        })
+            ->with(['user', 'images'])
+            ->where('approved', true)
+            ->latest()
+            ->limit(8)
+            ->get();
+
+        $categories = Category::select('id', 'name', 'description')->get();
+        
         return Inertia::render('Home', [
-            'listings' => $listings,
             'CTAImage' => asset('storage/images/listing/CTA/mainCTA.jpg'),
+            'listings' => $listings,
+            'newlyListed' => $newlyListed,
+            'categories' => $categories
         ]);
     }
 

@@ -10,18 +10,16 @@ import {
 import Separator from "@/Components/ui/separator/Separator.vue";
 import Button from "@/Components/ui/button/Button.vue";
 import RentalDatesPicker from "./RentalDatesPicker.vue";
+import { formatNumber, formatCurrency } from "@/lib/formatters";
 
 defineProps({ listing: Object });
-const formatNumber = (value) => {
-	return new Intl.NumberFormat("en-US").format(value);
-};
 </script>
 
 <template>
 	<Card>
 		<CardHeader class="md:p-6 p-4 pt-6">
-			<CardTitle> ₱{{ formatNumber(listing.price) }} per day</CardTitle>
-			<CardDescription>₱{{ formatNumber(2350.0) }} for 7 days</CardDescription>
+			<CardTitle> {{ formatCurrency(listing.price) }} per day</CardTitle>
+			<CardDescription>{{ formatCurrency(2350.0) }} for 7 days</CardDescription>
 		</CardHeader>
 
 		<CardContent class="md:p-6 md:pt-0 p-4 pt-0">

@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ImageUpload from "@/Components/ImageUpload.vue";
 import Textarea from "@/Components/ui/textarea/Textarea.vue";
+import calculateDailyRate from "../../suggestRate";
+import { watchEffect } from "vue";
 import { useForm as useVeeForm } from "vee-validate";
 import { useForm as useInertiaForm } from "@inertiajs/vue3";
 import { toTypedSchema } from "@vee-validate/zod";
@@ -24,6 +26,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { formatNumber } from "@/lib/formatters";
 
 const formSchema = toTypedSchema(
 	z.object({
@@ -88,6 +91,11 @@ const onSubmit = form.handleSubmit((values) => {
 		images: values.images,
 	});
 	inertiaForm.post(route("listing.store"));
+});
+
+let dailyRate;
+watchEffect(() => {
+	dailyRate = calculateDailyRate(form.values.value);
 });
 
 defineProps({ categories: Array });
@@ -172,6 +180,13 @@ defineProps({ categories: Array });
 					<Input type="number" v-bind="componentField" />
 				</FormControl>
 				<FormMessage />
+				<FormDescription v-if="form.values.value > 0">
+					We suggest a daily rental price between ₱{{
+						formatNumber(dailyRate.minRate)
+					}}
+					and ₱{{ formatNumber(dailyRate.maxRate) }}
+					based on your item's value
+				</FormDescription>
 			</FormItem>
 		</FormField>
 
