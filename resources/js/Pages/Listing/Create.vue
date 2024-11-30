@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import ImageUpload from "@/Components/ImageUpload.vue";
 import Textarea from "@/Components/ui/textarea/Textarea.vue";
 import { formatNumber } from "@/lib/formatters";
-import { watchEffect } from "vue";
+import calculateDailyRate from "@/lib/suggestRate";
+import { watchEffect, ref } from "vue";
 import { useForm as useVeeForm } from "vee-validate";
 import { useForm as useInertiaForm } from "@inertiajs/vue3";
 import { toTypedSchema } from "@vee-validate/zod";
@@ -80,19 +81,32 @@ const form = useVeeForm({
 	validationSchema: formSchema,
 });
 
+const inertiaForm = useInertiaForm({
+	title: "",
+	desc: "",
+	category_id: "",
+	value: "",
+	price: "",
+	images: [],
+});
+
 const onSubmit = form.handleSubmit((values) => {
-	const inertiaForm = useInertiaForm({
-		title: values.title,
-		desc: values.desc,
-		category_id: values.category,
-		value: values.value,
-		price: values.price,
-		images: values.images,
-	});
+	inertiaForm.title = values.title;
+	inertiaForm.desc = values.desc;
+	inertiaForm.category_id = values.category;
+	inertiaForm.value = values.value;
+	inertiaForm.price = values.price;
+	inertiaForm.images = values.images;
+
 	inertiaForm.post(route("listing.store"));
 });
 
 defineProps({ categories: Array });
+
+let dailyRate;
+watchEffect(() => {
+	dailyRate = calculateDailyRate(form.values.value);
+});
 </script>
 
 <template>
@@ -179,7 +193,7 @@ defineProps({ categories: Array });
 						formatNumber(dailyRate.minRate)
 					}}
 					and ₱{{ formatNumber(dailyRate.maxRate) }}
-					based on your item's value
+					based on your item's value.
 				</FormDescription>
 			</FormItem>
 		</FormField>
@@ -204,6 +218,8 @@ defineProps({ categories: Array });
 			</FormItem>
 		</FormField>
 
-		<Button type="submit" class=""> Submit </Button>
+		<Button type="submit" :disabled="inertiaForm.processing">
+			{{ inertiaForm.processing ? "Submitting..." : "Submit" }}
+		</Button>
 	</form>
 </template>
