@@ -121,7 +121,13 @@ class ListingController extends Controller
      */
     public function edit(Listing $listing)
     {
-        //
+        $listing->load(['category', 'images']);
+        $categories = Category::select('id', 'name')->get();
+
+        return Inertia::render('Listing/Edit', [
+            'listing' => $listing,
+            'categories' => $categories
+        ]);
     }
 
     /**
@@ -129,7 +135,7 @@ class ListingController extends Controller
      */
     public function update(Request $request, Listing $listing)
     {
-        //
+        dd('ok');
     }
 
     /**
@@ -137,6 +143,7 @@ class ListingController extends Controller
      */
     public function destroy(Listing $listing)
     {
-        //
+        dd('ok');
+
     }
 }
