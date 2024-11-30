@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ImageUpload from "@/Components/ImageUpload.vue";
 import Textarea from "@/Components/ui/textarea/Textarea.vue";
-import calculateDailyRate from "../../suggestRate";
+import { formatNumber } from "@/lib/formatters";
 import { watchEffect } from "vue";
 import { useForm as useVeeForm } from "vee-validate";
 import { useForm as useInertiaForm } from "@inertiajs/vue3";
@@ -26,7 +26,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { formatNumber } from "@/lib/formatters";
 
 const formSchema = toTypedSchema(
 	z.object({
@@ -91,11 +90,6 @@ const onSubmit = form.handleSubmit((values) => {
 		images: values.images,
 	});
 	inertiaForm.post(route("listing.store"));
-});
-
-let dailyRate;
-watchEffect(() => {
-	dailyRate = calculateDailyRate(form.values.value);
 });
 
 defineProps({ categories: Array });
