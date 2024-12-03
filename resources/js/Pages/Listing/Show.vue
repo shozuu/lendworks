@@ -8,8 +8,50 @@ import { CalendarDays } from "lucide-vue-next";
 import Button from "@/Components/ui/button/Button.vue";
 import { format } from "date-fns";
 import RentalForm from "@/Components/RentalForm.vue";
+import { Link } from "@inertiajs/vue3";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { useForm, router } from "@inertiajs/vue3";
+import { ref, onMounted } from "vue";
 
-defineProps({ listing: Object, relatedListings: Object });
+const props = defineProps({ listing: Object, relatedListings: Object });
+
+const showDeleteDialog = ref(false);
+const deleteForm = useForm({});
+
+const handleDelete = () => {
+  deleteForm.delete(route('listing.destroy', props.listing.id), {
+    onSuccess: () => {
+      showDeleteDialog.value = false;
+      // prevent back navigation to deleted listing
+      router.visit(route('my-rentals'), {
+        preserveState: false,
+        preserveScroll: false,
+        replace: true,
+        onFinish: () => {
+          // clear the browser's entry for the deleted page
+          window.history.replaceState(null, '', route('my-rentals'));
+        }
+      });
+    },
+  });
+};
+
+// navigation guard to prevent back navigation to deleted listing
+onMounted(() => {
+  window.addEventListener('popstate', (event) => {
+    if (window.location.pathname.includes(`/listing/${props.listing.id}`)) {
+      router.get(route('my-rentals'));
+    }
+  });
+});
 </script>
 
 <template>
@@ -21,7 +63,7 @@ defineProps({ listing: Object, relatedListings: Object });
 		class="lg:flex hidden mb-10"
 	/>
 
-	<h2 class="text-2xl font-semibold tracking-tight mb-6">
+	<h2 class="mb-6 text-2xl font-semibold tracking-tight">
 		{{ listing.title }}
 	</h2>
 
@@ -89,7 +131,7 @@ defineProps({ listing: Object, relatedListings: Object });
 			<!-- user info -->
 			<Card>
 				<CardContent
-					class="flex flex-col gap-4 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
+					class="sm:flex-row sm:items-center sm:justify-between flex flex-col gap-4 p-4 text-sm"
 				>
 					<div class="flex items-center gap-4">
 						<Avatar>
@@ -101,16 +143,49 @@ defineProps({ listing: Object, relatedListings: Object });
 							<h4 class="font-semibold">Listed By {{ listing.user.name }}</h4>
 
 							<div class="flex items-center mt-2">
-								<CalendarDays class="w-4 h-4 mr-2 opacity-70" />
-								<span class="text-xs text-muted-foreground">
+								<CalendarDays class="opacity-70 w-4 h-4 mr-2" />
+								<span class="text-muted-foreground text-xs">
 									Joined {{ format(new Date(listing.user.created_at), "MMMM yyyy") }}
 								</span>
 							</div>
 						</div>
 					</div>
 
-					<Link href="" class="sm:w-auto w-full">
-						<Button class="w-full sm:w-auto">Message</Button>
+					<div
+						v-if="listing.user.id === $page.props.auth.user?.id"
+						class="sm:w-auto grid w-full grid-cols-2 gap-2"
+					>
+						<Link :href="route('listing.edit', listing.id)">
+							<Button variant="outline" class="w-full">Edit</Button>
+						</Link>
+
+						<Dialog v-model:open="showDeleteDialog">
+							<DialogTrigger asChild>
+								<Button variant="destructive" class="w-full">Delete</Button>
+							</DialogTrigger>
+							<DialogContent>
+								<DialogHeader>
+									<DialogTitle>Delete Listing</DialogTitle>
+									<DialogDescription>
+										Are you sure you want to delete this listing? This action cannot be undone.
+									</DialogDescription>
+								</DialogHeader>
+								<DialogFooter>
+									<Button variant="outline" @click="showDeleteDialog = false">Cancel</Button>
+									<Button 
+										variant="destructive" 
+										:disabled="deleteForm.processing"
+										@click="handleDelete"
+									>
+										{{ deleteForm.processing ? 'Deleting...' : 'Delete' }}
+									</Button>
+								</DialogFooter>
+							</DialogContent>
+						</Dialog>
+					</div>
+
+					<Link v-else href="" class="sm:w-auto w-full">
+						<Button class="sm:w-auto w-full">Message</Button>
 					</Link>
 				</CardContent>
 			</Card>
