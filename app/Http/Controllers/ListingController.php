@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Listing;
 use App\Models\Category;
+use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -61,6 +62,7 @@ class ListingController extends Controller
      */
     public function store(Request $request)
     {
+        dd($request);
         $fields = $request->validate([
             'title' => ['required', 'string', 'min:5', 'max:100'],
             'desc' => ['required', 'string', 'min:10', 'max:1000'],
@@ -91,29 +93,48 @@ class ListingController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Listing $listing)
+    public function show($id)
     {
-        $listing = Listing::whereHas('user', function (Builder $query) {
-            $query->where('role', '!=', 'suspended');
-        })
-            ->with(['images', 'user', 'category'])
-            ->where('approved', true)
-            ->findOrFail($listing->id); 
-            // find listing or return 404 if not found
-            
-        $relatedListings = Listing::whereHas('user', function (Builder $query) {
-            $query->where('role', '!=', 'suspended');
-        })
-            ->with('images')
-            ->where('category_id', $listing->category_id) 
-            ->where('id', '!=', $listing->id) 
-            ->limit(4)
-            ->get();
+        try {
+            $listing = Listing::whereHas('user', function (Builder $query) {
+                $query->where('role', '!=', 'suspended');
+            })
+                ->with(['images', 'user', 'category'])
+                ->where('approved', true)
+                ->findOrFail($id); 
+                
+            $relatedListings = Listing::whereHas('user', function (Builder $query) {
+                $query->where('role', '!=', 'suspended');
+            })
+                ->with('images')
+                ->where('category_id', $listing->category_id)
+                ->where('id', '!=', $id)
+                ->where('approved', true)
+                ->inRandomOrder()
+                ->limit(4)
+                ->get();
 
-        return Inertia::render('Listing/Show', [
-            'listing' => $listing,
-            'relatedListings' => $relatedListings, 
-        ]);
+            return Inertia::render('Listing/Show', [
+                'listing' => $listing,
+                'relatedListings' => $relatedListings,
+            ]);
+
+        } catch (Exception $e) {
+            // suggest random listings
+            $suggestions = Listing::whereHas('user', function (Builder $query) {
+                $query->where('role', '!=', 'suspended');
+            })
+                ->with(['images', 'user'])
+                ->where('approved', true)
+                ->inRandomOrder()
+                ->limit(4)
+                ->get();
+
+            return Inertia::render('Listing/NotFound', [
+                'message' => 'This listing has been removed or is no longer available.',
+                'suggestions' => $suggestions
+            ])->toResponse(request())->setStatusCode(404);
+        }
     }
 
     /**
@@ -135,15 +156,57 @@ class ListingController extends Controller
      */
     public function update(Request $request, Listing $listing)
     {
-        dd('ok');
+        $fields = $request->validate([
+            'title' => ['required', 'string', 'min:5', 'max:100'],
+            'desc' => ['required', 'string', 'min:10', 'max:1000'],
+            'category_id' => ['required', 'string', 'exists:categories,id'],
+            'value' => ['required', 'integer', 'gt:0'],
+            'price' => ['required', 'integer', 'gt:0'],
+            'images' => ['required', 'array', 'min:1'],
+            'images.*' => ['required', 'image', 'file', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
+        ]);
+        
+        $listing->update($fields);
+
+        if ($request->hasFile('images')) {
+            // delete existing images from storage and database
+            foreach ($listing->images as $image) {
+                Storage::disk('public')->delete($image->image_path);
+            }
+            $listing->images()->delete();
+
+            // Store new images
+            foreach ($request->images as $index => $image) {
+                $path = $image->store('images/listing', 'public');
+                
+                $listing->images()->create([
+                    'image_path' => $path,
+                    'order' => $index,
+                ]);
+            }
+        }
+
+        return redirect()->route('listing.show', $listing)->with('status', 'Listing updated successfully.');
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Listing $listing)
+    public function destroy(Request $request, Listing $listing)
     {
-        dd('ok');
+        // check if user owns the listing
+        if ($listing->user_id !== $request->user()->id) {
+            abort(403);
+        }
 
+        // delete images from storage
+        foreach ($listing->images as $image) {
+            Storage::disk('public')->delete($image->image_path);
+        }
+
+        // delete the listing (automatically deletes listing_images via cascade on delete)
+        $listing->delete();
+
+        return redirect()->route('my-rentals')->with('status', 'Listing deleted successfully.');
     }
 }
