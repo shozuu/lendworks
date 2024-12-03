@@ -7,7 +7,7 @@ import UserDropdownMenu from "../Components/UserDropdownMenu.vue";
 import { switchTheme } from "../theme";
 import { useForm, router } from "@inertiajs/vue3";
 import InputField from "@/Components/InputField.vue";
-import Footer from "@/Components/Footer.vue";
+import Footer from "@/Components/footer.vue";
 
 // use route.params() to 'stack' search query parameters coming from different components and pass them as one parameter
 
@@ -36,7 +36,7 @@ const search = () => {
 		<!-- main content (1fr)-->
 		<div class="flex flex-col">
 			<!-- header -->
-			<header class="sticky top-0 z-10 border-b bg-background">
+			<header class="bg-background sticky top-0 z-10 border-b">
 				<div
 					class="mx-auto flex h-14 max-w-screen-2xl items-center gap-4 px-6 lg:h-[60px]"
 				>
@@ -76,7 +76,7 @@ const search = () => {
 			</header>
 
 			<!-- main content -->
-			<main class="flex-1 w-full p-6 mx-auto lg:max-w-screen-2xl lg:p-8">
+			<main class="lg:max-w-screen-2xl lg:p-8 flex-1 w-full p-6 mx-auto">
 				<!-- slot content -->
 				<slot />
 			</main>

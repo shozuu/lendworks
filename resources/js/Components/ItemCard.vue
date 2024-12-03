@@ -32,25 +32,26 @@ const selectUser = (id) => {
 
 			<!-- overlay -->
 			<div
-				class="absolute inset-0 rounded-md bg-gradient-to-t from-black/95 to-transparent"
+				class="bg-gradient-to-t from-black/95 to-transparent absolute inset-0 rounded-md"
 			></div>
 
 			<!-- daily rate -->
-			<div class="absolute px-3 py-1 text-sm font-medium text-slate-100 bottom-2 right-2">
-				₱{{listing.price}}/day
+			<div class="text-slate-100 bottom-2 right-2 absolute px-3 py-1 text-sm font-medium">
+					₱{{listing.price}}/day
 			</div>
 		</div>
 
 		<!-- details -->
 		<div class="mt-2 space-y-2">
-			<h3 class="text-sm font-medium line-clamp-1">
+			<h3 class="line-clamp-1 text-sm font-medium">
 				{{ listing.title }}
 			</h3>
 
             <!-- owner and location -->
-			<p class="text-xs text-muted-foreground">
+			<p class="text-muted-foreground text-xs">
 				Listed By
 				<Link
+					v-if="listing.user"
 					@click="selectUser(listing.user.id)"
 					:href="route('home')"
 					class="hover:text-foreground underline-offset-4 hover:underline"
