@@ -35,7 +35,9 @@ defineProps({
 
 			<!-- buttons -->
 			<div class="grid grid-row-2 gap-4 w-full mt-10 sm:grid-cols-2 sm:w-80">
-				<Button variant="secondary" class="w-full">List Tools</Button>
+				<Link :href="route('listing.create')">
+					<Button variant="secondary" class="w-full">List Tools</Button>
+				</Link>
 				<Button class="w-full">Rent Tools</Button>
 			</div>
 		</div>
