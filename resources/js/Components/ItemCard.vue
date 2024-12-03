@@ -1,5 +1,6 @@
 <script setup>
 import { router } from "@inertiajs/vue3";
+import { formatNumber } from "@/lib/formatters";
 
 // use route.params() to 'stack' search query parameters coming from different components and pass them as one parameter
 const params = route().params;
@@ -37,7 +38,7 @@ const selectUser = (id) => {
 
 			<!-- daily rate -->
 			<div class="text-slate-100 bottom-2 right-2 absolute px-3 py-1 text-sm font-medium">
-					₱{{listing.price}}/day
+				{{ formatNumber(listing.price) }}/day
 			</div>
 		</div>
 
