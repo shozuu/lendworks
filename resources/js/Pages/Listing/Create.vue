@@ -5,12 +5,13 @@ import ImageUpload from "@/Components/ImageUpload.vue";
 import Textarea from "@/Components/ui/textarea/Textarea.vue";
 import { formatNumber } from "@/lib/formatters";
 import calculateDailyRate from "@/lib/suggestRate";
-import { watchEffect, ref } from "vue";
 import { useForm as useVeeForm } from "vee-validate";
 import { useForm as useInertiaForm } from "@inertiajs/vue3";
 import { toTypedSchema } from "@vee-validate/zod";
 import { vAutoAnimate } from "@formkit/auto-animate";
 import * as z from "zod";
+import { defineProps, ref, watchEffect } from "vue";
+
 import {
 	FormControl,
 	FormDescription,

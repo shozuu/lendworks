@@ -5,7 +5,7 @@ import { RangeCalendar } from "@/components/ui/range-calendar";
 import { cn } from "../lib/utils";
 import { CalendarDate, DateFormatter, getLocalTimeZone } from "@internationalized/date";
 import { Calendar as CalendarIcon } from "lucide-vue-next";
-import { ref } from "vue";
+import { ref, watch } from "vue";
 
 // Date formatter for displaying date ranges
 const df = new DateFormatter("en-US", {
@@ -14,10 +14,20 @@ const df = new DateFormatter("en-US", {
 
 // Reactive value for the selected date range
 const value = ref({
-	// start: new CalendarDate(2022, 1, 20),
-	// end: new CalendarDate(2022, 1, 20).add({ days: 20 }),
 	start: "",
 	end: "",
+});
+
+const emit = defineEmits(["update-dates"]);
+
+watch(value, (newValue) => {
+	if (newValue.start && newValue.end) {
+		emit(
+			"update-dates",
+			newValue.start.toDate(getLocalTimeZone()),
+			newValue.end.toDate(getLocalTimeZone())
+		);
+	}
 });
 </script>
 
