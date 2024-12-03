@@ -18,14 +18,24 @@ const value = ref({
 	end: "",
 });
 
+// Get today's date in CalendarDate format
+const today = new CalendarDate(
+	new Date().getFullYear(),
+	new Date().getMonth() + 1,
+	new Date().getDate()
+);
+
 const emit = defineEmits(["update-dates"]);
 
 watch(value, (newValue) => {
 	if (newValue.start && newValue.end) {
+		const startDate = newValue.start.toDate("Asia/Manila");
+		const endDate = newValue.end.toDate("Asia/Manila");
+
 		emit(
 			"update-dates",
-			newValue.start.toDate(getLocalTimeZone()),
-			newValue.end.toDate(getLocalTimeZone())
+			startDate.toISOString().split("T")[0],
+			endDate.toISOString().split("T")[0]
 		);
 	}
 });
@@ -69,6 +79,7 @@ watch(value, (newValue) => {
 				v-model="value"
 				initial-focus
 				:number-of-months="2"
+				:min-value="today"
 				@update:start-value="(startDate) => (value.start = startDate)"
 				@update:end-value="(endDate) => (value.end = endDate)"
 			/>
