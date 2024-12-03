@@ -10,16 +10,17 @@ import { format } from "date-fns";
 import RentalForm from "@/Components/RentalForm.vue";
 import { Link } from "@inertiajs/vue3";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
 } from "@/components/ui/dialog";
 import { useForm, router } from "@inertiajs/vue3";
 import { ref } from "vue";
+import ItemCard from "@/Components/ItemCard.vue";
 
 const props = defineProps({ listing: Object, relatedListings: Object });
 
@@ -27,21 +28,21 @@ const showDeleteDialog = ref(false);
 const deleteForm = useForm({});
 
 const handleDelete = () => {
-  deleteForm.delete(route('listing.destroy', props.listing.id), {
-    onSuccess: () => {
-      showDeleteDialog.value = false;
-      // prevent back navigation to deleted listing
-      router.visit(route('my-rentals'), {
-        preserveState: false,
-        preserveScroll: false,
-        replace: true,
-        onFinish: () => {
-          // clear the browser's entry for the deleted page
-          window.history.replaceState(null, '', route('my-rentals'));
-        }
-      });
-    },
-  });
+	deleteForm.delete(route("listing.destroy", props.listing.id), {
+		onSuccess: () => {
+			showDeleteDialog.value = false;
+			// prevent back navigation to deleted listing
+			router.visit(route("my-rentals"), {
+				preserveState: false,
+				preserveScroll: false,
+				replace: true,
+				onFinish: () => {
+					// clear the browser's entry for the deleted page
+					window.history.replaceState(null, "", route("my-rentals"));
+				},
+			});
+		},
+	});
 };
 </script>
 
@@ -158,17 +159,20 @@ const handleDelete = () => {
 								<DialogHeader>
 									<DialogTitle>Delete Listing</DialogTitle>
 									<DialogDescription>
-										Are you sure you want to delete this listing? This action cannot be undone.
+										Are you sure you want to delete this listing? This action cannot be
+										undone.
 									</DialogDescription>
 								</DialogHeader>
 								<DialogFooter>
-									<Button variant="outline" @click="showDeleteDialog = false">Cancel</Button>
-									<Button 
-										variant="destructive" 
+									<Button variant="outline" @click="showDeleteDialog = false"
+										>Cancel</Button
+									>
+									<Button
+										variant="destructive"
 										:disabled="deleteForm.processing"
 										@click="handleDelete"
 									>
-										{{ deleteForm.processing ? 'Deleting...' : 'Delete' }}
+										{{ deleteForm.processing ? "Deleting..." : "Delete" }}
 									</Button>
 								</DialogFooter>
 							</DialogContent>
@@ -188,10 +192,18 @@ const handleDelete = () => {
 
 	<Separator class="my-10" />
 
-	<!-- reviews -->
-	<div class="space-y-1">
-		<h2 class="text-lg font-semibold tracking-tight">Item Reviews</h2>
+	<!-- related listings -->
+	<div class="space-y-6">
+		<div class="space-y-1">
+			<h2 class="text-lg font-semibold tracking-tight">Similar Tools</h2>
+			<p class="text-muted-foreground">Other tools you might be interested in</p>
+		</div>
 
-		<div class="text-muted-foreground"></div>
+		<div v-if="relatedListings?.length" class="sm:grid-cols-2 lg:grid-cols-4 grid gap-6">
+			<div v-for="listing in relatedListings" :key="listing.id">
+				<ItemCard :listing="listing" />
+			</div>
+		</div>
+		<div v-else class="text-muted-foreground">No similar tools found.</div>
 	</div>
 </template>

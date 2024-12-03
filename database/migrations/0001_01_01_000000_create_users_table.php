@@ -17,7 +17,14 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->string('role')->default('general');
+            $table->enum('role', ['user', 'admin'])->default('user');
+            $table->enum('status', ['active', 'suspended'])->default('active');
+            $table->text('profile_image')->nullable();
+            $table->text('about')->nullable();
+            $table->string('phone')->nullable(); // GCash number
+            $table->decimal('rating', 3, 2)->default(0); // Overall user rating
+            $table->integer('successful_rentals')->default(0); // As renter
+            $table->integer('successful_lendings')->default(0); // As lender
             $table->rememberToken();
             $table->timestamps();
         });

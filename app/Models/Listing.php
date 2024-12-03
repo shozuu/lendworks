@@ -16,8 +16,16 @@ class Listing extends Model
         'value',
         'price',
         'approved',
+        'is_available',
+        'location_id'
     ];
 
+    protected $casts = [
+        'is_available' => 'boolean',
+        'approved' => 'boolean'
+    ];
+
+    // Relationships
     public function user() {
         return $this->belongsTo(User::class);
     }
@@ -26,30 +34,37 @@ class Listing extends Model
         return $this->belongsTo(Category::class);
     }
 
-    public function images()
-    {
+    public function location() {
+        return $this->belongsTo(Location::class);
+    }
+
+    public function images() {
         return $this->hasMany(ListingImage::class);
     }
 
-    // always include scope in func name to trigger laravel query builder
-    // to use the function in controller, use it as defined but after the word scope
+    public function rentals() {
+        return $this->hasMany(Rental::class);
+    }
 
+    // Search scope
     public function scopeFilter($query, array $filters) {
-
-        // search input query
         if ($filters['search'] ?? false) {
-            // wrap in a cb func to treat and return them as one query if chaining where is needed
             $query->where(function ($q) {
                 $q->where('title', 'like', '%' . request('search') . '%')
-                ->orWhere('desc', 'like', '%' . request('search') . '%');
-                // add more search params 
+                  ->orWhere('desc', 'like', '%' . request('search') . '%');
             });
         }
 
-        // username click query
-        // for user's listings
         if ($filters['user_id'] ?? false) {
             $query->where('user_id', request('user_id'));
         }
-    } 
+    }
+
+    // Helper method to check if tool is currently rented
+    public function isRented(): bool
+    {
+        return $this->rentals()
+            ->whereIn('rental_status_id', [2, 3]) // paid or active status
+            ->exists();
+    }
 }

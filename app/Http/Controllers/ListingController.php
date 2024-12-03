@@ -105,7 +105,7 @@ class ListingController extends Controller
             $relatedListings = Listing::whereHas('user', function (Builder $query) {
                 $query->where('role', '!=', 'suspended');
             })
-                ->with('images')
+                ->with(['images', 'user'])
                 ->where('category_id', $listing->category_id)
                 ->where('id', '!=', $id)
                 ->where('approved', true)
