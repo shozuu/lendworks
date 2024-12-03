@@ -7,7 +7,7 @@ import { formatNumber } from "@/lib/formatters";
 import calculateDailyRate from "@/lib/suggestRate";
 import { watchEffect } from "vue";
 import { useForm as useVeeForm } from "vee-validate";
-import { useForm as useInertiaForm } from "@inertiajs/vue3";
+import { useForm as useInertiaForm } from "@inertiajs/vue3"; 
 import { toTypedSchema } from "@vee-validate/zod";
 import { vAutoAnimate } from "@formkit/auto-animate";
 import * as z from "zod";
@@ -81,7 +81,6 @@ const props = defineProps({
 	listing: Object,
 	categories: Array,
 });
-console.log(props.listing);
 
 const form = useVeeForm({
 	validationSchema: formSchema,

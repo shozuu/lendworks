@@ -19,7 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useForm, router } from "@inertiajs/vue3";
-import { ref, onMounted } from "vue";
+import { ref } from "vue";
 
 const props = defineProps({ listing: Object, relatedListings: Object });
 
@@ -43,15 +43,6 @@ const handleDelete = () => {
     },
   });
 };
-
-// navigation guard to prevent back navigation to deleted listing
-onMounted(() => {
-  window.addEventListener('popstate', (event) => {
-    if (window.location.pathname.includes(`/listing/${props.listing.id}`)) {
-      router.get(route('my-rentals'));
-    }
-  });
-});
 </script>
 
 <template>
