@@ -62,7 +62,6 @@ class ListingController extends Controller
      */
     public function store(Request $request)
     {
-        dd($request);
         $fields = $request->validate([
             'title' => ['required', 'string', 'min:5', 'max:100'],
             'desc' => ['required', 'string', 'min:10', 'max:1000'],
