@@ -23,8 +23,8 @@ class ListingFactory extends Factory
             'title' => fake()->sentence(10),
             'desc' => fake()->paragraph(12),
             'category_id' => Category::inRandomOrder()->first()->id,
-            'value' => $this->faker->randomFloat(2, 1000, 10000),
-            'price' => $this->faker->randomFloat(2, 500, 5000),
+            'value' => $this->faker->numberBetween(1000, 10000),
+            'price' => $this->faker->numberBetween(100, 1000),
             'approved' => 1
         ];
     }
