@@ -88,30 +88,32 @@ const form = useVeeForm({
 	initialValues: {
 		title: props.listing.title,
 		desc: props.listing.desc,
-		category: String(props.listing.category.id), // Convert to string since SelectItem expects string values
+		category: String(props.listing.category.id),
 		value: props.listing.value,
 		price: props.listing.price,
-		images: [], // Will be populated by ImageUpload component
+		images: [], // to be populated by ImageUpload component
 	},
 });
 
 const inertiaForm = useInertiaForm({
-	title: props.listing.title,
-	desc: props.listing.desc,
-	category_id: props.listing.category.id,
-	value: props.listing.value,
-	price: props.listing.price,
+	title: "",
+	desc: "",
+	category_id: "",
+	value: "",
+	price: "",
 	images: [],
+	_method: 'PATCH' // simulate PATCH request
 });
 
 const onSubmit = form.handleSubmit((values) => {
-	inertiaForm.data.title = values.title;
-	inertiaForm.data.desc = values.desc;
-	inertiaForm.data.category_id = values.category;
-	inertiaForm.data.value = values.value;
-	inertiaForm.data.price = values.price;
-	inertiaForm.data.images = values.images;
-	inertiaForm.patch(route("listing.update", props.listing.id));
+	inertiaForm.title = values.title;
+	inertiaForm.desc = values.desc;
+	inertiaForm.category_id = Number(values.category);
+	inertiaForm.value = Number(values.value);
+	inertiaForm.price = Number(values.price);
+	inertiaForm.images = values.images;
+
+	inertiaForm.post(route("listing.update", props.listing.id));
 });
 
 let dailyRate;
@@ -220,7 +222,8 @@ watchEffect(() => {
 						v-bind="componentField"
 						:initial-files="props.listing.images"
 						@images="
-							(imagesArray) => {
+	(imagesArray) => {
+	console.log(imagesArray);
 								form.setFieldValue('images', imagesArray);
 							}
 						"
