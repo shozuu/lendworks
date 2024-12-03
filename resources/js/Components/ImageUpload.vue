@@ -73,7 +73,6 @@ const onUpdateFiles = (fileItems) => {
 <template>
 	<FilePond
 		:files="files"
-		:server="false"
 		:instant-upload="false"
 		allow-multiple="true"
 		allow-reorder="true"
