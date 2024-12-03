@@ -4,12 +4,14 @@ import { Input } from "@/components/ui/input";
 import ImageUpload from "@/Components/ImageUpload.vue";
 import Textarea from "@/Components/ui/textarea/Textarea.vue";
 import { formatNumber } from "@/lib/formatters";
-import { watchEffect } from "vue";
 import { useForm as useVeeForm } from "vee-validate";
 import { useForm as useInertiaForm } from "@inertiajs/vue3";
 import { toTypedSchema } from "@vee-validate/zod";
 import { vAutoAnimate } from "@formkit/auto-animate";
 import * as z from "zod";
+import calculateDailyRate from "@/suggestRate";
+import { defineProps, ref, watchEffect } from "vue";
+
 import {
 	FormControl,
 	FormDescription,
@@ -80,6 +82,9 @@ const form = useVeeForm({
 	validationSchema: formSchema,
 });
 
+const minRate = ref(null);
+const maxRate = ref(null);
+
 const onSubmit = form.handleSubmit((values) => {
 	const inertiaForm = useInertiaForm({
 		title: values.title,
@@ -90,6 +95,11 @@ const onSubmit = form.handleSubmit((values) => {
 		images: values.images,
 	});
 	inertiaForm.post(route("listing.store"));
+});
+
+let dailyRate;
+watchEffect(() => {
+	dailyRate = calculateDailyRate(form.values.value);
 });
 
 defineProps({ categories: Array });
