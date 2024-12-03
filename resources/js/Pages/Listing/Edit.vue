@@ -4,10 +4,10 @@ import { Input } from "@/components/ui/input";
 import ImageUpload from "@/Components/ImageUpload.vue";
 import Textarea from "@/Components/ui/textarea/Textarea.vue";
 import { formatNumber } from "@/lib/formatters";
-import calculateDailyRate from "@/lib/suggestRate";
+import { calculateDailyRate } from "@/lib/suggestRate";
 import { watchEffect } from "vue";
 import { useForm as useVeeForm } from "vee-validate";
-import { useForm as useInertiaForm } from "@inertiajs/vue3"; 
+import { useForm as useInertiaForm } from "@inertiajs/vue3";
 import { toTypedSchema } from "@vee-validate/zod";
 import { vAutoAnimate } from "@formkit/auto-animate";
 import * as z from "zod";
@@ -101,7 +101,7 @@ const inertiaForm = useInertiaForm({
 	value: "",
 	price: "",
 	images: [],
-	_method: 'PATCH' // simulate PATCH request
+	_method: "PATCH", // simulate PATCH request
 });
 
 const onSubmit = form.handleSubmit((values) => {
@@ -221,8 +221,8 @@ watchEffect(() => {
 						v-bind="componentField"
 						:initial-files="props.listing.images"
 						@images="
-	(imagesArray) => {
-	console.log(imagesArray);
+							(imagesArray) => {
+								console.log(imagesArray);
 								form.setFieldValue('images', imagesArray);
 							}
 						"
