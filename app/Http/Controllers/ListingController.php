@@ -17,21 +17,25 @@ class ListingController extends Controller
      */
     public function index(Request $request)
     {
-        $listings = Listing::whereHas('user', function (Builder $query) {
+        // Base query for active listings
+        $baseQuery = Listing::whereHas('user', function (Builder $query) {
             $query->where('role', '!=', 'suspended');
         })
             ->with(['user', 'images'])
             ->where('approved', true)
+            ->where('is_available', true)
+            ->whereDoesntHave('rentals', function($query) {
+                $query->whereIn('rental_status_id', [3, 4, 9]); // paid, active, or overdue rentals
+            });
+
+        // Get featured listings
+        $listings = (clone $baseQuery)
             ->latest()
             ->limit(8)
             ->get();
 
-        // fetch newly listed for rent
-        $newlyListed = Listing::whereHas('user', function (Builder $query) {
-            $query->where('role', '!=', 'suspended');
-        })
-            ->with(['user', 'images'])
-            ->where('approved', true)
+        // Get newly listed items
+        $newlyListed = (clone $baseQuery)
             ->latest()
             ->limit(8)
             ->get();
@@ -52,8 +56,10 @@ class ListingController extends Controller
     public function create()
     {
         $categories = Category::select('id', 'name')->get();
+        $locations = auth()->user()->locations;  // Get user's saved locations
         return Inertia::render('Listing/Create', [
             'categories' => $categories,
+            'locations' => $locations,
         ]);
     }
 
@@ -66,11 +72,31 @@ class ListingController extends Controller
             'title' => ['required', 'string', 'min:5', 'max:100'],
             'desc' => ['required', 'string', 'min:10', 'max:1000'],
             'category_id' => ['required', 'string', 'exists:categories,id'],
+            'location_id' => ['required_if:new_location,false', 'nullable', 'exists:locations,id'],
             'value' => ['required', 'integer', 'gt:0'],
             'price' => ['required', 'integer', 'gt:0'],
             'images' => ['required', 'array', 'min:1'], 
             'images.*' => ['required', 'image', 'file', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
+            // new location fields if creating new location
+            'new_location' => ['required', 'boolean'],
+            'location_name' => ['required_if:new_location,true', 'nullable', 'string', 'max:100'],
+            'address' => ['required_if:new_location,true', 'nullable', 'string', 'max:255'],
+            'city' => ['required_if:new_location,true', 'nullable', 'string', 'max:100'],
+            'province' => ['required_if:new_location,true', 'nullable', 'string', 'max:100'],
+            'postal_code' => ['required_if:new_location,true', 'nullable', 'string', 'max:20'],
         ]);
+
+        // Create new location if requested
+        if ($request->new_location) {
+            $location = $request->user()->locations()->create([
+                'name' => $request->location_name,
+                'address' => $request->address,
+                'city' => $request->city,
+                'province' => $request->province,
+                'postal_code' => $request->postal_code,
+            ]);
+            $fields['location_id'] = $location->id;
+        }
 
         $listing = $request->user()->listings()->create($fields);
 
@@ -86,22 +112,49 @@ class ListingController extends Controller
             }
         }
 
-        return redirect()->route('my-rentals')->with('status', 'Listing created successfully.');
+        return redirect()->route('my-listings')->with('status', 'Listing created successfully.');
     }
 
     /**
      * Display the specified resource.
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
         try {
-            $listing = Listing::whereHas('user', function (Builder $query) {
+            $query = Listing::with(['images', 'user', 'category', 'location'])
+                ->whereHas('user', function (Builder $query) {
+                    $query->where('role', '!=', 'suspended');
+                });
+
+            $listing = $query->findOrFail($id);
+
+            if (!$listing->canBeViewedBy($request->user())) {
+                throw new Exception('This listing is not available.');
+            }
+
+            // Base query
+            $query = Listing::whereHas('user', function (Builder $query) {
                 $query->where('role', '!=', 'suspended');
             })
-                ->with(['images', 'user', 'category'])
-                ->where('approved', true)
-                ->findOrFail($id); 
-                
+            ->with(['images', 'user', 'category', 'location'])
+            ->where('approved', true)
+            ->where('id', $id);
+
+            // Only show available listings to non-owners
+            if (!auth()->check() || auth()->id() !== $listing->user_id) {
+                $query->where('is_available', true)
+                      ->whereDoesntHave('rentals', function($q) {
+                          $q->whereIn('rental_status_id', [3, 4, 9]);
+                      });
+            }
+
+            $listing = $query->first();
+
+            if (!$listing) {
+                throw new Exception('Listing not available');
+            }
+
+            // Get related listings that are available
             $relatedListings = Listing::whereHas('user', function (Builder $query) {
                 $query->where('role', '!=', 'suspended');
             })
@@ -109,6 +162,10 @@ class ListingController extends Controller
                 ->where('category_id', $listing->category_id)
                 ->where('id', '!=', $id)
                 ->where('approved', true)
+                ->where('is_available', true)
+                ->whereDoesntHave('rentals', function($query) {
+                    $query->whereIn('rental_status_id', [3, 4, 9]);
+                })
                 ->inRandomOrder()
                 ->limit(4)
                 ->get();
@@ -119,12 +176,16 @@ class ListingController extends Controller
             ]);
 
         } catch (Exception $e) {
-            // suggest random listings
+            // Suggest only available listings
             $suggestions = Listing::whereHas('user', function (Builder $query) {
                 $query->where('role', '!=', 'suspended');
             })
                 ->with(['images', 'user'])
                 ->where('approved', true)
+                ->where('is_available', true)
+                ->whereDoesntHave('rentals', function($query) {
+                    $query->whereIn('rental_status_id', [3, 4, 9]);
+                })
                 ->inRandomOrder()
                 ->limit(4)
                 ->get();
@@ -141,12 +202,14 @@ class ListingController extends Controller
      */
     public function edit(Listing $listing)
     {
-        $listing->load(['category', 'images']);
+        $listing->load(['category', 'images', 'location']);
         $categories = Category::select('id', 'name')->get();
+        $locations = auth()->user()->locations;
 
         return Inertia::render('Listing/Edit', [
             'listing' => $listing,
-            'categories' => $categories
+            'categories' => $categories,
+            'locations' => $locations,
         ]);
     }
 
@@ -159,12 +222,31 @@ class ListingController extends Controller
             'title' => ['required', 'string', 'min:5', 'max:100'],
             'desc' => ['required', 'string', 'min:10', 'max:1000'],
             'category_id' => ['required', 'string', 'exists:categories,id'],
+            'location_id' => ['required_if:new_location,false', 'nullable', 'exists:locations,id'],
             'value' => ['required', 'integer', 'gt:0'],
             'price' => ['required', 'integer', 'gt:0'],
             'images' => ['required', 'array', 'min:1'],
             'images.*' => ['required', 'image', 'file', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
+            // new location fields if creating new location
+            'new_location' => ['required', 'boolean'],
+            'location_name' => ['required_if:new_location,true', 'nullable', 'string', 'max:100'],
+            'address' => ['required_if:new_location,true', 'nullable', 'string', 'max:255'],
+            'city' => ['required_if:new_location,true', 'nullable', 'string', 'max:100'],
+            'province' => ['required_if:new_location,true', 'nullable', 'string', 'max:100'],
+            'postal_code' => ['required_if:new_location,true', 'nullable', 'string', 'max:20'],
         ]);
-        
+
+        if ($request->new_location) {
+            $location = $request->user()->locations()->create([
+                'name' => $request->location_name,
+                'address' => $request->address,
+                'city' => $request->city,
+                'province' => $request->province,
+                'postal_code' => $request->postal_code,
+            ]);
+            $fields['location_id'] = $location->id;
+        }
+
         $listing->update($fields);
 
         if ($request->hasFile('images')) {
@@ -206,6 +288,6 @@ class ListingController extends Controller
         // delete the listing (automatically deletes listing_images via cascade on delete)
         $listing->delete();
 
-        return redirect()->route('my-rentals')->with('status', 'Listing deleted successfully.');
+        return redirect()->route('my-listings')->with('status', 'Listing deleted successfully.');
     }
 }

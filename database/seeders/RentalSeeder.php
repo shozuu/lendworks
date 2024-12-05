@@ -25,11 +25,17 @@ class RentalSeeder extends Seeder
             foreach ($potentialRenters as $renter) {
                 $rental = Rental::factory()->create([
                     'listing_id' => $listing->id,
-                    'renter_id' => $renter->id
+                    'renter_id' => $renter->id,
+                    'rental_status_id' => fake()->randomElement([1, 2, 3, 4, 5, 6]) // Mix of all
                 ]);
 
-                // 70% chance to have a review
-                if (fake()->boolean(70)) {
+                // Update listing availability if rental is active
+                if (in_array($rental->rental_status_id, [3, 4])) {
+                    $listing->update(['is_available' => false]);
+                }
+
+                // 70% chance to have a review for completed rentals
+                if ($rental->rental_status_id === 5 && fake()->boolean(70)) {
                     RentalReview::factory()->create([
                         'rental_id' => $rental->id,
                         'reviewer_id' => $renter->id

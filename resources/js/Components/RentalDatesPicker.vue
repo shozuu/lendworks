@@ -5,83 +5,102 @@ import { RangeCalendar } from "@/components/ui/range-calendar";
 import { cn } from "../lib/utils";
 import { CalendarDate, DateFormatter, getLocalTimeZone } from "@internationalized/date";
 import { Calendar as CalendarIcon } from "lucide-vue-next";
-import { ref, watch } from "vue";
+import { ref, computed, watch } from "vue";
+import { format } from "date-fns";
 
-// Date formatter for displaying date ranges
-const df = new DateFormatter("en-US", {
-	dateStyle: "medium",
+const props = defineProps({
+	modelValue: {
+		type: Object,
+		required: true,
+		default: () => ({ start: null, end: null }),
+	},
+	minDate: {
+		type: Date,
+		required: false,
+		default: () => new Date(),
+	},
+	disabledDates: {
+		type: Array,
+		default: () => [],
+	},
 });
 
-// Reactive value for the selected date range
-const value = ref({
-	start: "",
-	end: "",
-});
+const emit = defineEmits(["update:modelValue"]);
 
-// Get today's date in CalendarDate format
+// Convert JS Date to CalendarDate for the RangeCalendar component
 const today = new CalendarDate(
-	new Date().getFullYear(),
-	new Date().getMonth() + 1,
-	new Date().getDate()
+	props.minDate.getFullYear(),
+	props.minDate.getMonth() + 1,
+	props.minDate.getDate()
 );
 
-const emit = defineEmits(["update-dates"]);
+// Internal value for the calendar
+const calendarValue = ref({
+	start: null,
+	end: null,
+});
 
-watch(value, (newValue) => {
-	if (newValue.start && newValue.end) {
-		const startDate = newValue.start.toDate("Asia/Manila");
-		const endDate = newValue.end.toDate("Asia/Manila");
+// Watch calendar value changes and emit updates
+watch(
+	calendarValue,
+	(newValue) => {
+		if (newValue.start && newValue.end) {
+			const start = newValue.start.toDate(getLocalTimeZone());
+			const end = newValue.end.toDate(getLocalTimeZone());
 
-		emit(
-			"update-dates",
-			startDate.toISOString().split("T")[0],
-			endDate.toISOString().split("T")[0]
-		);
-	}
+			emit("update:modelValue", {
+				start: start,
+				end: end,
+			});
+		}
+	},
+	{ deep: true }
+);
+
+// Format dates for display
+const dateRange = computed(() => {
+	const df = new DateFormatter("en-US", { dateStyle: "medium" });
+
+	if (!calendarValue.value.start) return "Select dates";
+	if (!calendarValue.value.end)
+		return df.format(calendarValue.value.start.toDate(getLocalTimeZone()));
+
+	return `${df.format(
+		calendarValue.value.start.toDate(getLocalTimeZone())
+	)} - ${df.format(calendarValue.value.end.toDate(getLocalTimeZone()))}`;
 });
 </script>
 
 <template>
 	<Popover>
-		<!-- Trigger Button -->
 		<PopoverTrigger as-child>
 			<Button
 				variant="outline"
 				:class="
 					cn(
-						'justify-start text-left font-normal',
-						!value.start && 'text-muted-foreground'
+						'w-full justify-start text-left font-normal',
+						!calendarValue.start && 'text-muted-foreground'
 					)
 				"
 			>
 				<CalendarIcon class="w-4 h-4 mr-2" />
-				<!-- If a start date is selected -->
-				<template v-if="value.start">
-					<!-- If an end date is also selected -->
-					<template v-if="value.end">
-						{{ df.format(value.start.toDate(getLocalTimeZone())) }} -
-						{{ df.format(value.end.toDate(getLocalTimeZone())) }}
-					</template>
-
-					<!-- Only start date is selected -->
-					<template v-else>
-						{{ df.format(value.start.toDate(getLocalTimeZone())) }}
-					</template>
-				</template>
-				<!-- No date selected -->
-				<template v-else> Select Rental Dates </template>
+				{{ dateRange }}
 			</Button>
 		</PopoverTrigger>
 
-		<!-- Calendar Popover -->
 		<PopoverContent class="w-auto p-0">
 			<RangeCalendar
-				v-model="value"
+				v-model="calendarValue"
+				:min-value="today"
 				initial-focus
 				:number-of-months="2"
-				:min-value="today"
-				@update:start-value="(startDate) => (value.start = startDate)"
-				@update:end-value="(endDate) => (value.end = endDate)"
+				:is-date-unavailable="
+					(date) => {
+						return disabledDates?.includes(
+							format(date.toDate(getLocalTimeZone()), 'yyyy-MM-dd')
+						);
+					}
+				"
 			/>
 		</PopoverContent>
 	</Popover>

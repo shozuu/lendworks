@@ -24,20 +24,24 @@ function getDiscountRate(valueCategory, rentalDays) {
 }
 
 export function calculateRentalPrice(dailyRate, itemValue, rentalDays) {
-    const basePrice = dailyRate * rentalDays;
+    if (!dailyRate || !itemValue || !rentalDays || dailyRate < 0 || itemValue < 0 || rentalDays < 1) {
+        throw new Error('Invalid input parameters');
+    }
+
+    const basePrice = Math.round(dailyRate * rentalDays);
     const category = getValueCategory(itemValue);
     const discountRate = getDiscountRate(category, rentalDays);
     
-    const discount = Math.round(basePrice * discountRate); 
-    const discountedPrice = basePrice - discount;
-    const fee = Math.round(discountedPrice * 0.25); 
-    const totalPrice = discountedPrice + fee;
+    const discount = Math.round(basePrice * discountRate);
+    const discountedPrice = Math.round(basePrice - discount);
+    const fee = Math.round(discountedPrice * 0.25);
+    const totalPrice = Math.round(discountedPrice + fee);
 
     return {
         basePrice,
         discount,
         fee,
-        totalPrice: Math.round(totalPrice), 
+        totalPrice,
         discountPercentage: Math.round(discountRate * 100)
     };
 }

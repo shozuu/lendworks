@@ -10,15 +10,12 @@ class RentalStatusSeeder extends Seeder
     public function run(): void
     {
         $statuses = [
-            ['name' => 'pending', 'description' => 'Pending approval from lender'],
-            ['name' => 'approved', 'description' => 'Approved, awaiting payment'],
-            ['name' => 'paid', 'description' => 'Payment received, ready for pickup'],
-            ['name' => 'active', 'description' => 'Tool is currently being rented'],
-            ['name' => 'completed', 'description' => 'Rental completed successfully'],
-            ['name' => 'cancelled', 'description' => 'Rental was cancelled'],
-            ['name' => 'declined', 'description' => 'Rental request was declined'],
-            ['name' => 'disputed', 'description' => 'Rental is under dispute'],
-            ['name' => 'overdue', 'description' => 'Item return is overdue'],
+            ['id' => 1, 'name' => 'Pending', 'description' => 'Awaiting lender approval'],
+            ['id' => 2, 'name' => 'To Pay', 'description' => 'Approved, waiting for payment'],
+            ['id' => 3, 'name' => 'To Pickup', 'description' => 'Paid, ready for pickup'],
+            ['id' => 4, 'name' => 'Ongoing', 'description' => 'Currently being rented'],
+            ['id' => 5, 'name' => 'Completed', 'description' => 'Rental completed'],
+            ['id' => 6, 'name' => 'Cancelled', 'description' => 'Rental cancelled']
         ];
 
         foreach ($statuses as $status) {

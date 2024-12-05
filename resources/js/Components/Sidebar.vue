@@ -2,7 +2,14 @@
 import NavLink from "../Components/NavLink.vue";
 import { Button } from "@/components/ui/button";
 import Logo from "../Components/Logo.vue";
-import { Bell, Home, HandHelping, Telescope, PackagePlus } from "lucide-vue-next";
+import {
+	Bell,
+	Home,
+	HandHelping,
+	Telescope,
+	PackagePlus,
+	Package,
+} from "lucide-vue-next";
 import { ref, onMounted, onUnmounted } from "vue";
 
 const theme = ref(document.body.getAttribute("data-theme"));
@@ -30,7 +37,7 @@ onMounted(() => {
 
 <template>
 	<!-- sidebar (visible on md and up) -->
-	<div class="sticky top-0 hidden h-screen border-r md:block">
+	<div class="md:block sticky top-0 hidden h-screen border-r">
 		<div class="flex flex-col h-full gap-2">
 			<!-- sidebar header -->
 			<div
@@ -60,9 +67,14 @@ onMounted(() => {
 						Explore
 					</NavLink>
 
-					<NavLink routeName="my-rentals" componentName="MyRentals">
+					<NavLink routeName="my-rentals" componentName="MyRentals/Index">
 						<HandHelping class="w-5 h-5" />
 						My Rentals
+					</NavLink>
+
+					<NavLink routeName="my-listings" componentName="MyListings/Index">
+						<Package class="w-5 h-5" />
+						My Listings
 					</NavLink>
 				</nav>
 			</div>

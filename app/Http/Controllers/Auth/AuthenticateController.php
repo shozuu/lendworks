@@ -19,20 +19,22 @@ class AuthenticateController extends Controller
 
     public function store(Request $request) {
         $credentials = $request->validate([
-            'email' => 'required|email', // validate more
+            'email' => 'required|email',
             'password' => 'required'
         ]);
 
         if(Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
 
-            return redirect()->intended();
-        } else {
-            return back()->withErrors([
-                'failed' => 'The provided credentials do not match our records.'
-            ]);
-            // return back();
+            // Redirect admin to dashboard, others to intended or home
+            return Auth::user()->isAdmin() 
+                ? redirect()->route('admin.dashboard') 
+                : redirect()->intended(route('home'));
         }
+
+        return back()->withErrors([
+            'failed' => 'The provided credentials do not match our records.'
+        ]);
     }
 
     public function destroy(Request $request) {

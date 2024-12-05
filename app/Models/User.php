@@ -51,8 +51,9 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     // Helper methods
-    public function isAdmin(): bool {
-        return $this->role === 'admin';
+    public function isAdmin(): bool 
+    {
+        return $this->role === 'admin'; // make sure your users table has a 'role' column
     }
 
     public function isActive(): bool {

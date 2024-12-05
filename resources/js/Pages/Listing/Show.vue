@@ -112,9 +112,13 @@ const handleDelete = () => {
 			<div class="space-y-1">
 				<h2 class="text-lg font-semibold tracking-tight">Listing Location</h2>
 
-				<div class="text-muted-foreground">
-					<!-- {{ listing.location }} -->
-					Baliwasan, ZC
+				<div class="text-muted-foreground space-y-1">
+					<p class="font-medium">{{ listing.location.name }}</p>
+					<p>{{ listing.location.address }}</p>
+					<p>
+						{{ listing.location.city }}, {{ listing.location.province }}
+						{{ listing.location.postal_code }}
+					</p>
 				</div>
 			</div>
 
@@ -187,7 +191,11 @@ const handleDelete = () => {
 		</div>
 
 		<!-- second column -->
-		<RentalForm :listing="listing" class="lg:min-w-96" />
+		<RentalForm
+			:listing="listing"
+			:is-owner="listing.user.id === $page.props.auth.user?.id"
+			class="lg:min-w-96"
+		/>
 	</div>
 
 	<Separator class="my-10" />

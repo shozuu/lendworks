@@ -15,17 +15,17 @@ return new class extends Migration
             $table->foreignId('rental_status_id')->constrained();
             $table->date('start_date');
             $table->date('end_date');
-            $table->decimal('total_price', 10, 2);
-            $table->decimal('service_fee', 10, 2);
-            $table->decimal('discount', 10, 2)->default(0);
-            $table->text('renter_notes')->nullable();
-            $table->text('lender_notes')->nullable();
+            $table->unsignedInteger('base_price');
+            $table->unsignedInteger('discount')->default(0);
+            $table->unsignedInteger('service_fee');
+            $table->unsignedInteger('total_price');
+            $table->enum('payment_status', ['empty', 'pending', 'paid', 'released'])
+                ->nullable()
+                ->default(null);
             $table->timestamp('payment_received_at')->nullable();
             $table->timestamp('payment_released_at')->nullable();
-            $table->timestamp('handover_at')->nullable();
-            $table->timestamp('return_at')->nullable();
-            $table->decimal('overdue_amount', 10, 2)->default(0);
-            $table->timestamp('overdue_paid_at')->nullable();
+            $table->timestamp('started_at')->nullable();
+            $table->timestamp('completed_at')->nullable();
             $table->timestamps();
         });
     }
