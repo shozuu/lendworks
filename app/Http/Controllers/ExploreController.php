@@ -11,19 +11,52 @@ class ExploreController extends Controller
 {
     public function index(Request $request)
     {
-        $listings = Listing::whereHas('user', function(Builder $query) {
+        // Base query for available listings
+        $query = Listing::whereHas('user', function (Builder $query) {
             $query->where('role', '!=', 'suspended');
         })
-            ->with(['user', 'images'])
-            ->where('approved', true)
-            ->filter(request( ['search'] )) // or [$request->search]
-            ->latest() // sort by created_at
-            ->paginate(20)
-            ->withQueryString(); // retains search query when navigating paginated links
+        ->with(['images', 'user', 'category'])
+        ->where('approved', true)
+        ->where('is_available', true)
+        ->whereDoesntHave('rentals', function($query) {
+            $query->whereIn('rental_status_id', [3, 4, 9]); // paid, active, or overdue rentals
+        });
+
+        // Apply search filters
+        if ($request->has('search')) {
+            $query->filter(['search' => $request->search]);
+        }
+
+        if ($request->has('category')) {
+            $query->where('category_id', $request->category);
+        }
+
+        if ($request->has('sort')) {
+            switch ($request->sort) {
+                case 'price_asc':
+                    $query->orderBy('price', 'asc');
+                    break;
+                case 'price_desc':
+                    $query->orderBy('price', 'desc');
+                    break;
+                case 'value_asc':
+                    $query->orderBy('value', 'asc');
+                    break;
+                case 'value_desc':
+                    $query->orderBy('value', 'desc');
+                    break;
+                default:
+                    $query->latest();
+            }
+        } else {
+            $query->latest();
+        }
+
+        $listings = $query->paginate(20);
 
         return Inertia::render('Explore', [
             'listings' => $listings,
-            'searchTerm' => $request->search,
+            'searchTerm' => $request->search
         ]);
     }
 }

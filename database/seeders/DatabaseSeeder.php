@@ -2,24 +2,24 @@
 
 namespace Database\Seeders;
 
-use App\Models\Listing;
-use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        User::factory(5)->create();
-        Listing::factory(60)->create();
+        // Run seeders with predefined data first
+        $this->call([
+            CategorySeeder::class,
+            DisputeTypeSeeder::class,
+            RentalStatusSeeder::class,
+        ]);
 
-        // User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
+        // Then run factory-based seeders in order
+        $this->call([
+            UserSeeder::class,     // Creates users with locations
+            ListingSeeder::class,  // Creates listings for users
+            RentalSeeder::class,   // Creates rentals with reviews
+        ]);
     }
 }
