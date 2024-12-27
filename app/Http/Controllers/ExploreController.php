@@ -17,10 +17,7 @@ class ExploreController extends Controller
         })
         ->with(['images', 'user', 'category'])
         ->where('approved', true)
-        ->where('is_available', true)
-        ->whereDoesntHave('rentals', function($query) {
-            $query->whereIn('rental_status_id', [3, 4, 9]); // paid, active, or overdue rentals
-        });
+        ->where('is_available', true);
 
         // Apply search filters
         if ($request->has('search')) {

@@ -1,5 +1,5 @@
 <script setup></script>
 
 <template>
-	<Head title="| Admin Dashboard" />
+	<Head title="| My Rentals" />
 </template>

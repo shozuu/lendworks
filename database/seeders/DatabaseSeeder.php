@@ -11,15 +11,12 @@ class DatabaseSeeder extends Seeder
         // Run seeders with predefined data first
         $this->call([
             CategorySeeder::class,
-            DisputeTypeSeeder::class,
-            RentalStatusSeeder::class,
         ]);
 
         // Then run factory-based seeders in order
         $this->call([
             UserSeeder::class,     // Creates users with locations
             ListingSeeder::class,  // Creates listings for users
-            RentalSeeder::class,   // Creates rentals with reviews
         ]);
     }
 }
