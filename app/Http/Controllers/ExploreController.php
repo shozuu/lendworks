@@ -13,7 +13,7 @@ class ExploreController extends Controller
     {
         // Base query for available listings
         $query = Listing::whereHas('user', function (Builder $query) {
-            $query->where('role', '!=', 'suspended');
+            $query->where('status', '!=', 'suspended');
         })
         ->with(['images', 'user', 'category'])
         ->where('approved', true)
