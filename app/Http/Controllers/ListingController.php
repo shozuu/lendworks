@@ -17,7 +17,7 @@ class ListingController extends Controller
     {
         // Base query for active listings
         $baseQuery = Listing::whereHas('user', function (Builder $query) {
-            $query->where('role', '!=', 'suspended');
+            $query->where('status', '!=', 'suspended');
         })
             ->with(['user', 'images'])
             ->where('approved', true)
@@ -107,24 +107,29 @@ class ListingController extends Controller
     public function show(Request $request, $id)
     {
         try {
-            // base query
+            // Base query without approved filter
             $query = Listing::whereHas('user', function (Builder $query) {
                 $query->where('role', '!=', 'suspended');
             })
             ->with(['images', 'user', 'category', 'location'])
-            ->where('approved', true)
             ->where('id', $id);
 
             $listing = $query->first();
 
             if (!$listing) {
+                throw new Exception('Listing not found');
+            }
+
+            // Check if user can view this listing
+            if (!$listing->approved && (!Auth::check() || Auth::id() !== $listing->user_id)) {
                 throw new Exception('Listing not available');
             }
 
-            // Get related listings that are available
-            $relatedListings = Listing::whereHas('user', function (Builder $query) {
-                $query->where('role', '!=', 'suspended');
-            })
+            // Get related listings that are available (only for approved listings)
+            $relatedListings = $listing->approved ? 
+                Listing::whereHas('user', function (Builder $query) {
+                    $query->where('role', '!=', 'suspended');
+                })
                 ->with(['images', 'user'])
                 ->where('category_id', $listing->category_id)
                 ->where('id', '!=', $id)
@@ -132,11 +137,13 @@ class ListingController extends Controller
                 ->where('is_available', true)
                 ->inRandomOrder()
                 ->limit(4)
-                ->get();
+                ->get()
+                : collect([]);
 
             return Inertia::render('Listing/Show', [
                 'listing' => $listing,
                 'relatedListings' => $relatedListings,
+                'showPendingMessage' => !$listing->approved
             ]);
 
         } catch (Exception $e) {
@@ -240,5 +247,24 @@ class ListingController extends Controller
         // delete the listing (automatically deletes listing_images via cascade on delete)
         $listing->delete();
         return redirect()->route('my-listings')->with('status', 'Listing deleted successfully.');
+    }
+
+    public function toggleAvailability(Listing $listing)
+    {
+        // Ensure the user owns the listing
+        if ($listing->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        // Only allow toggling if listing is approved
+        if (!$listing->approved) {
+            return back()->with('error', 'Cannot change availability of unapproved listings.');
+        }
+
+        $listing->update([
+            'is_available' => !$listing->is_available
+        ]);
+
+        return back()->with('success', 'Listing availability updated.');
     }
 }
