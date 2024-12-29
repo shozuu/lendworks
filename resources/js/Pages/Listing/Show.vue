@@ -21,8 +21,14 @@ import {
 import { useForm, router } from "@inertiajs/vue3";
 import { ref } from "vue";
 import ItemCard from "@/Components/ItemCard.vue";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-vue-next";
 
-const props = defineProps({ listing: Object, relatedListings: Object });
+const props = defineProps({
+	listing: Object,
+	relatedListings: Object,
+	showPendingMessage: Boolean,
+});
 
 const showDeleteDialog = ref(false);
 const deleteForm = useForm({});
@@ -32,13 +38,13 @@ const handleDelete = () => {
 		onSuccess: () => {
 			showDeleteDialog.value = false;
 			// prevent back navigation to deleted listing
-			router.visit(route("my-rentals"), {
+			router.visit(route("my-listings"), {
 				preserveState: false,
 				preserveScroll: false,
 				replace: true,
 				onFinish: () => {
 					// clear the browser's entry for the deleted page
-					window.history.replaceState(null, "", route("my-rentals"));
+					window.history.replaceState(null, "", route("my-listings"));
 				},
 			});
 		},
@@ -54,6 +60,14 @@ const handleDelete = () => {
 		:category="listing.category.name"
 		class="lg:flex hidden mb-10"
 	/>
+
+	<Alert v-if="showPendingMessage" variant="warning" class="mb-6">
+		<AlertTriangle class="h-4 w-4" />
+		<AlertDescription>
+			This listing is pending approval from moderators. It will be visible to other users
+			once approved.
+		</AlertDescription>
+	</Alert>
 
 	<h2 class="mb-6 text-2xl font-semibold tracking-tight">
 		{{ listing.title }}
@@ -184,7 +198,7 @@ const handleDelete = () => {
 					</div>
 
 					<Link v-else href="" class="sm:w-auto w-full">
-						<Button class="sm:w-auto w-full">Message</Button>
+						<Button class="sm:w-auto w-full">View Profile</Button>
 					</Link>
 				</CardContent>
 			</Card>
