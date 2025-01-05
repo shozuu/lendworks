@@ -10,9 +10,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use App\Traits\ChecksSuspendedUsers;
 
 class ListingController extends Controller
 {
+    use ChecksSuspendedUsers;
+
     public function index(Request $request)
     {
         // Base query for active listings
@@ -45,8 +48,9 @@ class ListingController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
+        $this->checkIfSuspended();
         $categories = Category::select('id', 'name')->get();
         $locations = Auth::user()->locations;  // get user's saved locations
         return Inertia::render('Listing/Create', [
@@ -56,7 +60,8 @@ class ListingController extends Controller
     }
 
     public function store(Request $request)
-    {
+    {      
+        $this->checkIfSuspended();
         $fields = $request->validate([
             'title' => ['required', 'string', 'min:5', 'max:100'],
             'desc' => ['required', 'string', 'min:10', 'max:1000'],
@@ -167,6 +172,7 @@ class ListingController extends Controller
 
     public function edit(Listing $listing)
     {
+        $this->checkIfSuspended();
         $listing->load(['category', 'images', 'location']);
         $categories = Category::select('id', 'name')->get();
         $locations = Auth::user()->locations;
@@ -180,6 +186,7 @@ class ListingController extends Controller
 
     public function update(Request $request, Listing $listing)
     {
+        $this->checkIfSuspended();
         $fields = $request->validate([
             'title' => ['required', 'string', 'min:5', 'max:100'],
             'desc' => ['required', 'string', 'min:10', 'max:1000'],
@@ -234,6 +241,8 @@ class ListingController extends Controller
 
     public function destroy(Request $request, Listing $listing)
     {
+        $this->checkIfSuspended();
+        
         // check if user owns the listing
         if ($listing->user_id !== $request->user()->id) {
             abort(403);
@@ -251,6 +260,7 @@ class ListingController extends Controller
 
     public function toggleAvailability(Listing $listing)
     {
+        $this->checkIfSuspended();
         // Ensure the user owns the listing
         if ($listing->user_id !== Auth::id()) {
             abort(403);
