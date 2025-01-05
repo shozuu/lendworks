@@ -107,7 +107,8 @@ const handleDelete = () => {
 							>
 								<MapPin class="w-4 h-4 shrink-0" />
 								<span class="truncate">
-									{{ listing.location.address }}, {{ listing.location.city }}
+									{{ listing.location?.address ?? 'No address specified' }}, 
+									{{ listing.location?.city ?? 'No city specified' }}
 								</span>
 							</div>
 						</div>
