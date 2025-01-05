@@ -30,7 +30,23 @@ class UserSeeder extends Seeder
             'password' => bcrypt('password'),
             'role' => 'admin'
         ]);
-        $this->createLocationForUser($admin);
+
+        // Create extra users for testing
+        $user1 = User::create([
+            'name' => 'Jaydee Ballaho',
+            'email' => 'jaydee@example.com',
+            'email_verified_at' => now(),
+            'password' => bcrypt('password'),
+            'role' => 'user'
+        ]);
+        
+        $user2 = User::create([
+            'name' => 'Allen Tan',
+            'email' => 'allen@example.com',
+            'email_verified_at' => now(),
+            'password' => bcrypt('password'),
+            'role' => 'user'
+        ]);
 
         // Create regular users with random locations
         User::factory()
@@ -39,13 +55,3 @@ class UserSeeder extends Seeder
             ->each(fn($user) => $this->createLocationForUser($user));
     }
 }
-// // Create test users with verified email but no associations
-// collect([
-//     ['name' => 'Test User A', 'email' => 'testa@example.com'],
-//     ['name' => 'Test User B', 'email' => 'testb@example.com'],
-// ])->map(fn($data) => User::create([
-//     ...$data,
-//     'password' => bcrypt('password'),
-//     'role' => 'user',
-//     'email_verified_at' => now() 
-// ]));

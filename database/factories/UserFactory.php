@@ -17,11 +17,6 @@ class UserFactory extends Factory
             'password' => Hash::make('password'), // default password for all test users
             'role' => 'user',
             'status' => 'active',
-            'about' => fake()->paragraph(2),
-            'phone' => fake()->phoneNumber(),
-            'rating' => fake()->randomFloat(2, 3, 5),
-            'successful_rentals' => fake()->numberBetween(0, 20),
-            'successful_lendings' => fake()->numberBetween(0, 20),
             'remember_token' => Str::random(10),
         ];
     }
