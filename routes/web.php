@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\AdminController;
+use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\ExploreController;
 use App\Http\Controllers\ListingController;
 use App\Http\Controllers\ProfileController;
@@ -19,8 +19,10 @@ Route::middleware(['auth', 'verified'])->group(function() {
     Route::put('/profile', [ProfileController::class, 'updatePassword'])->name('profile.password');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // my rentals & listings
+    // my rentals 
     Route::get('/my-rentals', [MyRentalsController::class, 'index'])->middleware('verified')->name('my-rentals');
+
+    // my listings
     Route::get('/my-listings', [MyListingsController::class, 'index'])->middleware('verified')->name('my-listings');
 
     // listing crud 
@@ -28,8 +30,20 @@ Route::middleware(['auth', 'verified'])->group(function() {
 });
 
 // Admin routes with auth and admin middleware
-Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->group(function() {
+Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admin.')->group(function() {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
+    
+    // User management routes
+    Route::get('/users', [AdminController::class, 'users'])->name('users');
+    Route::patch('/users/{user}/suspend', [AdminController::class, 'suspendUser'])->name('users.suspend');
+    Route::patch('/users/{user}/activate', [AdminController::class, 'activateUser'])->name('users.activate');
+    Route::get('/users/{user}', [AdminController::class, 'showUser'])->name('users.show');
+    
+    // Listing management routes
+    Route::get('/listings', [AdminController::class, 'listings'])->name('listings');
+    Route::get('/listings/{listing}', [AdminController::class, 'showListing'])->name('listings.show');
+    Route::patch('/listings/{listing}/approve', [AdminController::class, 'approveListing'])->name('listings.approve');
+    Route::patch('/listings/{listing}/reject', [AdminController::class, 'rejectListing'])->name('listings.reject');
 });
 
 Route::get('/', [ListingController::class, 'index'])->name('home');
