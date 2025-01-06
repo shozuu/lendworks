@@ -21,23 +21,21 @@ const props = defineProps({
 	},
 });
 
-defineEmits(["approve", "reject"]);
+const emit = defineEmits(["approve", "reject", "takedown"]);
 
 const showApproveDialog = ref(false);
 const showRejectDialog = ref(false);
+const showTakedownDialog = ref(false);
+const rejectionReason = ref('');
 
 const getStatusBadge = () => {
-	// Check the approved property of the listing
-	if (props.listing.approved === true) {
-		return {
-			variant: "success",
-			label: "Approved",
-		};
-	} else {
-		return {
-			variant: "warning",
-			label: "Pending",
-		};
+	switch (props.listing.status) {
+		case 'approved':
+			return { variant: 'success', label: 'Approved' };
+		case 'rejected':
+			return { variant: 'destructive', label: 'Rejected' };
+		default:
+			return { variant: 'warning', label: 'Pending' };
 	}
 };
 
@@ -106,21 +104,21 @@ const viewDetails = (listingId) => {
 					<Button variant="outline" size="sm" @click="viewDetails(props.listing.id)">
 						View Details
 					</Button>
-					<Button
-						v-if="!props.listing.approved"
-						variant="default"
-						size="sm"
-						@click="showApproveDialog = true"
+					<template v-if="props.listing.status === 'pending'">
+						<Button variant="default" size="sm" @click="showApproveDialog = true">
+							Approve
+						</Button>
+						<Button variant="destructive" size="sm" @click="showRejectDialog = true">
+							Reject
+						</Button>
+					</template>
+					<Button 
+						v-else-if="props.listing.status === 'approved'"
+						variant="destructive" 
+						size="sm" 
+						@click="showTakedownDialog = true"
 					>
-						Approve
-					</Button>
-					<Button
-						v-if="!props.listing.approved"
-						variant="destructive"
-						size="sm"
-						@click="showRejectDialog = true"
-					>
-						Reject
+						Take Down
 					</Button>
 				</div>
 			</div>
@@ -159,21 +157,53 @@ const viewDetails = (listingId) => {
 			<DialogHeader>
 				<DialogTitle>Reject Listing</DialogTitle>
 				<DialogDescription>
-					Are you sure you want to reject this listing? This action cannot be undone.
+					Please provide a reason for rejecting this listing. This will be sent to the user.
 				</DialogDescription>
 			</DialogHeader>
+			<div class="py-4">
+				<textarea
+					v-model="rejectionReason"
+					class="w-full min-h-[100px] p-2 border rounded"
+					placeholder="Enter rejection reason..."
+				></textarea>
+			</div>
 			<DialogFooter>
 				<Button variant="outline" @click="showRejectDialog = false">Cancel</Button>
 				<Button
 					variant="destructive"
-					@click="
-						() => {
-							$emit('reject', props.listing);
-							showRejectDialog = false;
-						}
-					"
+					:disabled="!rejectionReason.trim()"
+					@click="$emit('reject', { listing: props.listing, reason: rejectionReason })"
 				>
 					Reject
+				</Button>
+			</DialogFooter>
+		</DialogContent>
+	</Dialog>
+
+	<!-- Add Takedown Dialog -->
+	<Dialog v-model:open="showTakedownDialog">
+		<DialogContent>
+			<DialogHeader>
+				<DialogTitle>Take Down Listing</DialogTitle>
+				<DialogDescription>
+					Please provide a reason for taking down this approved listing. This will be sent to the user.
+				</DialogDescription>
+			</DialogHeader>
+			<div class="py-4">
+				<textarea
+					v-model="rejectionReason"
+					class="w-full min-h-[100px] p-2 border rounded"
+					placeholder="Enter takedown reason..."
+				></textarea>
+			</div>
+			<DialogFooter>
+				<Button variant="outline" @click="showTakedownDialog = false">Cancel</Button>
+				<Button
+					variant="destructive"
+					:disabled="!rejectionReason.trim()"
+					@click="$emit('takedown', { listing: props.listing, reason: rejectionReason })"
+				>
+					Take Down
 				</Button>
 			</DialogFooter>
 		</DialogContent>
