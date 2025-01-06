@@ -54,7 +54,9 @@ const toggleAvailability = (listing) => {
 			<TabsContent value="available">
 				<div class="space-y-4">
 					<ListingCard
-						v-for="listing in listings.filter((l) => l.approved && l.is_available)"
+						v-for="listing in listings.filter(
+							(l) => l.status === 'approved' && l.is_available
+						)"
 						:key="listing.id"
 						:listing="listing"
 						@toggleAvailability="toggleAvailability"
@@ -76,7 +78,7 @@ const toggleAvailability = (listing) => {
 			<TabsContent value="pending">
 				<div class="space-y-4">
 					<ListingCard
-						v-for="listing in listings.filter((l) => !l.approved)"
+						v-for="listing in listings.filter((l) => l.status !== 'approved')"
 						:key="listing.id"
 						:listing="listing"
 						@toggleAvailability="toggleAvailability"

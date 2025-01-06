@@ -24,22 +24,24 @@ const props = defineProps({
 });
 
 const getStatusBadge = (listing) => {
-	if (!listing.approved) {
-		return {
-			label: "Pending Approval",
-			variant: "warning",
-		};
+	switch (listing.status) {
+		case "approved":
+			return {
+				label: listing.is_available ? "Available" : "Not Available",
+				variant: listing.is_available ? "success" : "destructive",
+			};
+		case "rejected":
+			return {
+				label: "Rejected",
+				variant: "destructive",
+			};
+		case "pending":
+		default:
+			return {
+				label: "Pending Approval",
+				variant: "warning",
+			};
 	}
-	if (!listing.is_available) {
-		return {
-			label: "Not Available",
-			variant: "destructive",
-		};
-	}
-	return {
-		label: "Available",
-		variant: "success",
-	};
 };
 
 const emit = defineEmits(["toggleAvailability"]);
@@ -107,13 +109,13 @@ const handleDelete = () => {
 							>
 								<MapPin class="w-4 h-4 shrink-0" />
 								<span class="truncate">
-									{{ listing.location?.address ?? 'No address specified' }}, 
-									{{ listing.location?.city ?? 'No city specified' }}
+									{{ listing.location?.address ?? "No address specified" }},
+									{{ listing.location?.city ?? "No city specified" }}
 								</span>
 							</div>
 						</div>
 					</div>
-					<Badge :variant="success">
+					<Badge :variant="getStatusBadge(listing).variant">
 						{{ getStatusBadge(listing).label }}
 					</Badge>
 				</div>
@@ -152,7 +154,7 @@ const handleDelete = () => {
 					</Dialog>
 
 					<Button
-						v-if="listing.approved"
+						v-if="listing.status === 'approved'"
 						variant="outline"
 						size="sm"
 						@click="$emit('toggleAvailability', listing)"

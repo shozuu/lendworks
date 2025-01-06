@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { SunMoon, Search } from "lucide-vue-next";
 import Sidebar from "../Components/Sidebar.vue";
 import MobileSidebar from "../Components/MobileSidebar.vue";
+import Notifications from "../Components/Notifications.vue";
 import UserDropdownMenu from "../Components/UserDropdownMenu.vue";
 import { switchTheme } from "../theme";
 import { useForm, router } from "@inertiajs/vue3";
@@ -68,6 +69,9 @@ const search = () => {
 							<SunMoon class="h-9 w-9" />
 							<span class="sr-only">Toggle dark mode</span>
 						</Button>
+
+						<!-- notifications -->
+						<Notifications />
 
 						<!-- user dropdown menu -->
 						<UserDropdownMenu />
