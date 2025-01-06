@@ -148,7 +148,8 @@ class ListingController extends Controller
             return Inertia::render('Listing/Show', [
                 'listing' => $listing,
                 'relatedListings' => $relatedListings,
-                'showPendingMessage' => !$listing->approved
+                'showPendingMessage' => !$listing->approved,
+                'justUpdated' => session('updated', false)
             ]);
 
         } catch (Exception $e) {
@@ -217,6 +218,11 @@ class ListingController extends Controller
             $fields['location_id'] = $location->id;
         }
 
+        // set approved to false when updating an approved listing
+        if ($listing->approved) {
+            $fields['approved'] = false;
+        }
+
         $listing->update($fields);
 
         if ($request->hasFile('images')) {
@@ -236,7 +242,8 @@ class ListingController extends Controller
                 ]);
             }
         }
-        return redirect()->route('listing.show', $listing)->with('status', 'Listing updated successfully.');
+        return redirect()->route('listing.show', $listing)
+            ->with('updated', true);
     }
 
     public function destroy(Request $request, Listing $listing)
