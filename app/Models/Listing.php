@@ -12,17 +12,19 @@ class Listing extends Model
     protected $fillable = [
         'title',
         'desc',
-        'category_id',
         'value',
         'price',
-        'approved',
+        'status',
+        'rejection_reason',
         'is_available',
+        'category_id',
+        'user_id',
         'location_id'
     ];
 
     protected $casts = [
         'is_available' => 'boolean',
-        'approved' => 'boolean'
+        'status' => 'string'
     ];
 
     // Relationships
