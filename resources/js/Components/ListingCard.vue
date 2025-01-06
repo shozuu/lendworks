@@ -15,6 +15,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
+import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 
 const props = defineProps({
 	listing: {
@@ -152,6 +153,17 @@ const handleDelete = () => {
 							</DialogFooter>
 						</DialogContent>
 					</Dialog>
+
+					<ConfirmDialog
+						:show="showDeleteDialog"
+						title="Delete Listing"
+						description="Are you sure you want to delete this listing? This action cannot be undone."
+						confirmLabel="Delete"
+						confirmVariant="destructive"
+						@update:show="showDeleteDialog = $event"
+						@confirm="handleDelete"
+						@cancel="showDeleteDialog = false"
+					/>
 
 					<Button
 						v-if="listing.status === 'approved'"

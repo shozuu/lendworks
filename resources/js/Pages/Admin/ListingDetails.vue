@@ -13,15 +13,8 @@ import { Button } from "@/components/ui/button";
 import ListingImages from "@/Components/ListingImages.vue";
 import { formatNumber } from "@/lib/formatters";
 import Separator from "@/Components/ui/separator/Separator.vue";
-import {
-	Dialog,
-	DialogContent,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-	DialogDescription,
-} from "@/components/ui/dialog";
 import { ref } from "vue";
+import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 
 defineOptions({ layout: AdminLayout });
 
@@ -33,6 +26,8 @@ const showApproveDialog = ref(false);
 const showRejectDialog = ref(false);
 const showSuspendDialog = ref(false);
 const showActivateDialog = ref(false);
+const showTakedownDialog = ref(false);
+const takedownReason = ref("");
 
 const handleApprove = () => {
 	router.patch(
@@ -74,6 +69,20 @@ const handleActivateUser = () => {
 		{
 			preserveScroll: true,
 			onSuccess: () => (showActivateDialog.value = false),
+		}
+	);
+};
+
+const handleTakedown = () => {
+	router.patch(
+		route("admin.listings.takedown", props.listing.id),
+		{ reason: takedownReason.value },
+		{
+			preserveScroll: true,
+			onSuccess: () => {
+				showTakedownDialog.value = false;
+				takedownReason.value = "";
+			},
 		}
 	);
 };
@@ -238,7 +247,7 @@ const getStatusBadge = () => {
 						</div>
 
 						<!-- Listing Controls -->
-						<div class="flex gap-2 pt-2" v-if="!listing.approved">
+						<div class="flex gap-2 pt-2" v-if="listing.status !== 'approved'">
 							<Button variant="default" size="sm" @click="showApproveDialog = true"
 								>Approve</Button
 							>
@@ -246,76 +255,72 @@ const getStatusBadge = () => {
 								>Reject</Button
 							>
 						</div>
+						<Button
+							v-if="listing.status === 'approved'"
+							variant="destructive"
+							size="sm"
+							@click="showTakedownDialog = true"
+						>
+							Take Down Listing
+						</Button>
 					</CardContent>
 				</Card>
 			</div>
 		</div>
 	</div>
 
-	<!-- Approve Dialog -->
-	<Dialog v-model:open="showApproveDialog">
-		<DialogContent>
-			<DialogHeader>
-				<DialogTitle>Approve Listing</DialogTitle>
-				<DialogDescription>
-					Are you sure you want to approve this listing? It will become visible to all
-					users.
-				</DialogDescription>
-			</DialogHeader>
-			<DialogFooter>
-				<Button variant="outline" @click="showApproveDialog = false">Cancel</Button>
-				<Button variant="default" @click="handleApprove">Approve</Button>
-			</DialogFooter>
-		</DialogContent>
-	</Dialog>
-
-	<!-- Reject Dialog -->
-	<Dialog v-model:open="showRejectDialog">
-		<DialogContent>
-			<DialogHeader>
-				<DialogTitle>Reject Listing</DialogTitle>
-				<DialogDescription>
-					Are you sure you want to reject this listing? This action cannot be undone.
-				</DialogDescription>
-			</DialogHeader>
-			<DialogFooter>
-				<Button variant="outline" @click="showRejectDialog = false">Cancel</Button>
-				<Button variant="destructive" @click="handleReject">Reject</Button>
-			</DialogFooter>
-		</DialogContent>
-	</Dialog>
-
-	<!-- Suspend User Dialog -->
-	<Dialog v-model:open="showSuspendDialog">
-		<DialogContent>
-			<DialogHeader>
-				<DialogTitle>Suspend User Account</DialogTitle>
-				<DialogDescription>
-					Are you sure you want to suspend {{ listing.user.name }}? <br /><br />
-					This will also mark all their listings as unavailable.
-				</DialogDescription>
-			</DialogHeader>
-			<DialogFooter>
-				<Button variant="outline" @click="showSuspendDialog = false"> Cancel </Button>
-				<Button variant="destructive" @click="handleSuspendUser"> Suspend User </Button>
-			</DialogFooter>
-		</DialogContent>
-	</Dialog>
-
-	<!-- Activate User Dialog -->
-	<Dialog v-model:open="showActivateDialog">
-		<DialogContent>
-			<DialogHeader>
-				<DialogTitle>Activate User Account</DialogTitle>
-				<DialogDescription>
-					Are you sure you want to activate {{ listing.user.name }}'s account? This will
-					allow them to list items and interact with the platform.
-				</DialogDescription>
-			</DialogHeader>
-			<DialogFooter>
-				<Button variant="outline" @click="showActivateDialog = false"> Cancel </Button>
-				<Button variant="default" @click="handleActivateUser"> Activate User </Button>
-			</DialogFooter>
-		</DialogContent>
-	</Dialog>
+	<ConfirmDialog
+		:show="showApproveDialog"
+		title="Approve Listing"
+		description="Are you sure you want to approve this listing? It will become visible to all users."
+		confirmLabel="Approve"
+		confirmVariant="default"
+		@update:show="showApproveDialog = $event"
+		@confirm="handleApprove"
+		@cancel="showApproveDialog = false"
+	/>
+	<ConfirmDialog
+		:show="showRejectDialog"
+		title="Reject Listing"
+		description="Are you sure you want to reject this listing? This action cannot be undone."
+		confirmLabel="Reject"
+		confirmVariant="destructive"
+		@update:show="showRejectDialog = $event"
+		@confirm="handleReject"
+		@cancel="showRejectDialog = false"
+	/>
+	<ConfirmDialog
+		:show="showSuspendDialog"
+		title="Suspend User Account"
+		description="Are you sure you want to suspend {{ listing.user.name }}? This will also mark all their listings as unavailable."
+		confirmLabel="Suspend User"
+		confirmVariant="destructive"
+		@update:show="showSuspendDialog = $event"
+		@confirm="handleSuspendUser"
+		@cancel="showSuspendDialog = false"
+	/>
+	<ConfirmDialog
+		:show="showActivateDialog"
+		title="Activate User Account"
+		description="Are you sure you want to activate {{ listing.user.name }}'s account? This will allow them to list items and interact with the platform."
+		confirmLabel="Activate User"
+		confirmVariant="default"
+		@update:show="showActivateDialog = $event"
+		@confirm="handleActivateUser"
+		@cancel="showActivateDialog = false"
+	/>
+	<ConfirmDialog
+		:show="showTakedownDialog"
+		title="Take Down Listing"
+		description="This will immediately remove the listing from public view and notify the owner. Please provide a reason."
+		confirmLabel="Take Down"
+		confirmVariant="destructive"
+		showTextarea
+		:textareaValue="takedownReason"
+		textareaPlaceholder="Enter reason for taking down this listing..."
+		@update:show="showTakedownDialog = $event"
+		@update:textareaValue="takedownReason = $event"
+		@confirm="handleTakedown"
+		@cancel="showTakedownDialog = false"
+	/>
 </template>

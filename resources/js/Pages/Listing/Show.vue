@@ -23,6 +23,7 @@ import { ref } from "vue";
 import ItemCard from "@/Components/ItemCard.vue";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-vue-next";
+import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 
 const props = defineProps({
 	listing: Object,
@@ -33,6 +34,7 @@ const props = defineProps({
 
 const showDeleteDialog = ref(false);
 const deleteForm = useForm({});
+const deleteReason = ref("");
 
 const handleDelete = () => {
 	deleteForm.delete(route("listing.destroy", props.listing.id), {
@@ -175,32 +177,7 @@ const handleDelete = () => {
 							<Button variant="outline" class="w-full">Edit</Button>
 						</Link>
 
-						<Dialog v-model:open="showDeleteDialog">
-							<DialogTrigger asChild>
-								<Button variant="destructive" class="w-full">Delete</Button>
-							</DialogTrigger>
-							<DialogContent>
-								<DialogHeader>
-									<DialogTitle>Delete Listing</DialogTitle>
-									<DialogDescription>
-										Are you sure you want to delete this listing? This action cannot be
-										undone.
-									</DialogDescription>
-								</DialogHeader>
-								<DialogFooter>
-									<Button variant="outline" @click="showDeleteDialog = false"
-										>Cancel</Button
-									>
-									<Button
-										variant="destructive"
-										:disabled="deleteForm.processing"
-										@click="handleDelete"
-									>
-										{{ deleteForm.processing ? "Deleting..." : "Delete" }}
-									</Button>
-								</DialogFooter>
-							</DialogContent>
-						</Dialog>
+						<Button variant="destructive" class="w-full" @click="showDeleteDialog = true">Delete</Button>
 					</div>
 
 					<Link v-else href="" class="sm:w-auto w-full">
@@ -234,4 +211,15 @@ const handleDelete = () => {
 		</div>
 		<div v-else class="text-muted-foreground">No similar tools found.</div>
 	</div>
+
+	<ConfirmDialog
+		:show="showDeleteDialog"
+		title="Delete Listing"
+		description="Are you sure you want to delete this listing? This action cannot be undone."
+		confirmLabel="Delete"
+		confirmVariant="destructive"
+		@update:show="showDeleteDialog = $event"
+		@confirm="handleDelete"
+		@cancel="showDeleteDialog = false"
+	/>
 </template>
