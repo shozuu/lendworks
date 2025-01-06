@@ -2,14 +2,7 @@
 import NavLink from "../Components/NavLink.vue";
 import { Button } from "@/components/ui/button";
 import Logo from "../Components/Logo.vue";
-import {
-	Bell,
-	Home,
-	HandHelping,
-	Telescope,
-	PackagePlus,
-	Package,
-} from "lucide-vue-next";
+import { Home, HandHelping, Telescope, PackagePlus, Package } from "lucide-vue-next";
 import { ref, onMounted, onUnmounted } from "vue";
 
 const theme = ref(document.body.getAttribute("data-theme"));
@@ -47,10 +40,6 @@ onMounted(() => {
 					<Logo class="w-8 h-8" :fill="theme === 'dark' ? '#FFFFFF' : '#09090B'" />
 					<span>LendWorks</span>
 				</Link>
-				<!-- <Button variant="outline" size="icon" class="w-8 h-8 ml-auto">
-                    <Bell class="w-4 h-4" />
-                    <span class="sr-only">Toggle notifications</span>
-                </Button> -->
 			</div>
 
 			<!-- sidebar navigation -->

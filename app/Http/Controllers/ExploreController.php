@@ -16,7 +16,7 @@ class ExploreController extends Controller
             $query->where('status', '!=', 'suspended');
         })
         ->with(['images', 'user', 'category'])
-        ->where('approved', true)
+        ->where('status', 'approved')
         ->where('is_available', true);
 
         // Apply search filters

@@ -23,7 +23,7 @@ class ListingController extends Controller
             $query->where('status', '!=', 'suspended');
         })
             ->with(['user', 'images'])
-            ->where('approved', true)
+            ->where('status', 'approved')  // Changed from approved to status
             ->where('is_available', true);
 
         // Get featured listings
@@ -126,19 +126,19 @@ class ListingController extends Controller
             }
 
             // Check if user can view this listing
-            if (!$listing->approved && (!Auth::check() || Auth::id() !== $listing->user_id)) {
+            if ($listing->status !== 'approved' && (!Auth::check() || Auth::id() !== $listing->user_id)) {
                 throw new Exception('Listing not available');
             }
 
             // Get related listings that are available (only for approved listings)
-            $relatedListings = $listing->approved ? 
+            $relatedListings = $listing->status === 'approved' ? 
                 Listing::whereHas('user', function (Builder $query) {
                     $query->where('role', '!=', 'suspended');
                 })
                 ->with(['images', 'user'])
                 ->where('category_id', $listing->category_id)
                 ->where('id', '!=', $id)
-                ->where('approved', true)
+                ->where('status', 'approved')
                 ->where('is_available', true)
                 ->inRandomOrder()
                 ->limit(4)
@@ -148,7 +148,8 @@ class ListingController extends Controller
             return Inertia::render('Listing/Show', [
                 'listing' => $listing,
                 'relatedListings' => $relatedListings,
-                'showPendingMessage' => !$listing->approved
+                'showPendingMessage' => !$listing->approved,
+                'justUpdated' => session('updated', false)
             ]);
 
         } catch (Exception $e) {
@@ -157,7 +158,7 @@ class ListingController extends Controller
                 $query->where('role', '!=', 'suspended');
             })
                 ->with(['images', 'user'])
-                ->where('approved', true)
+                ->where('status', 'approved')
                 ->where('is_available', true)
                 ->inRandomOrder()
                 ->limit(4)
@@ -217,6 +218,11 @@ class ListingController extends Controller
             $fields['location_id'] = $location->id;
         }
 
+        // set status to pending when updating an approved listing
+        if ($listing->status === 'approved') {
+            $fields['status'] = 'pending';
+        }
+
         $listing->update($fields);
 
         if ($request->hasFile('images')) {
@@ -236,7 +242,8 @@ class ListingController extends Controller
                 ]);
             }
         }
-        return redirect()->route('listing.show', $listing)->with('status', 'Listing updated successfully.');
+        return redirect()->route('listing.show', $listing)
+            ->with('updated', true);
     }
 
     public function destroy(Request $request, Listing $listing)
@@ -267,7 +274,7 @@ class ListingController extends Controller
         }
 
         // Only allow toggling if listing is approved
-        if (!$listing->approved) {
+        if ($listing->status !== 'approved') {
             return back()->with('error', 'Cannot change availability of unapproved listings.');
         }
 

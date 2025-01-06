@@ -7,6 +7,9 @@ use App\Models\Listing;
 use App\Models\User;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
+use App\Notifications\ListingApproved;
+use App\Notifications\ListingRejected;
+use App\Notifications\ListingTakenDown;
 
 class AdminController extends Controller
 {
@@ -15,7 +18,7 @@ class AdminController extends Controller
         $stats = [
             'totalUsers' => User::count(),
             'totalListings' => Listing::count(),
-            'pendingApprovals' => Listing::where('approved', false)->count(),
+            'pendingApprovals' => Listing::where('status', 'pending')->count(),
             'activeUsers' => User::where('status', 'active')->count(),
         ];
 
@@ -110,13 +113,49 @@ class AdminController extends Controller
 
     public function approveListing(Listing $listing)
     {
-        $listing->update(['approved' => true]);
+        $listing->update([
+            'status' => 'approved',
+            'rejection_reason' => null
+        ]);
+
+        // Notify the user
+        $listing->user->notify(new ListingApproved($listing));
+
         return back()->with('success', 'Listing approved successfully');
     }
 
-    public function rejectListing(Listing $listing)
+    public function rejectListing(Request $request, Listing $listing)
     {
-        $listing->update(['approved' => false]);
+        $validated = $request->validate([
+            'rejection_reason' => 'required|string|min:10|max:1000'
+        ]);
+
+        $listing->update([
+            'status' => 'rejected',
+            'rejection_reason' => $validated['rejection_reason']
+        ]);
+
+        // Notify the user
+        $listing->user->notify(new ListingRejected($listing));
+
         return back()->with('success', 'Listing rejected successfully');
+    }
+
+    public function takedownListing(Request $request, Listing $listing)
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string|min:10|max:1000'
+        ]);
+
+        $listing->update([
+            'status' => 'rejected',
+            'rejection_reason' => $validated['reason'],
+            'is_available' => false
+        ]);
+
+        // Notify the user
+        $listing->user->notify(new ListingTakenDown($listing));
+
+        return back()->with('success', 'Listing taken down successfully');
     }
 }

@@ -28,6 +28,7 @@ const props = defineProps({
 	listing: Object,
 	relatedListings: Object,
 	showPendingMessage: Boolean,
+	justUpdated: Boolean,
 });
 
 const showDeleteDialog = ref(false);
@@ -61,9 +62,14 @@ const handleDelete = () => {
 		class="lg:flex hidden mb-10"
 	/>
 
+	<!-- Pending Status Alert -->
 	<Alert v-if="showPendingMessage" variant="warning" class="mb-6">
 		<AlertTriangle class="h-4 w-4" />
-		<AlertDescription>
+		<AlertDescription v-if="justUpdated">
+			Listing has been successfully updated. It will be visible to other users once
+			approved.
+		</AlertDescription>
+		<AlertDescription v-else>
 			This listing is pending approval from moderators. It will be visible to other users
 			once approved.
 		</AlertDescription>

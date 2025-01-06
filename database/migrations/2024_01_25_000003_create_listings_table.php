@@ -11,13 +11,14 @@ return new class extends Migration
         Schema::create('listings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('category_id')->constrained();
-            $table->foreignId('location_id')->constrained();
+            $table->foreignId('category_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('location_id')->constrained()->cascadeOnDelete();
             $table->string('title');
             $table->text('desc');
-            $table->unsignedInteger('value');
-            $table->unsignedInteger('price');
-            $table->boolean('approved')->default(false);
+            $table->integer('value');
+            $table->integer('price');
+            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
+            $table->text('rejection_reason')->nullable();
             $table->boolean('is_available')->default(true);
             $table->timestamps();
         });

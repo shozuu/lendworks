@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Category;
+use App\Models\Location;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -13,19 +14,44 @@ class ListingFactory extends Factory
         return [
             'title' => fake()->words(3, true),
             'desc' => fake()->paragraph(),
-            'value' => fake()->numberBetween(3000, 50000),
+            'value' => fake()->numberBetween(1000, 10000),
             'price' => fake()->numberBetween(100, 1000),
-            'approved' => true,
+            'status' => 'pending',
             'is_available' => true,
-            'category_id' => Category::inRandomOrder()->first()->id,
+            'category_id' => Category::inRandomOrder()->first()?->id ?? 1,
+            'location_id' => Location::inRandomOrder()->first()?->id ?? 1,
+            'user_id' => User::factory(),
         ];
     }
 
     public function forUser(User $user)
     {
-        return $this->state(fn (array $attributes) => [
-            'user_id' => $user->id,
-            'location_id' => $user->locations->first()->id,
-        ]);
+        return $this->state(function (array $attributes) use ($user) {
+            return ['user_id' => $user->id];
+        });
+    }
+
+    public function approved()
+    {
+        return $this->state(function (array $attributes) {
+            return ['status' => 'approved'];
+        });
+    }
+
+    public function pending()
+    {
+        return $this->state(function (array $attributes) {
+            return ['status' => 'pending'];
+        });
+    }
+
+    public function rejected()
+    {
+        return $this->state(function (array $attributes) {
+            return [
+                'status' => 'rejected',
+                'rejection_reason' => fake()->sentence()
+            ];
+        });
     }
 }
