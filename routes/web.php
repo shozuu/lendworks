@@ -6,9 +6,11 @@ use App\Http\Controllers\ListingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MyRentalsController;
 use App\Http\Controllers\MyListingsController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use Illuminate\Http\Request;
 
 // 'verified' and password.confirm middleware can be used to protect routes that need full user verification but for now, i'll put it at my rentals to demonstrate functionality
 
@@ -27,6 +29,10 @@ Route::middleware(['auth', 'verified'])->group(function() {
 
     // listing crud 
     Route::resource('listing', ListingController::class)->except(['index', 'show'])->middleware('verified');
+
+    // notification 
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/{id}/mark-as-read', [NotificationController::class, 'markAsRead']);
 });
 
 // Admin routes with auth and admin middleware
@@ -44,10 +50,11 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     Route::get('/listings/{listing}', [AdminController::class, 'showListing'])->name('listings.show');
     Route::patch('/listings/{listing}/approve', [AdminController::class, 'approveListing'])->name('listings.approve');
     Route::patch('/listings/{listing}/reject', [AdminController::class, 'rejectListing'])->name('listings.reject');
+    Route::patch('/listings/{listing}/takedown', [AdminController::class, 'takedownListing'])->name('listings.takedown');
 });
 
 Route::get('/', [ListingController::class, 'index'])->name('home');
 Route::get('listing/{listing}', [ListingController::class, 'show'])->name('listing.show');
 Route::get('/explore', [ExploreController::class, 'index'])->name('explore');
- 
+
 require __DIR__ . '/auth.php';
