@@ -9,15 +9,6 @@ import Button from "@/Components/ui/button/Button.vue";
 import { format } from "date-fns";
 import RentalForm from "@/Components/RentalForm.vue";
 import { Link } from "@inertiajs/vue3";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from "@/components/ui/dialog";
 import { useForm, router } from "@inertiajs/vue3";
 import { ref } from "vue";
 import ItemCard from "@/Components/ItemCard.vue";
@@ -34,7 +25,6 @@ const props = defineProps({
 
 const showDeleteDialog = ref(false);
 const deleteForm = useForm({});
-const deleteReason = ref("");
 
 const handleDelete = () => {
 	deleteForm.delete(route("listing.destroy", props.listing.id), {
@@ -65,8 +55,8 @@ const handleDelete = () => {
 	/>
 
 	<!-- Pending Status Alert -->
-	<Alert v-if="showPendingMessage" variant="warning" class="mb-6">
-		<AlertTriangle class="h-4 w-4" />
+	<Alert v-if="listing.status === 'pending'" variant="warning" class="mb-6">
+		<AlertTriangle class="w-4 h-4" />
 		<AlertDescription v-if="justUpdated">
 			Listing has been successfully updated. It will be visible to other users once
 			approved.
@@ -177,7 +167,9 @@ const handleDelete = () => {
 							<Button variant="outline" class="w-full">Edit</Button>
 						</Link>
 
-						<Button variant="destructive" class="w-full" @click="showDeleteDialog = true">Delete</Button>
+						<Button variant="destructive" class="w-full" @click="showDeleteDialog = true"
+							>Delete</Button
+						>
 					</div>
 
 					<Link v-else href="" class="sm:w-auto w-full">
