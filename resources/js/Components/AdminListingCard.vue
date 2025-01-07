@@ -13,12 +13,64 @@ const props = defineProps({
 		type: Object,
 		required: true,
 	},
+	rejectionReasons: {
+		type: Array,
+		required: true,
+	},
 });
 
-const emit = defineEmits(["approve", "reject"]);
+const emit = defineEmits(["updateStatus"]);
 
 const showApproveDialog = ref(false);
 const showRejectDialog = ref(false);
+const selectedReason = ref("");
+const isApproving = ref(false);
+const isRejecting = ref(false);
+
+const handleUpdateStatus = async (status) => {
+	if (status === "rejected" && !selectedReason.value) {
+		return;
+	}
+
+	if (status === "approved") {
+		if (isApproving.value) return;
+		isApproving.value = true;
+
+		await router.patch(
+			route("admin.listings.approve", props.listing.id),
+			{},
+			{
+				onSuccess: () => {
+					showApproveDialog.value = false;
+				},
+				onFinish: () => {
+					isApproving.value = false;
+				},
+				preserveScroll: true,
+			}
+		);
+	} else {
+		if (isRejecting.value) return;
+		isRejecting.value = true;
+
+		await router.patch(
+			route("admin.listings.reject", props.listing.id),
+			{
+				rejection_reason: selectedReason.value,
+			},
+			{
+				onSuccess: () => {
+					showRejectDialog.value = false;
+					selectedReason.value = "";
+				},
+				onFinish: () => {
+					isRejecting.value = false;
+				},
+				preserveScroll: true,
+			}
+		);
+	}
+};
 
 const getStatusBadge = (listing) => {
 	switch (listing.status) {
@@ -122,13 +174,6 @@ const getStatusBadge = (listing) => {
 					>
 						Reject
 					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						@click="router.visit(route('admin.listings.show', listing.id))"
-					>
-						View Details
-					</Button>
 				</div>
 			</div>
 		</div>
@@ -140,20 +185,39 @@ const getStatusBadge = (listing) => {
 			description="Are you sure you want to approve this listing? It will become visible to all users."
 			confirmLabel="Approve"
 			confirmVariant="default"
+			:processing="isApproving"
 			@update:show="showApproveDialog = $event"
-			@confirm="$emit('approve', listing)"
-			@cancel="showApproveDialog = false"
+			@confirm="handleUpdateStatus('approved')"
+			@cancel="
+				() => {
+					showApproveDialog = false;
+				}
+			"
 		/>
 
 		<ConfirmDialog
 			:show="showRejectDialog"
 			title="Reject Listing"
-			description="Are you sure you want to reject this listing? This action cannot be undone."
+			description="Please select a reason for rejecting this listing. This will help the owner understand what needs to be changed."
 			confirmLabel="Reject"
 			confirmVariant="destructive"
+			:processing="isRejecting"
+			showSelect
+			:selectOptions="rejectionReasons"
+			:selectValue="selectedReason"
 			@update:show="showRejectDialog = $event"
-			@confirm="$emit('reject', listing)"
-			@cancel="showRejectDialog = false"
+			@update:selectValue="
+				(value) => {
+					selectedReason = value;
+				}
+			"
+			@confirm="handleUpdateStatus('rejected')"
+			@cancel="
+				() => {
+					showRejectDialog = false;
+					selectedReason = '';
+				}
+			"
 		/>
 	</Card>
 </template>
