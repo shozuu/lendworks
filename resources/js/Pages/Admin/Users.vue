@@ -12,17 +12,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
 import PaginationLinks from "@/Components/PaginationLinks.vue";
 import debounce from "lodash/debounce";
 import { ref, watch } from "vue";
+import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 
 defineOptions({ layout: AdminLayout });
 
@@ -91,23 +84,15 @@ const confirmAction = (user, actionType) => {
 };
 
 const handleAction = () => {
-	if (action.value === "suspend") {
-		router.patch(
-			route("admin.users.suspend", selectedUser.value.id),
-			{},
-			{
-				onSuccess: () => (showDialog.value = false),
-			}
-		);
-	} else {
-		router.patch(
-			route("admin.users.activate", selectedUser.value.id),
-			{},
-			{
-				onSuccess: () => (showDialog.value = false),
-			}
-		);
-	}
+	const routeName =
+		action.value === "suspend" ? "admin.users.suspend" : "admin.users.activate";
+	router.patch(
+		route(routeName, selectedUser.value.id),
+		{},
+		{
+			onSuccess: () => (showDialog.value = false),
+		}
+	);
 };
 </script>
 
@@ -203,31 +188,17 @@ const handleAction = () => {
 		<div v-else class="text-muted-foreground py-10 text-center">No users found</div>
 
 		<!-- Confirmation Dialog -->
-		<Dialog v-model:open="showDialog">
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>
-						{{ action === "suspend" ? "Suspend User" : "Activate User" }}
-					</DialogTitle>
-					<DialogDescription>
-						Are you sure you want to {{ action === "suspend" ? "suspend" : "activate" }}
-						{{ selectedUser?.name }}?
-						<template v-if="action === 'suspend'">
-							<br /><br />
-							This will also mark all their listings as unavailable.
-						</template>
-					</DialogDescription>
-				</DialogHeader>
-				<DialogFooter>
-					<Button variant="outline" @click="showDialog = false"> Cancel </Button>
-					<Button
-						:variant="action === 'suspend' ? 'destructive' : 'default'"
-						@click="handleAction"
-					>
-						Confirm
-					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+		<ConfirmDialog
+			:show="showDialog"
+			:title="action === 'suspend' ? 'Suspend User' : 'Activate User'"
+			:description="`Are you sure you want to ${
+				action === 'suspend' ? 'suspend' : 'activate'
+			} ${selectedUser?.name}?`"
+			confirmLabel="Confirm"
+			confirmVariant="destructive"
+			@update:show="showDialog = $event"
+			@confirm="handleAction"
+			@cancel="showDialog = false"
+		/>
 	</div>
 </template>

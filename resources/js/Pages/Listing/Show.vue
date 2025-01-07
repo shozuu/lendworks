@@ -9,20 +9,12 @@ import Button from "@/Components/ui/button/Button.vue";
 import { format } from "date-fns";
 import RentalForm from "@/Components/RentalForm.vue";
 import { Link } from "@inertiajs/vue3";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from "@/components/ui/dialog";
 import { useForm, router } from "@inertiajs/vue3";
 import { ref } from "vue";
 import ItemCard from "@/Components/ItemCard.vue";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-vue-next";
+import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 
 const props = defineProps({
 	listing: Object,
@@ -63,8 +55,8 @@ const handleDelete = () => {
 	/>
 
 	<!-- Pending Status Alert -->
-	<Alert v-if="showPendingMessage" variant="warning" class="mb-6">
-		<AlertTriangle class="h-4 w-4" />
+	<Alert v-if="listing.status === 'pending'" variant="warning" class="mb-6">
+		<AlertTriangle class="w-4 h-4" />
 		<AlertDescription v-if="justUpdated">
 			Listing has been successfully updated. It will be visible to other users once
 			approved.
@@ -175,32 +167,9 @@ const handleDelete = () => {
 							<Button variant="outline" class="w-full">Edit</Button>
 						</Link>
 
-						<Dialog v-model:open="showDeleteDialog">
-							<DialogTrigger asChild>
-								<Button variant="destructive" class="w-full">Delete</Button>
-							</DialogTrigger>
-							<DialogContent>
-								<DialogHeader>
-									<DialogTitle>Delete Listing</DialogTitle>
-									<DialogDescription>
-										Are you sure you want to delete this listing? This action cannot be
-										undone.
-									</DialogDescription>
-								</DialogHeader>
-								<DialogFooter>
-									<Button variant="outline" @click="showDeleteDialog = false"
-										>Cancel</Button
-									>
-									<Button
-										variant="destructive"
-										:disabled="deleteForm.processing"
-										@click="handleDelete"
-									>
-										{{ deleteForm.processing ? "Deleting..." : "Delete" }}
-									</Button>
-								</DialogFooter>
-							</DialogContent>
-						</Dialog>
+						<Button variant="destructive" class="w-full" @click="showDeleteDialog = true"
+							>Delete</Button
+						>
 					</div>
 
 					<Link v-else href="" class="sm:w-auto w-full">
@@ -234,4 +203,15 @@ const handleDelete = () => {
 		</div>
 		<div v-else class="text-muted-foreground">No similar tools found.</div>
 	</div>
+
+	<ConfirmDialog
+		:show="showDeleteDialog"
+		title="Delete Listing"
+		description="Are you sure you want to delete this listing? This action cannot be undone."
+		confirmLabel="Delete"
+		confirmVariant="destructive"
+		@update:show="showDeleteDialog = $event"
+		@confirm="handleDelete"
+		@cancel="showDeleteDialog = false"
+	/>
 </template>

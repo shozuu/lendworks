@@ -148,7 +148,6 @@ class ListingController extends Controller
             return Inertia::render('Listing/Show', [
                 'listing' => $listing,
                 'relatedListings' => $relatedListings,
-                'showPendingMessage' => !$listing->approved,
                 'justUpdated' => session('updated', false)
             ]);
 

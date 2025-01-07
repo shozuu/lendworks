@@ -100,7 +100,16 @@ class AdminController extends Controller
             ->paginate(10);
 
         return Inertia::render('Admin/Listings', [
-            'listings' => $listings
+            'listings' => $listings,
+            'rejectionReasons' => [
+                ['value' => 'inappropriate_content', 'label' => 'Inappropriate Content'],
+                ['value' => 'insufficient_details', 'label' => 'Insufficient Details'],
+                ['value' => 'misleading_information', 'label' => 'Misleading Information'],
+                ['value' => 'incorrect_pricing', 'label' => 'Incorrect Pricing'],
+                ['value' => 'poor_image_quality', 'label' => 'Poor Image Quality'],
+                ['value' => 'prohibited_item', 'label' => 'Prohibited Item'],
+                ['value' => 'other', 'label' => 'Other'],
+            ]
         ]);
     }
 
@@ -111,33 +120,40 @@ class AdminController extends Controller
         ]);
     }
 
-    public function approveListing(Listing $listing)
+    private function updateListingStatus(Listing $listing, $status, $reason = null)
     {
         $listing->update([
-            'status' => 'approved',
-            'rejection_reason' => null
+            'status' => $status,
+            'rejection_reason' => $reason,
+            'is_available' => $status === 'approved'
         ]);
 
-        // Notify the user
-        $listing->user->notify(new ListingApproved($listing));
+        switch ($status) {
+            case 'approved':
+                $listing->user->notify(new ListingApproved($listing));
+                break;
+            case 'rejected':
+                $listing->user->notify(new ListingRejected($listing));
+                break;
+            case 'taken_down':
+                $listing->user->notify(new ListingTakenDown($listing));
+                break;
+        }
+    }
 
+    public function approveListing(Listing $listing)
+    {
+        $this->updateListingStatus($listing, 'approved');
         return back()->with('success', 'Listing approved successfully');
     }
 
     public function rejectListing(Request $request, Listing $listing)
     {
         $validated = $request->validate([
-            'rejection_reason' => 'required|string|min:10|max:1000'
+            'rejection_reason' => 'required|string'
         ]);
 
-        $listing->update([
-            'status' => 'rejected',
-            'rejection_reason' => $validated['rejection_reason']
-        ]);
-
-        // Notify the user
-        $listing->user->notify(new ListingRejected($listing));
-
+        $this->updateListingStatus($listing, 'rejected', $validated['rejection_reason']);
         return back()->with('success', 'Listing rejected successfully');
     }
 
@@ -147,15 +163,7 @@ class AdminController extends Controller
             'reason' => 'required|string|min:10|max:1000'
         ]);
 
-        $listing->update([
-            'status' => 'rejected',
-            'rejection_reason' => $validated['reason'],
-            'is_available' => false
-        ]);
-
-        // Notify the user
-        $listing->user->notify(new ListingTakenDown($listing));
-
+        $this->updateListingStatus($listing, 'taken_down', $validated['reason']);
         return back()->with('success', 'Listing taken down successfully');
     }
 }

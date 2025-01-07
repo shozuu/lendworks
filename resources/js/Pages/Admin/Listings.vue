@@ -1,33 +1,33 @@
 <script setup>
 import AdminLayout from "../../Layouts/AdminLayout.vue";
-import { Head, router } from "@inertiajs/vue3";
-import PaginationLinks from "@/Components/PaginationLinks.vue";
 import AdminListingCard from "@/Components/AdminListingCard.vue";
+import { Button } from "@/components/ui/button";
+import { router } from "@inertiajs/vue3";
 
 defineOptions({ layout: AdminLayout });
 
 const props = defineProps({
 	listings: Object,
+	rejectionReasons: {
+		type: Array,
+		required: true,
+	},
 });
 
-const handleApprove = (listing) => {
-	router.patch(
-		route("admin.listings.approve", listing.id),
-		{},
-		{
-			preserveScroll: true,
-		}
-	);
-};
-
-const handleReject = (listing) => {
-	router.patch(
-		route("admin.listings.reject", listing.id),
-		{},
-		{
-			preserveScroll: true,
-		}
-	);
+const handleUpdateStatus = async ({ listing, status, reason }) => {
+	if (status === "approved") {
+		await router.patch(route("admin.listings.approve", listing.id));
+	} else if (status === "rejected" && reason) {
+		await router.patch(
+			route("admin.listings.reject", listing.id),
+			{
+				rejection_reason: reason,
+			},
+			{
+				preserveScroll: true,
+			}
+		);
+	}
 };
 </script>
 
@@ -36,20 +36,19 @@ const handleReject = (listing) => {
 
 	<div class="space-y-6">
 		<div class="flex items-center justify-between">
-			<h2 class="text-2xl font-semibold tracking-tight">Manage Listings</h2>
+			<h2 class="text-2xl font-semibold tracking-tight">Listings</h2>
 		</div>
 
-		<div v-if="listings.data.length" class="space-y-4">
+		<div class="grid gap-4">
 			<AdminListingCard
 				v-for="listing in listings.data"
 				:key="listing.id"
 				:listing="listing"
-				@approve="handleApprove"
-				@reject="handleReject"
+				:rejection-reasons="rejectionReasons"
+				@update-status="handleUpdateStatus"
 			/>
-
-			<PaginationLinks :paginator="listings" />
 		</div>
-		<div v-else class="text-muted-foreground py-10 text-center">No listings found</div>
+
+		<!-- Pagination controls if needed -->
 	</div>
 </template>

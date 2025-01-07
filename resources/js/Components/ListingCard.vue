@@ -6,15 +6,7 @@ import { formatNumber } from "@/lib/formatters";
 import { Tags, MapPin, PhilippinePeso } from "lucide-vue-next";
 import { ref } from "vue";
 import { useForm, router } from "@inertiajs/vue3";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from "@/components/ui/dialog";
+import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 
 const props = defineProps({
 	listing: {
@@ -126,32 +118,9 @@ const handleDelete = () => {
 						<Button variant="outline" size="sm">Edit</Button>
 					</Link>
 
-					<Dialog v-model:open="showDeleteDialog">
-						<DialogTrigger asChild>
-							<Button variant="destructive" size="sm">Delete</Button>
-						</DialogTrigger>
-						<DialogContent>
-							<DialogHeader>
-								<DialogTitle>Delete Listing</DialogTitle>
-								<DialogDescription>
-									Are you sure you want to delete this listing? This action cannot be
-									undone.
-								</DialogDescription>
-							</DialogHeader>
-							<DialogFooter>
-								<Button variant="outline" @click="showDeleteDialog = false">
-									Cancel
-								</Button>
-								<Button
-									variant="destructive"
-									:disabled="deleteForm.processing"
-									@click="handleDelete"
-								>
-									{{ deleteForm.processing ? "Deleting..." : "Delete" }}
-								</Button>
-							</DialogFooter>
-						</DialogContent>
-					</Dialog>
+					<Button variant="destructive" size="sm" @click="showDeleteDialog = true">
+						Delete
+					</Button>
 
 					<Button
 						v-if="listing.status === 'approved'"
@@ -164,5 +133,17 @@ const handleDelete = () => {
 				</div>
 			</div>
 		</div>
+
+		<ConfirmDialog
+			:show="showDeleteDialog"
+			title="Delete Listing"
+			description="Are you sure you want to delete this listing? This action cannot be undone."
+			confirmLabel="Delete"
+			confirmVariant="destructive"
+			:processing="deleteForm.processing"
+			@update:show="showDeleteDialog = $event"
+			@confirm="handleDelete"
+			@cancel="showDeleteDialog = false"
+		/>
 	</Card>
 </template>
