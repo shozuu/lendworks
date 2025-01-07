@@ -20,6 +20,10 @@ defineOptions({ layout: AdminLayout });
 
 const props = defineProps({
 	listing: Object,
+	rejectionReasons: {
+		type: Array,
+		required: true,
+	},
 });
 
 const showApproveDialog = ref(false);
@@ -29,52 +33,96 @@ const showActivateDialog = ref(false);
 const showTakedownDialog = ref(false);
 const takedownReason = ref("");
 
-const handleApprove = () => {
-	router.patch(
+const isApproving = ref(false);
+const isRejecting = ref(false);
+const isTakingDown = ref(false);
+const isSuspending = ref(false);
+const isActivating = ref(false);
+
+const selectedReason = ref("");
+
+const handleApprove = async () => {
+	if (isApproving.value) return;
+	isApproving.value = true;
+
+	await router.patch(
 		route("admin.listings.approve", props.listing.id),
 		{},
 		{
 			preserveScroll: true,
-			onSuccess: () => (showApproveDialog.value = false),
+			onSuccess: () => {
+				showApproveDialog.value = false;
+			},
+			onFinish: () => {
+				isApproving.value = false;
+			},
 		}
 	);
 };
 
-const handleReject = () => {
-	router.patch(
+const handleReject = async () => {
+	if (isRejecting.value || !selectedReason.value) return;
+	isRejecting.value = true;
+
+	await router.patch(
 		route("admin.listings.reject", props.listing.id),
-		{},
+		{ rejection_reason: selectedReason.value },
 		{
 			preserveScroll: true,
-			onSuccess: () => (showRejectDialog.value = false),
+			onSuccess: () => {
+				showRejectDialog.value = false;
+				selectedReason.value = "";
+			},
+			onFinish: () => {
+				isRejecting.value = false;
+			},
 		}
 	);
 };
 
-const handleSuspendUser = () => {
-	router.patch(
+const handleSuspendUser = async () => {
+	if (isSuspending.value) return;
+	isSuspending.value = true;
+
+	await router.patch(
 		route("admin.users.suspend", props.listing.user.id),
 		{},
 		{
 			preserveScroll: true,
-			onSuccess: () => (showSuspendDialog.value = false),
+			onSuccess: () => {
+				showSuspendDialog.value = false;
+			},
+			onFinish: () => {
+				isSuspending.value = false;
+			},
 		}
 	);
 };
 
-const handleActivateUser = () => {
-	router.patch(
+const handleActivateUser = async () => {
+	if (isActivating.value) return;
+	isActivating.value = true;
+
+	await router.patch(
 		route("admin.users.activate", props.listing.user.id),
 		{},
 		{
 			preserveScroll: true,
-			onSuccess: () => (showActivateDialog.value = false),
+			onSuccess: () => {
+				showActivateDialog.value = false;
+			},
+			onFinish: () => {
+				isActivating.value = false;
+			},
 		}
 	);
 };
 
-const handleTakedown = () => {
-	router.patch(
+const handleTakedown = async () => {
+	if (isTakingDown.value || !takedownReason.value.trim()) return;
+	isTakingDown.value = true;
+
+	await router.patch(
 		route("admin.listings.takedown", props.listing.id),
 		{ reason: takedownReason.value },
 		{
@@ -82,6 +130,9 @@ const handleTakedown = () => {
 			onSuccess: () => {
 				showTakedownDialog.value = false;
 				takedownReason.value = "";
+			},
+			onFinish: () => {
+				isTakingDown.value = false;
 			},
 		}
 	);
@@ -161,7 +212,7 @@ const getStatusBadge = () => {
 					</div>
 				</div>
 
-				<Separator class="my-4 lg:hidden" />
+				<Separator class="lg:hidden my-4" />
 			</div>
 
 			<!-- Second Column (Owner & Status) -->
@@ -275,6 +326,7 @@ const getStatusBadge = () => {
 		description="Are you sure you want to approve this listing? It will become visible to all users."
 		confirmLabel="Approve"
 		confirmVariant="default"
+		:processing="isApproving"
 		@update:show="showApproveDialog = $event"
 		@confirm="handleApprove"
 		@cancel="showApproveDialog = false"
@@ -282,10 +334,16 @@ const getStatusBadge = () => {
 	<ConfirmDialog
 		:show="showRejectDialog"
 		title="Reject Listing"
-		description="Are you sure you want to reject this listing? This action cannot be undone."
+		description="Please select a reason for rejecting this listing. This will help the owner understand what needs to be changed."
 		confirmLabel="Reject"
 		confirmVariant="destructive"
+		:processing="isRejecting"
+		:disabled="!selectedReason"
+		showSelect
+		:selectOptions="rejectionReasons"
+		:selectValue="selectedReason"
 		@update:show="showRejectDialog = $event"
+		@update:selectValue="selectedReason = $event"
 		@confirm="handleReject"
 		@cancel="showRejectDialog = false"
 	/>
@@ -295,6 +353,7 @@ const getStatusBadge = () => {
 		description="Are you sure you want to suspend {{ listing.user.name }}? This will also mark all their listings as unavailable."
 		confirmLabel="Suspend User"
 		confirmVariant="destructive"
+		:processing="isSuspending"
 		@update:show="showSuspendDialog = $event"
 		@confirm="handleSuspendUser"
 		@cancel="showSuspendDialog = false"
@@ -305,6 +364,7 @@ const getStatusBadge = () => {
 		description="Are you sure you want to activate {{ listing.user.name }}'s account? This will allow them to list items and interact with the platform."
 		confirmLabel="Activate User"
 		confirmVariant="default"
+		:processing="isActivating"
 		@update:show="showActivateDialog = $event"
 		@confirm="handleActivateUser"
 		@cancel="showActivateDialog = false"
@@ -312,12 +372,19 @@ const getStatusBadge = () => {
 	<ConfirmDialog
 		:show="showTakedownDialog"
 		title="Take Down Listing"
-		description="This will immediately remove the listing from public view and notify the owner. Please provide a reason."
+		description="This listing will be removed from public view and the owner will be notified with your provided reason. Please be specific about why this listing violates our policies."
 		confirmLabel="Take Down"
 		confirmVariant="destructive"
 		showTextarea
 		:textareaValue="takedownReason"
-		textareaPlaceholder="Enter reason for taking down this listing..."
+		textareaPlaceholder="Example: This listing violates our terms by [specific reason]. Please [required changes] to comply with our policies."
+		textareaMinLength="10"
+		:textAreaError="
+			takedownReason.length < 10
+				? 'Please provide a detailed reason (minimum 10 characters)'
+				: ''
+		"
+		:processing="isTakingDown"
 		@update:show="showTakedownDialog = $event"
 		@update:textareaValue="takedownReason = $event"
 		@confirm="handleTakedown"
