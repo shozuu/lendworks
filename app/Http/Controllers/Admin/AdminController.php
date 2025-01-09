@@ -101,22 +101,15 @@ class AdminController extends Controller
 
         return Inertia::render('Admin/Listings', [
             'listings' => $listings,
-            'rejectionReasons' => [
-                ['value' => 'inappropriate_content', 'label' => 'Inappropriate Content'],
-                ['value' => 'insufficient_details', 'label' => 'Insufficient Details'],
-                ['value' => 'misleading_information', 'label' => 'Misleading Information'],
-                ['value' => 'incorrect_pricing', 'label' => 'Incorrect Pricing'],
-                ['value' => 'poor_image_quality', 'label' => 'Poor Image Quality'],
-                ['value' => 'prohibited_item', 'label' => 'Prohibited Item'],
-                ['value' => 'other', 'label' => 'Other'],
-            ]
+            'rejectionReasons' => Listing::getRejectionReasons()
         ]);
     }
 
     public function showListing(Listing $listing)
     {
         return Inertia::render('Admin/ListingDetails', [
-            'listing' => $listing->load(['user', 'category', 'location', 'images'])
+            'listing' => $listing->load(['user', 'category', 'location', 'images']),
+            'rejectionReasons' => Listing::getRejectionReasons()
         ]);
     }
 
