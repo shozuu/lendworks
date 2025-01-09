@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use App\Models\Listing;
 
 return new class extends Migration
 {
@@ -18,15 +19,7 @@ return new class extends Migration
             $table->integer('value');
             $table->integer('price');
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
-            $table->enum('rejection_reason', [
-                'inappropriate_content',
-                'insufficient_details',
-                'misleading_information',
-                'incorrect_pricing',
-                'poor_image_quality',
-                'prohibited_item',
-                'other'
-            ])->nullable();
+            $table->enum('rejection_reason', Listing::getValidRejectionReasons())->nullable();
             $table->boolean('is_available')->default(true);
             $table->timestamps();
         });

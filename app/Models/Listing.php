@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 class Listing extends Model
 {
@@ -25,6 +26,16 @@ class Listing extends Model
     protected $casts = [
         'is_available' => 'boolean',
         'status' => 'string'
+    ];
+
+    private static array $rejectionReasons = [
+        'inappropriate_content' => 'Inappropriate Content',
+        'insufficient_details' => 'Insufficient Details',
+        'misleading_information' => 'Misleading Information',
+        'incorrect_pricing' => 'Incorrect Pricing',
+        'poor_image_quality' => 'Poor Image Quality',
+        'prohibited_item' => 'Prohibited Item',
+        'other' => 'Other',
     ];
 
     // Relationships
@@ -56,5 +67,22 @@ class Listing extends Model
         if ($filters['user_id'] ?? false) {
             $query->where('user_id', request('user_id'));
         }
+    }
+
+    public static function getRejectionReasons(): array
+    {
+        return collect(self::$rejectionReasons)
+            ->map(fn ($label, $value) => [
+                'value' => $value,
+                'label' => $label
+            ])
+            ->values()
+            ->toArray();
+    }
+
+    // This helper method can be used for validation
+    public static function getValidRejectionReasons(): array
+    {
+        return array_keys(self::$rejectionReasons);
     }
 }
