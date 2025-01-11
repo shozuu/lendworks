@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const props = defineProps({
 	listings: Array,
+	rejectionReasons: Array,
 });
 
 const form = useForm({});
@@ -43,6 +44,7 @@ const toggleAvailability = (listing) => {
 						v-for="listing in listings"
 						:key="listing.id"
 						:listing="listing"
+						:rejection-reasons="rejectionReasons"
 						@toggleAvailability="toggleAvailability"
 					/>
 				</div>
@@ -59,6 +61,7 @@ const toggleAvailability = (listing) => {
 						)"
 						:key="listing.id"
 						:listing="listing"
+						:rejection-reasons="rejectionReasons"
 						@toggleAvailability="toggleAvailability"
 					/>
 				</div>
@@ -70,6 +73,7 @@ const toggleAvailability = (listing) => {
 						v-for="listing in listings.filter((l) => l.approved && !l.is_available)"
 						:key="listing.id"
 						:listing="listing"
+						:rejection-reasons="rejectionReasons"
 						@toggleAvailability="toggleAvailability"
 					/>
 				</div>
@@ -81,6 +85,7 @@ const toggleAvailability = (listing) => {
 						v-for="listing in listings.filter((l) => l.status !== 'approved')"
 						:key="listing.id"
 						:listing="listing"
+						:rejection-reasons="rejectionReasons"
 						@toggleAvailability="toggleAvailability"
 					/>
 				</div>

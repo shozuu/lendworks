@@ -13,6 +13,10 @@ const props = defineProps({
 		type: Object,
 		required: true,
 	},
+	rejectionReasons: {
+		type: Array,
+		required: true,
+	},
 });
 
 const getStatusBadge = (listing) => {
@@ -34,6 +38,11 @@ const getStatusBadge = (listing) => {
 				variant: "warning",
 			};
 	}
+};
+
+const getRejectionReasonLabel = (reasonKey) => {
+	const reason = props.rejectionReasons.find((r) => r.value === reasonKey);
+	return reason ? reason.label : reasonKey;
 };
 
 const emit = defineEmits(["toggleAvailability"]);
@@ -60,10 +69,13 @@ const handleDelete = () => {
 </script>
 
 <template>
+	{{ console.log(rejectionReasons) }}
 	<Card class="overflow-hidden">
 		<div class="flex items-center gap-4 p-4">
 			<!-- Thumbnail -->
-			<div class="shrink-0 h-24 w-24 sm:h-32 sm:w-32 overflow-hidden rounded-md">
+			<div
+				class="shrink-0 h-24 w-24 sm:h-32 sm:w-32 overflow-hidden rounded-md self-start"
+			>
 				<Link :href="route('listing.show', listing.id)">
 					<img
 						:src="
@@ -110,6 +122,15 @@ const handleDelete = () => {
 					<Badge :variant="getStatusBadge(listing).variant">
 						{{ getStatusBadge(listing).label }}
 					</Badge>
+				</div>
+
+				<!-- Rejection Reason (if rejected) -->
+				<div
+					v-if="listing.status === 'rejected' && listing.rejection_reason"
+					class="text-sm text-destructive bg-destructive/10 p-2 rounded"
+				>
+					<strong>Rejection Reason:</strong>
+					{{ getRejectionReasonLabel(listing.rejection_reason) }}
 				</div>
 
 				<!-- Actions -->
