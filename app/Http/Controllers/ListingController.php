@@ -206,6 +206,16 @@ class ListingController extends Controller
             'postal_code' => ['required_if:new_location,true', 'nullable', 'string', 'max:20'],
         ]);
 
+        // Store the previous status
+        $wasRejected = $listing->status === 'rejected';
+
+        // set status to pending when updating an approved or rejected listing
+        if ($listing->status === 'approved' || $listing->status === 'rejected') {
+            $fields['status'] = 'pending';
+        }
+
+        $listing->update($fields);
+
         if ($request->new_location) {
             $location = $request->user()->locations()->create([
                 'name' => $request->location_name,
