@@ -17,7 +17,8 @@ class MyListingsController extends Controller
             ->get();
 
         return Inertia::render('MyListings/MyListings', [
-            'listings' => $listings
+            'listings' => $listings,
+            'rejectionReasons' => Listing::getRejectionReasons()
         ]);
     }
 }

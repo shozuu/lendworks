@@ -56,12 +56,12 @@ onMounted(() => {
 						Explore
 					</NavLink>
 
-					<NavLink routeName="my-rentals" componentName="MyRentals/Index">
+					<NavLink routeName="my-rentals" componentName="MyRentals/MyRentals">
 						<HandHelping class="w-5 h-5" />
 						My Rentals
 					</NavLink>
 
-					<NavLink routeName="my-listings" componentName="MyListings/Index">
+					<NavLink routeName="my-listings" componentName="MyListings/MyListings">
 						<Package class="w-5 h-5" />
 						My Listings
 					</NavLink>

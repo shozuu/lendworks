@@ -15,6 +15,7 @@ import { formatNumber } from "@/lib/formatters";
 import Separator from "@/Components/ui/separator/Separator.vue";
 import { ref } from "vue";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
+import { XCircle } from "lucide-vue-next";
 
 defineOptions({ layout: AdminLayout });
 
@@ -139,9 +140,23 @@ const handleTakedown = async () => {
 };
 
 const getStatusBadge = () => {
-	return props.listing.approved
-		? { variant: "success", label: "Approved" }
-		: { variant: "warning", label: "Pending" };
+	switch (props.listing.status) {
+		case "approved":
+			return {
+				variant: "success",
+				label: "Approved",
+			};
+		case "rejected":
+			return {
+				variant: "destructive",
+				label: "Rejected",
+			};
+		default:
+			return {
+				variant: "warning",
+				label: "Pending",
+			};
+	}
 };
 </script>
 
@@ -282,6 +297,23 @@ const getStatusBadge = () => {
 						<CardDescription>Current state of the listing</CardDescription>
 					</CardHeader>
 					<CardContent class="space-y-4">
+						<!-- Show rejection section first if listing is rejected -->
+						<div
+							v-if="listing.status === 'rejected' && listing.rejection_reason"
+							class="bg-destructive/10 border-destructive/20 p-4 border rounded-lg"
+						>
+							<div class="flex items-center gap-2 mb-2">
+								<XCircle class="text-destructive w-5 h-5" />
+								<h3 class="text-destructive font-semibold">Listing Rejected</h3>
+							</div>
+							<p class="text-destructive/90 text-sm">
+								{{
+									rejectionReasons.find((r) => r.value === listing.rejection_reason)
+										?.label || listing.rejection_reason
+								}}
+							</p>
+						</div>
+
 						<div class="space-y-2">
 							<p>
 								Created:
@@ -297,22 +329,24 @@ const getStatusBadge = () => {
 							</p>
 						</div>
 
-						<!-- Listing Controls -->
-						<div class="flex gap-2 pt-2" v-if="listing.status !== 'approved'">
-							<Button variant="default" size="sm" @click="showApproveDialog = true"
-								>Approve</Button
-							>
-							<Button variant="destructive" size="sm" @click="showRejectDialog = true"
-								>Reject</Button
-							>
+						<!-- actions -->
+						<div v-if="listing.status === 'pending'" class="flex gap-2 pt-2">
+							<Button variant="default" size="sm" @click="showApproveDialog = true">
+								Approve
+							</Button>
+							<Button variant="destructive" size="sm" @click="showRejectDialog = true">
+								Reject
+							</Button>
 						</div>
+
+						<!-- takedown listing -->
 						<Button
 							v-if="listing.status === 'approved'"
 							variant="destructive"
 							size="sm"
 							@click="showTakedownDialog = true"
 						>
-							Take Down Listing
+							Takedown Listing
 						</Button>
 					</CardContent>
 				</Card>
@@ -350,7 +384,7 @@ const getStatusBadge = () => {
 	<ConfirmDialog
 		:show="showSuspendDialog"
 		title="Suspend User Account"
-		description="Are you sure you want to suspend {{ listing.user.name }}? This will also mark all their listings as unavailable."
+		:description="`Are you sure you want to suspend ${listing.user.name}? This will also mark all their listings as unavailable.`"
 		confirmLabel="Suspend User"
 		confirmVariant="destructive"
 		:processing="isSuspending"
@@ -361,7 +395,7 @@ const getStatusBadge = () => {
 	<ConfirmDialog
 		:show="showActivateDialog"
 		title="Activate User Account"
-		description="Are you sure you want to activate {{ listing.user.name }}'s account? This will allow them to list items and interact with the platform."
+		:description="`Are you sure you want to activate ${listing.user.name}'s account? This will allow them to list items and interact with the platform.`"
 		confirmLabel="Activate User"
 		confirmVariant="default"
 		:processing="isActivating"
