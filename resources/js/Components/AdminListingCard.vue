@@ -98,7 +98,7 @@ const getStatusBadge = (listing) => {
 	<Card class="overflow-hidden">
 		<div class="flex items-center gap-4 p-4">
 			<!-- Thumbnail -->
-			<div class="shrink-0 h-24 w-24 sm:h-32 sm:w-32 overflow-hidden rounded-md">
+			<div class="shrink-0 sm:h-32 sm:w-32 w-24 h-24 overflow-hidden rounded-md">
 				<Link :href="route('admin.listings.show', listing.id)">
 					<img
 						:src="
@@ -107,22 +107,22 @@ const getStatusBadge = (listing) => {
 								: '/storage/images/listing/default.png'
 						"
 						:alt="listing.title"
-						class="h-full w-full object-cover"
+						class="object-cover w-full h-full"
 					/>
 				</Link>
 			</div>
 
 			<!-- Content -->
-			<div class="flex flex-1 flex-col gap-2">
+			<div class="flex flex-col flex-1 gap-2">
 				<div class="flex items-start justify-between gap-4">
 					<div class="space-y-1">
 						<Link
 							:href="route('admin.listings.show', listing.id)"
-							class="font-semibold hover:underline line-clamp-1"
+							class="hover:underline line-clamp-1 font-semibold"
 						>
 							{{ listing.title }}
 						</Link>
-						<div class="flex flex-col gap-1 text-sm text-muted-foreground">
+						<div class="text-muted-foreground flex flex-col gap-1 text-sm">
 							<div class="flex items-center gap-1">
 								<Tags class="w-4 h-4" />
 								{{ listing.category?.name }}
@@ -134,7 +134,7 @@ const getStatusBadge = (listing) => {
 							<div
 								class="flex items-center gap-1 truncate max-w-[200px] sm:max-w-[300px]"
 							>
-								<MapPin class="w-4 h-4 shrink-0" />
+								<MapPin class="shrink-0 w-4 h-4" />
 								<span class="truncate">
 									{{ listing.location?.address ?? "No address specified" }},
 									{{ listing.location?.city ?? "No city specified" }}
@@ -145,7 +145,7 @@ const getStatusBadge = (listing) => {
 							<span class="text-sm">Owner:</span>
 							<Link
 								:href="route('admin.users.show', listing.user.id)"
-								class="text-sm text-primary hover:underline"
+								class="text-primary hover:underline text-sm"
 							>
 								{{ listing.user.name }}
 							</Link>
@@ -157,7 +157,7 @@ const getStatusBadge = (listing) => {
 				</div>
 
 				<!-- Actions -->
-				<div class="flex gap-2 pt-2 justify-end">
+				<div class="flex justify-end gap-2 pt-2">
 					<Button
 						v-if="listing.status === 'pending'"
 						variant="default"
