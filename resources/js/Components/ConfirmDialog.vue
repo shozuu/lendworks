@@ -119,7 +119,7 @@ const isDisabled = computed(() => {
 				<DialogDescription>{{ description }}</DialogDescription>
 			</DialogHeader>
 
-			<div v-if="showTextarea" class="space-y-2 py-4">
+			<div v-if="showTextarea" class="py-4 space-y-2">
 				<textarea
 					:value="textareaValue"
 					@input="$emit('update:textareaValue', $event.target.value)"
@@ -127,10 +127,10 @@ const isDisabled = computed(() => {
 					:minLength="textareaMinLength"
 					class="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
 				></textarea>
-				<p v-if="textAreaError" class="text-sm text-destructive">
+				<p v-if="textAreaError" class="text-destructive text-sm">
 					{{ textAreaError }}
 				</p>
-				<p class="text-xs text-muted-foreground">
+				<p class="text-muted-foreground text-xs">
 					Please provide a clear and specific reason that will help the owner understand
 					why their listing was taken down.
 				</p>
@@ -174,7 +174,7 @@ const isDisabled = computed(() => {
 					tabindex="0"
 				>
 					<template v-if="processing">
-						<span class="inline-block animate-spin mr-2">⏳</span>
+						<span class="animate-spin inline-block mr-2">⏳</span>
 						{{
 							confirmLabel === "Approve"
 								? "Approving..."
@@ -194,16 +194,3 @@ const isDisabled = computed(() => {
 	</Dialog>
 </template>
 
-<style>
-.v-select-item {
-	@apply relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50;
-}
-
-.v-select-item[data-highlighted] {
-	@apply bg-accent text-accent-foreground;
-}
-
-.v-select-item[data-state="checked"] {
-	@apply bg-accent text-accent-foreground;
-}
-</style>
