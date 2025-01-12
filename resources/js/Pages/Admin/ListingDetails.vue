@@ -350,7 +350,7 @@ const getStatusBadge = () => {
 	<ConfirmDialog
 		:show="showSuspendDialog"
 		title="Suspend User Account"
-		description="Are you sure you want to suspend {{ listing.user.name }}? This will also mark all their listings as unavailable."
+		:description="`Are you sure you want to suspend ${listing.user.name}? This will also mark all their listings as unavailable.`"
 		confirmLabel="Suspend User"
 		confirmVariant="destructive"
 		:processing="isSuspending"
@@ -361,7 +361,7 @@ const getStatusBadge = () => {
 	<ConfirmDialog
 		:show="showActivateDialog"
 		title="Activate User Account"
-		description="Are you sure you want to activate {{ listing.user.name }}'s account? This will allow them to list items and interact with the platform."
+		:description="`Are you sure you want to activate ${listing.user.name}'s account? This will allow them to list items and interact with the platform.`"
 		confirmLabel="Activate User"
 		confirmVariant="default"
 		:processing="isActivating"
