@@ -98,7 +98,9 @@ const getStatusBadge = (listing) => {
 	<Card class="overflow-hidden">
 		<div class="flex items-center gap-4 p-4">
 			<!-- Thumbnail -->
-			<div class="shrink-0 sm:h-32 sm:w-32 w-24 h-24 overflow-hidden rounded-md">
+			<div
+				class="shrink-0 sm:h-32 sm:w-32 w-24 h-24 overflow-hidden rounded-md self-start"
+			>
 				<Link :href="route('admin.listings.show', listing.id)">
 					<img
 						:src="
@@ -156,22 +158,12 @@ const getStatusBadge = (listing) => {
 					</Badge>
 				</div>
 
-				<!-- Actions -->
-				<div class="flex justify-end gap-2 pt-2">
-					<Button
-						v-if="listing.status === 'pending'"
-						variant="default"
-						size="sm"
-						@click="showApproveDialog = true"
-					>
+				<!-- actions -->
+				<div v-if="listing.status === 'pending'" class="flex justify-end gap-2 pt-2">
+					<Button variant="default" size="sm" @click="showApproveDialog = true">
 						Approve
 					</Button>
-					<Button
-						v-if="listing.status === 'pending'"
-						variant="destructive"
-						size="sm"
-						@click="showRejectDialog = true"
-					>
+					<Button variant="destructive" size="sm" @click="showRejectDialog = true">
 						Reject
 					</Button>
 				</div>

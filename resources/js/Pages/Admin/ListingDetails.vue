@@ -14,8 +14,8 @@ import ListingImages from "@/Components/ListingImages.vue";
 import { formatNumber } from "@/lib/formatters";
 import Separator from "@/Components/ui/separator/Separator.vue";
 import { ref } from "vue";
-	import ConfirmDialog from "@/Components/ConfirmDialog.vue";
-import { XCircle } from 'lucide-vue-next';
+import ConfirmDialog from "@/Components/ConfirmDialog.vue";
+import { XCircle } from "lucide-vue-next";
 
 defineOptions({ layout: AdminLayout });
 
@@ -144,17 +144,17 @@ const getStatusBadge = () => {
 		case "approved":
 			return {
 				variant: "success",
-				label: "Approved"
+				label: "Approved",
 			};
 		case "rejected":
 			return {
 				variant: "destructive",
-				label: "Rejected"
+				label: "Rejected",
 			};
 		default:
 			return {
 				variant: "warning",
-				label: "Pending"
+				label: "Pending",
 			};
 	}
 };
@@ -298,7 +298,8 @@ const getStatusBadge = () => {
 					</CardHeader>
 					<CardContent class="space-y-4">
 						<!-- Show rejection section first if listing is rejected -->
-						<div v-if="listing.status === 'rejected' && listing.rejection_reason" 
+						<div
+							v-if="listing.status === 'rejected' && listing.rejection_reason"
 							class="bg-destructive/10 border-destructive/20 p-4 border rounded-lg"
 						>
 							<div class="flex items-center gap-2 mb-2">
@@ -306,7 +307,10 @@ const getStatusBadge = () => {
 								<h3 class="text-destructive font-semibold">Listing Rejected</h3>
 							</div>
 							<p class="text-destructive/90 text-sm">
-								{{ rejectionReasons.find(r => r.value === listing.rejection_reason)?.label || listing.rejection_reason }}
+								{{
+									rejectionReasons.find((r) => r.value === listing.rejection_reason)
+										?.label || listing.rejection_reason
+								}}
 							</p>
 						</div>
 
@@ -325,7 +329,7 @@ const getStatusBadge = () => {
 							</p>
 						</div>
 
-						<!-- Only show actions for pending listings -->
+						<!-- actions -->
 						<div v-if="listing.status === 'pending'" class="flex gap-2 pt-2">
 							<Button variant="default" size="sm" @click="showApproveDialog = true">
 								Approve
@@ -334,6 +338,16 @@ const getStatusBadge = () => {
 								Reject
 							</Button>
 						</div>
+
+						<!-- takedown listing -->
+						<Button
+							v-if="listing.status === 'approved'"
+							variant="destructive"
+							size="sm"
+							@click="showTakedownDialog = true"
+						>
+							Takedown Listing
+						</Button>
 					</CardContent>
 				</Card>
 			</div>
