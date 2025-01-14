@@ -11,9 +11,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import ListingImages from "@/Components/ListingImages.vue";
-import { formatNumber } from "@/lib/formatters";
+import { formatNumber, formatDate, formatDateTime, timeAgo } from "@/lib/formatters";
 import Separator from "@/Components/ui/separator/Separator.vue";
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import { XCircle } from "lucide-vue-next";
 
@@ -41,6 +41,7 @@ const isSuspending = ref(false);
 const isActivating = ref(false);
 
 const selectedReason = ref("");
+const customFeedback = ref("");
 
 const handleApprove = async () => {
 	if (isApproving.value) return;
@@ -67,12 +68,13 @@ const handleReject = async () => {
 
 	await router.patch(
 		route("admin.listings.reject", props.listing.id),
-		{ rejection_reason: selectedReason.value },
+		{ rejection_reason: selectedReason.value, feedback: customFeedback.value },
 		{
 			preserveScroll: true,
 			onSuccess: () => {
 				showRejectDialog.value = false;
 				selectedReason.value = "";
+				customFeedback.value = "";
 			},
 			onFinish: () => {
 				isRejecting.value = false;
@@ -157,6 +159,17 @@ const getStatusBadge = () => {
 				label: "Pending",
 			};
 	}
+};
+
+const isOtherReason = computed(() => {
+	const selected = props.rejectionReasons.find((r) => r.value === selectedReason.value);
+	return selected?.code === "other";
+});
+
+const handleCancelReject = () => {
+	showRejectDialog.value = false;
+	selectedReason.value = "";
+	customFeedback.value = "";
 };
 </script>
 
@@ -318,7 +331,13 @@ const getStatusBadge = () => {
 							<p>
 								Created:
 								<span class="text-muted-foreground">
-									{{ new Date(listing.created_at).toLocaleDateString() }}
+									{{ formatDateTime(listing.created_at) }}
+								</span>
+							</p>
+							<p>
+								Last Updated:
+								<span class="text-muted-foreground">
+									{{ timeAgo(listing.updated_at) }}
 								</span>
 							</p>
 							<p>
@@ -368,18 +387,23 @@ const getStatusBadge = () => {
 	<ConfirmDialog
 		:show="showRejectDialog"
 		title="Reject Listing"
-		description="Please select a reason for rejecting this listing. This will help the owner understand what needs to be changed."
+		description="Please select a reason for rejecting this listing."
 		confirmLabel="Reject"
 		confirmVariant="destructive"
 		:processing="isRejecting"
-		:disabled="!selectedReason"
+		:disabled="!selectedReason || (isOtherReason && !customFeedback)"
 		showSelect
-		:selectOptions="rejectionReasons"
+		:selectOptions="props.rejectionReasons"
 		:selectValue="selectedReason"
+		:showTextarea="isOtherReason"
+		:textareaValue="customFeedback"
+		:textareaRequired="isOtherReason"
+		textareaPlaceholder="Please provide specific details about why this listing was rejected..."
 		@update:show="showRejectDialog = $event"
 		@update:selectValue="selectedReason = $event"
+		@update:textareaValue="customFeedback = $event"
 		@confirm="handleReject"
-		@cancel="showRejectDialog = false"
+		@cancel="handleCancelReject"
 	/>
 	<ConfirmDialog
 		:show="showSuspendDialog"

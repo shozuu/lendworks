@@ -19,7 +19,6 @@ return new class extends Migration
             $table->integer('value');
             $table->integer('price');
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
-            $table->enum('rejection_reason', Listing::getValidRejectionReasons())->nullable();
             $table->boolean('is_available')->default(true);
             $table->timestamps();
         });

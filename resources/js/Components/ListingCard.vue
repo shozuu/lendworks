@@ -2,8 +2,8 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatNumber } from "@/lib/formatters";
-import { Tags, MapPin, PhilippinePeso } from "lucide-vue-next";
+import { formatNumber, timeAgo } from "@/lib/formatters";
+import { Tags, MapPin, PhilippinePeso, XCircle, Clock } from "lucide-vue-next";
 import { ref } from "vue";
 import { useForm, router } from "@inertiajs/vue3";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
@@ -40,11 +40,6 @@ const getStatusBadge = (listing) => {
 	}
 };
 
-const getRejectionReasonLabel = (reasonKey) => {
-	const reason = props.rejectionReasons.find((r) => r.value === reasonKey);
-	return reason ? reason.label : reasonKey;
-};
-
 const emit = defineEmits(["toggleAvailability"]);
 
 const showDeleteDialog = ref(false);
@@ -69,13 +64,25 @@ const handleDelete = () => {
 </script>
 
 <template>
-	<Card class="overflow-hidden">
-		<div class="flex items-center gap-4 p-4">
-			<!-- Thumbnail -->
-			<div
-				class="shrink-0 sm:h-32 sm:w-32 self-start w-24 h-24 overflow-hidden rounded-md"
-			>
-				<Link :href="route('listing.show', listing.id)">
+	<Card class="h-full">
+		<!-- rejection reason -->
+		<div
+			v-if="listing.status === 'rejected' && listing.latest_rejection"
+			class="bg-destructive/10 p-3 text-sm"
+		>
+			<div class="flex flex-col sm:flex-row sm:items-center gap-2 text-destructive">
+				<div class="flex items-center gap-2">
+					<XCircle class="w-4 h-4 shrink-0" />
+					<p class="font-medium">Rejection Reason:</p>
+				</div>
+				{{ listing.latest_rejection.rejection_reason.label }}
+			</div>
+		</div>
+
+		<div class="flex flex-col sm:flex-row gap-4 p-4">
+			<!-- thumbnail -->
+			<div class="sm:w-32 sm:h-32 w-24 h-24 overflow-hidden rounded-md shrink-0">
+				<Link :href="route('listing.show', listing.id)" class="h-full">
 					<img
 						:src="
 							listing.images[0]
@@ -88,59 +95,52 @@ const handleDelete = () => {
 				</Link>
 			</div>
 
-			<!-- Content -->
-			<div class="flex flex-col flex-1 gap-2">
-				<div class="flex items-start justify-between gap-4">
-					<div class="space-y-1">
-						<Link
-							:href="route('listing.show', listing.id)"
-							class="hover:underline line-clamp-1 font-semibold"
-						>
-							{{ listing.title }}
-						</Link>
-						<div class="text-muted-foreground flex flex-col gap-1 text-sm">
-							<div class="flex items-center gap-1">
-								<Tags class="w-4 h-4" />
-								{{ listing.category?.name }}
-							</div>
-							<div class="flex items-center gap-1">
-								<PhilippinePeso class="w-4 h-4" />
-								{{ formatNumber(listing.price) }}/day
-							</div>
-							<div
-								class="flex items-center gap-1 truncate max-w-[200px] sm:max-w-[300px]"
-							>
-								<MapPin class="shrink-0 w-4 h-4" />
-								<span class="truncate">
-									{{ listing.location?.address ?? "No address specified" }},
-									{{ listing.location?.city ?? "No city specified" }}
-								</span>
-							</div>
-						</div>
-					</div>
-					<Badge :variant="getStatusBadge(listing).variant">
+			<div class="flex-1 min-w-0 flex flex-col">
+				<!-- title and badge -->
+				<div class="flex items-start justify-between gap-2 mb-2">
+					<Link
+						:href="route('listing.show', listing.id)"
+						class="hover:underline font-semibold text-sm sm:text-base line-clamp-1"
+					>
+						{{ listing.title }}
+					</Link>
+					<Badge
+						:variant="getStatusBadge(listing).variant"
+						class="whitespace-nowrap shrink-0"
+					>
 						{{ getStatusBadge(listing).label }}
 					</Badge>
 				</div>
 
-				<!-- Rejection Reason (if rejected) -->
-				<div
-					v-if="listing.status === 'rejected' && listing.rejection_reason"
-					class="text-destructive bg-destructive/10 p-2 text-sm rounded"
-				>
-					<strong>Rejection Reason:</strong>
-					{{ getRejectionReasonLabel(listing.rejection_reason) }}
+				<!-- details -->
+				<div class="text-muted-foreground text-xs sm:text-sm space-y-1.5 flex-1">
+					<div class="flex items-center gap-1">
+						<Tags class="w-4 h-4 shrink-0" />
+						<span class="truncate">{{ listing.category?.name }}</span>
+					</div>
+					<div class="flex items-center gap-1">
+						<PhilippinePeso class="w-4 h-4 shrink-0" />
+						<span class="whitespace-nowrap">{{ formatNumber(listing.price) }}/day</span>
+					</div>
+					<div class="flex items-center gap-1">
+						<MapPin class="w-4 h-4 shrink-0" />
+						<span class="truncate">
+							{{ listing.location?.address ?? "No address specified" }},
+							{{ listing.location?.city ?? "No city specified" }}
+						</span>
+					</div>
+					<!-- date -->
+					<div class="flex items-center gap-1">
+						<Clock class="w-4 h-4 shrink-0" />
+						<span>{{ timeAgo(listing.created_at) }}</span>
+					</div>
 				</div>
 
-				<!-- Actions -->
-				<div class="flex justify-end gap-2 pt-2">
+				<!-- actions -->
+				<div class="flex flex-wrap gap-2 pt-2 sm:justify-end">
 					<Link :href="route('listing.edit', listing.id)">
 						<Button variant="outline" size="sm">Edit</Button>
 					</Link>
-
-					<Button variant="destructive" size="sm" @click="showDeleteDialog = true">
-						Delete
-					</Button>
 
 					<Button
 						v-if="listing.status === 'approved'"
@@ -149,6 +149,10 @@ const handleDelete = () => {
 						@click="$emit('toggleAvailability', listing)"
 					>
 						{{ listing.is_available ? "Mark Unavailable" : "Mark Available" }}
+					</Button>
+
+					<Button variant="destructive" size="sm" @click="showDeleteDialog = true">
+						Delete
 					</Button>
 				</div>
 			</div>

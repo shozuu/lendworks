@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatNumber } from "@/lib/formatters";
 import { Tags, MapPin, PhilippinePeso } from "lucide-vue-next";
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { router } from "@inertiajs/vue3";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 
@@ -26,6 +26,7 @@ const showRejectDialog = ref(false);
 const selectedReason = ref("");
 const isApproving = ref(false);
 const isRejecting = ref(false);
+const customFeedback = ref("");
 
 const handleUpdateStatus = async (status) => {
 	if (status === "rejected" && !selectedReason.value) {
@@ -49,7 +50,7 @@ const handleUpdateStatus = async (status) => {
 				preserveScroll: true,
 			}
 		);
-	} else {
+	} else if (status === "rejected") {
 		if (isRejecting.value) return;
 		isRejecting.value = true;
 
@@ -57,11 +58,13 @@ const handleUpdateStatus = async (status) => {
 			route("admin.listings.reject", props.listing.id),
 			{
 				rejection_reason: selectedReason.value,
+				feedback: customFeedback.value,
 			},
 			{
 				onSuccess: () => {
 					showRejectDialog.value = false;
 					selectedReason.value = "";
+					customFeedback.value = "";
 				},
 				onFinish: () => {
 					isRejecting.value = false;
@@ -194,15 +197,12 @@ const getStatusBadge = (listing) => {
 			confirmLabel="Reject"
 			confirmVariant="destructive"
 			:processing="isRejecting"
+			:disabled="!selectedReason"
 			showSelect
 			:selectOptions="rejectionReasons"
 			:selectValue="selectedReason"
 			@update:show="showRejectDialog = $event"
-			@update:selectValue="
-				(value) => {
-					selectedReason = value;
-				}
-			"
+			@update:selectValue="selectedReason = $event"
 			@confirm="handleUpdateStatus('rejected')"
 			@cancel="
 				() => {

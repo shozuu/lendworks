@@ -48,7 +48,7 @@ const toggleAvailability = (listing) => {
 						@toggleAvailability="toggleAvailability"
 					/>
 				</div>
-				<div v-else class="text-muted-foreground text-center py-10">
+				<div v-else class="text-muted-foreground py-10 text-center">
 					You haven't listed any items yet.
 				</div>
 			</TabsContent>
