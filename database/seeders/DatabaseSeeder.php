@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             UserSeeder::class,     // Creates users with locations
             ListingSeeder::class,  // Creates listings for users
+            RejectionReasonSeeder::class,  
         ]);
     }
 }
