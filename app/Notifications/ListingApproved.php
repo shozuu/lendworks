@@ -22,10 +22,13 @@ class ListingApproved extends Notification
     public function toMail($notifiable)
     {
         return (new MailMessage)
-            ->line('Your listing has been approved!')
-            ->line('Title: ' . $this->listing->title)
-            ->action('View Listing', route('listing.show', $this->listing))
-            ->line('Your listing is now visible to all users.');
+            ->subject('🎉 Your listing has been approved!')
+            ->greeting('Hi ' . $notifiable->name . '!')
+            ->line('Great news! Your listing "' . $this->listing->title . '" has been approved and is now live on LendWorks. 🚀')
+            ->line('Your item is now visible to all users in your area who might be interested in renting it.')
+            ->action('View Your Listing', route('listing.show', $this->listing))
+            ->line('Keep an eye on your notifications for any rental requests!')
+            ->salutation('Happy lending! 🎊');
     }
 
     public function toArray($notifiable)
@@ -33,7 +36,9 @@ class ListingApproved extends Notification
         return [
             'listing_id' => $this->listing->id,
             'title' => $this->listing->title,
-            'message' => 'Your listing has been approved!'
+            'type' => 'success',
+            'icon' => '🎉',
+            'message' => 'Your listing is now live!'
         ];
     }
 }
