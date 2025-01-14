@@ -4,7 +4,6 @@ import ListingImages from "@/Components/ListingImages.vue";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Separator from "@/Components/ui/separator/Separator.vue";
-import { CalendarDays } from "lucide-vue-next";
 import Button from "@/Components/ui/button/Button.vue";
 import { format } from "date-fns";
 import RentalForm from "@/Components/RentalForm.vue";
@@ -13,8 +12,9 @@ import { useForm, router } from "@inertiajs/vue3";
 import { ref } from "vue";
 import ItemCard from "@/Components/ItemCard.vue";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-vue-next";
+import { AlertTriangle, CalendarDays, XCircle } from "lucide-vue-next";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
+import { formatDate, formatDateTime, timeAgo } from "@/lib/formatters";
 
 const props = defineProps({
 	listing: Object,
@@ -67,32 +67,74 @@ const handleDelete = () => {
 		</AlertDescription>
 	</Alert>
 
+	<!-- Rejection Notice (if rejected) -->
+	<div
+		v-if="listing.status === 'rejected' && listing.latest_rejection"
+		class="bg-destructive/10 mb-6 overflow-hidden rounded-lg"
+	>
+		<!-- Header -->
+		<div class="bg-destructive/15 px-4 sm:px-6 py-4 border-b border-destructive/10">
+			<div class="flex items-center gap-2">
+				<XCircle class="w-5 h-5 shrink-0 text-destructive" />
+				<h3 class="text-destructive font-semibold">This Listing Has Been Rejected</h3>
+			</div>
+		</div>
+
+		<!-- Content -->
+		<div class="px-4 sm:px-6 py-4 space-y-4">
+			<!-- Rejection Reason -->
+			<div class="space-y-2">
+				<h4 class="font-medium">Reason for Rejection:</h4>
+				<div class="bg-background p-4 border rounded-md">
+					{{ listing.latest_rejection.rejection_reason.description }}
+				</div>
+			</div>
+
+			<!-- Required Actions -->
+			<div class="space-y-2">
+				<h4 class="font-medium">How to Fix This:</h4>
+				<div class="bg-background p-4 space-y-2 border rounded-md">
+					<p>{{ listing.latest_rejection.rejection_reason.action_needed }}</p>
+					<p
+						v-if="listing.latest_rejection.custom_feedback"
+						class="text-muted-foreground pt-2 text-sm border-t"
+					>
+						<strong>Additional feedback:</strong><br />
+						{{ listing.latest_rejection.custom_feedback }}
+					</p>
+				</div>
+			</div>
+
+			<p class="text-muted-foreground text-xs">
+				Rejected {{ timeAgo(listing.latest_rejection.created_at) }}
+			</p>
+		</div>
+	</div>
+
 	<h2 class="mb-6 text-2xl font-semibold tracking-tight">
 		{{ listing.title }}
 	</h2>
 
-	<div class="lg:grid-cols-2 grid items-start grid-cols-1 gap-10">
+	<div class="lg:grid-cols-2 grid grid-cols-1 gap-4 lg:gap-10">
 		<!-- first column -->
 
-		<div class="grid gap-6">
+		<div class="space-y-6">
 			<!-- images -->
-			<div class="mb-10">
+			<div class="w-full">
 				<ListingImages
 					:images="
 						listing.images.length
 							? listing.images
 							: ['/storage/images/listing/default.png']
 					"
+					class="aspect-[4/3] sm:aspect-[16/9] lg:aspect-[4/3]"
 				/>
 			</div>
 
 			<!-- details -->
-			<div class="space-y-1">
-				<h2 class="text-lg font-semibold tracking-tight">Details</h2>
-
-				<div class="text-muted-foreground">
-					{{ listing.desc }}
-				</div>
+			<div class="space-y-4">
+				<h1 class="text-xl sm:text-2xl lg:text-3xl font-bold">{{ listing.title }}</h1>
+				<p class="text-sm sm:text-base text-muted-foreground">{{ listing.desc }}</p>
 			</div>
 
 			<Separator class="my-4" />
@@ -151,9 +193,9 @@ const handleDelete = () => {
 							<h4 class="font-semibold">Listed By {{ listing.user.name }}</h4>
 
 							<div class="flex items-center mt-2">
-								<CalendarDays class="opacity-70 w-4 h-4 mr-2" />
+								<CalendarDays class="opacity-70 w-4 h-4 mr-2 shrink-0" />
 								<span class="text-muted-foreground text-xs">
-									Joined {{ format(new Date(listing.user.created_at), "MMMM yyyy") }}
+									Joined {{ formatDate(listing.user.created_at) }}
 								</span>
 							</div>
 						</div>
@@ -180,11 +222,13 @@ const handleDelete = () => {
 		</div>
 
 		<!-- second column -->
-		<RentalForm
-			:listing="listing"
-			:is-owner="listing.user.id === $page.props.auth.user?.id"
-			class="lg:min-w-96"
-		/>
+		<div class="lg:sticky lg:top-4 space-y-6">
+			<RentalForm
+				:listing="listing"
+				:is-owner="listing.user.id === $page.props.auth.user?.id"
+				class="w-full lg:min-w-[400px]"
+			/>
+		</div>
 	</div>
 
 	<Separator class="my-10" />
@@ -196,7 +240,10 @@ const handleDelete = () => {
 			<p class="text-muted-foreground">Other tools you might be interested in</p>
 		</div>
 
-		<div v-if="relatedListings?.length" class="sm:grid-cols-2 lg:grid-cols-4 grid gap-6">
+		<div
+			v-if="relatedListings?.length"
+			class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+		>
 			<div v-for="listing in relatedListings" :key="listing.id">
 				<ItemCard :listing="listing" />
 			</div>

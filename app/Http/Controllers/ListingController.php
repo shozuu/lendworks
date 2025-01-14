@@ -112,11 +112,10 @@ class ListingController extends Controller
     public function show(Request $request, $id)
     {
         try {
-            // Base query without approved filter
             $query = Listing::whereHas('user', function (Builder $query) {
                 $query->where('role', '!=', 'suspended');
             })
-            ->with(['images', 'user', 'category', 'location'])
+            ->with(['images', 'user', 'category', 'location', 'latestRejection.rejectionReason'])
             ->where('id', $id);
 
             $listing = $query->first();
