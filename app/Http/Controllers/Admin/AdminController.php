@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Listing;
+use App\Models\RejectionReason;
 use App\Models\User;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
@@ -93,6 +94,21 @@ class AdminController extends Controller
         return back()->with('success', 'User activated successfully');
     }
 
+    private function getFormattedRejectionReasons()
+    {
+        return RejectionReason::select('id', 'label', 'code', 'description', 'action_needed')
+            ->get()
+            ->map(fn($reason) => [
+                'value' => (string) $reason->id, 
+                'label' => $reason->label,
+                'code' => $reason->code,
+                'description' => $reason->description,
+                'action_needed' => $reason->action_needed
+            ])
+            ->values()
+            ->all();
+    }
+
     public function listings()
     {
         $listings = Listing::with(['user', 'category', 'images', 'location'])
@@ -101,7 +117,7 @@ class AdminController extends Controller
 
         return Inertia::render('Admin/Listings', [
             'listings' => $listings,
-            'rejectionReasons' => Listing::getRejectionReasons()
+            'rejectionReasons' => $this->getFormattedRejectionReasons()
         ]);
     }
 
@@ -109,18 +125,25 @@ class AdminController extends Controller
     {
         return Inertia::render('Admin/ListingDetails', [
             'listing' => $listing->load(['user', 'category', 'location', 'images']),
-            'rejectionReasons' => Listing::getRejectionReasons()
+            'rejectionReasons' => $this->getFormattedRejectionReasons()
         ]);
     }
 
     private function updateListingStatus(Listing $listing, $status, $reason = null)
     {
-        $listing->update([
+        $data = [
             'status' => $status,
-            'rejection_reason' => $reason,
             'is_available' => $status === 'approved'
-        ]);
+        ];
 
+        // Only include rejection_reason for rejected or taken down status
+        if (in_array($status, ['rejected', 'taken_down'])) {
+            $data['rejection_reason'] = $reason;
+        }
+
+        $listing->update($data);
+
+        // Notify user based on status
         switch ($status) {
             case 'approved':
                 $listing->user->notify(new ListingApproved($listing));
@@ -143,10 +166,31 @@ class AdminController extends Controller
     public function rejectListing(Request $request, Listing $listing)
     {
         $validated = $request->validate([
-            'rejection_reason' => 'required|string'
+            'rejection_reason' => 'required|exists:rejection_reasons,id', 
+            'feedback' => [ 
+                function ($attribute, $value, $fail) use ($request) {
+                    $reason = RejectionReason::find($request->rejection_reason);
+                    if ($reason && $reason->code === 'other' && empty($value)) {
+                        $fail('Custom feedback is required when selecting "Other" as the reason.');
+                    }
+                },
+                'nullable',
+                'string',
+                'max:1000'
+            ]
         ]);
 
-        $this->updateListingStatus($listing, 'rejected', $validated['rejection_reason']);
+        // Update listing status
+        $listing->update(['status' => 'rejected']);
+
+        // Create rejection record
+        $listing->rejectionReasons()->attach($validated['rejection_reason'], [
+            'custom_feedback' => $validated['feedback']
+        ]);
+
+        // Notify user
+        $listing->user->notify(new ListingRejected($listing));
+
         return back()->with('success', 'Listing rejected successfully');
     }
 

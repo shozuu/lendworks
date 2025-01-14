@@ -28,16 +28,6 @@ class Listing extends Model
         'status' => 'string'
     ];
 
-    private static array $rejectionReasons = [
-        'inappropriate_content' => 'Inappropriate Content',
-        'insufficient_details' => 'Insufficient Details',
-        'misleading_information' => 'Misleading Information',
-        'incorrect_pricing' => 'Incorrect Pricing',
-        'poor_image_quality' => 'Poor Image Quality',
-        'prohibited_item' => 'Prohibited Item',
-        'other' => 'Other',
-    ];
-
     // Relationships
     public function user() {
         return $this->belongsTo(User::class);
@@ -55,6 +45,40 @@ class Listing extends Model
         return $this->hasMany(ListingImage::class);
     }
 
+    public function rejectionReasons()
+    {
+        return $this->belongsToMany(RejectionReason::class, 'listing_rejections')
+            ->using(ListingRejection::class)
+            ->withPivot('custom_feedback')
+            ->withTimestamps();
+    }
+
+    public function latestRejection()
+    {
+        return $this->hasOne(ListingRejection::class)->latest();
+    }
+
+    public function getRejectionDetailsAttribute()
+    {
+        if ($this->status !== 'rejected') {
+            return null;
+        }
+
+        $rejection = $this->latestRejection()->with('rejectionReason')->first();
+        
+        if (!$rejection) {
+            return null;
+        }
+
+        return [
+            'reason' => $rejection->rejectionReason->label,
+            'description' => $rejection->rejectionReason->description,
+            'action_needed' => $rejection->rejectionReason->action_needed,
+            'feedback' => $rejection->custom_feedback,
+            'date' => $rejection->created_at
+        ];
+    }
+
     // Search scope
     public function scopeFilter($query, array $filters) {
         if ($filters['search'] ?? false) {
@@ -67,22 +91,5 @@ class Listing extends Model
         if ($filters['user_id'] ?? false) {
             $query->where('user_id', request('user_id'));
         }
-    }
-
-    public static function getRejectionReasons(): array
-    {
-        return collect(self::$rejectionReasons)
-            ->map(fn ($label, $value) => [
-                'value' => $value,
-                'label' => $label
-            ])
-            ->values()
-            ->toArray();
-    }
-
-    // This helper method can be used for validation
-    public static function getValidRejectionReasons(): array
-    {
-        return array_keys(self::$rejectionReasons);
     }
 }
