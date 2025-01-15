@@ -70,7 +70,9 @@ const handleDelete = () => {
 			v-if="listing.status === 'rejected' && listing.latest_rejection"
 			class="bg-destructive/10 p-3 text-sm"
 		>
-			<div class="flex flex-col sm:flex-row sm:items-center gap-2 text-destructive">
+			<div
+				class="flex flex-col items-center gap-2 text-destructive sm:flex-row sm:items-start"
+			>
 				<div class="flex items-center gap-2">
 					<XCircle class="w-4 h-4 shrink-0" />
 					<p class="font-medium">Rejection Reason:</p>
@@ -95,9 +97,9 @@ const handleDelete = () => {
 				</Link>
 			</div>
 
-			<div class="flex-1 min-w-0 flex flex-col">
+			<div class="flex-1 min-w-0 flex flex-col gap-3">
 				<!-- title and badge -->
-				<div class="flex items-start justify-between gap-2 mb-2">
+				<div class="flex items-start flex-col sm:flex-row justify-between gap-1">
 					<Link
 						:href="route('listing.show', listing.id)"
 						class="hover:underline font-semibold text-sm sm:text-base line-clamp-1"
@@ -124,9 +126,8 @@ const handleDelete = () => {
 					</div>
 					<div class="flex items-center gap-1">
 						<MapPin class="w-4 h-4 shrink-0" />
-						<span class="truncate">
-							{{ listing.location?.address ?? "No address specified" }},
-							{{ listing.location?.city ?? "No city specified" }}
+						<span class="line-clamp-1">
+							{{ listing.location?.address ?? "No location specified" }}
 						</span>
 					</div>
 					<!-- date -->
@@ -137,7 +138,7 @@ const handleDelete = () => {
 				</div>
 
 				<!-- actions -->
-				<div class="flex flex-wrap gap-2 pt-2 sm:justify-end">
+				<div class="flex flex-wrap gap-2 sm:justify-end">
 					<Link :href="route('listing.edit', listing.id)">
 						<Button variant="outline" size="sm">Edit</Button>
 					</Link>

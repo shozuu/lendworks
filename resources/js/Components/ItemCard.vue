@@ -2,66 +2,66 @@
 import { router } from "@inertiajs/vue3";
 import { formatNumber } from "@/lib/formatters";
 
-// use route.params() to 'stack' search query parameters coming from different components and pass them as one parameter
-const params = route().params;
-
 defineProps({
-	listing: Object,
+	listing: {
+		type: Object,
+		required: true,
+	},
 });
 
-const selectUser = (id) => {
-	router.get(route('home'), {
-		// this should redirect to a dedicated profile page for that user
-		user_id: id,
-	})
-}
+const selectUser = (event, id) => {
+	event.preventDefault(); // Prevent parent link from triggering
+	router.get(route("home"), { user_id: id });
+};
+
+const getFirstName = (fullName) => {
+	return fullName.split(" ")[0];
+};
 </script>
 
 <template>
-	<Link :href="route('listing.show', listing.id)">
+	<Link :href="route('listing.show', listing.id)" class="block group">
 		<!-- image -->
-		<div class="relative overflow-hidden">
+		<div class="relative overflow-hidden rounded-md aspect-[4/3]">
 			<img
 				:src="
 					listing.images.length
 						? `/storage/${listing.images[0].image_path}`
 						: '/storage/images/listing/default.png'
 				"
-				alt=""
-				class="object-cover object-center w-full rounded-md aspect-[4/3] lg:aspect-auto lg:h-60"
+				:alt="listing.title"
+				class="object-cover w-full h-full transition-transform group-hover:scale-105"
 			/>
 
 			<!-- overlay -->
 			<div
-				class="bg-gradient-to-t from-black/95 to-transparent absolute inset-0 rounded-md"
+				class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"
 			></div>
 
-			<!-- daily rate -->
-			<div class="text-slate-100 bottom-2 right-2 absolute px-3 py-1 text-sm font-medium">
-				{{ formatNumber(listing.price) }}/day
+			<!-- location and price -->
+			<div class="absolute bottom-0 left-0 right-0 p-2 flex justify-between items-center">
+				<div v-if="listing.location" class="text-white text-xs truncate pr-2">
+					{{ listing.location.province }}, {{ listing.location.city }}
+				</div>
+				<div class="text-white text-sm font-medium shrink-0">
+					{{ formatNumber(listing.price) }}/day
+				</div>
 			</div>
 		</div>
 
-		<!-- details -->
-		<div class="mt-2 space-y-2">
-			<h3 class="line-clamp-1 text-sm font-medium">
-				{{ listing.title }}
-			</h3>
+		<!-- title and owner -->
+		<div class="mt-2 space-y-0.5">
+			<h3 class="line-clamp-1 font-medium">{{ listing.title }}</h3>
 
-            <!-- owner and location -->
-			<p class="text-muted-foreground text-xs">
-				Listed By
-				<Link
+			<div class="flex items-center gap-1 text-xs text-muted-foreground mt-2">
+				<button
 					v-if="listing.user"
-					@click="selectUser(listing.user.id)"
-					:href="route('home')"
-					class="hover:text-foreground underline-offset-4 hover:underline"
+					@click="(e) => selectUser(e, listing.user.id)"
+					class="font-medium hover:text-foreground hover:underline underline-offset-4"
 				>
-					{{ listing.user.name }}
-				</Link>
-
-                <p class="flex items-center gap-1">Baliwasan, ZC</p>
-			</p>
+					Listed By: {{ getFirstName(listing.user.name) }}
+				</button>
+			</div>
 		</div>
 	</Link>
 </template>

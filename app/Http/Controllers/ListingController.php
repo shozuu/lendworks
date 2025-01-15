@@ -22,8 +22,8 @@ class ListingController extends Controller
         $baseQuery = Listing::whereHas('user', function (Builder $query) {
             $query->where('status', '!=', 'suspended');
         })
-            ->with(['user', 'images'])
-            ->where('status', 'approved')  // Changed from approved to status
+            ->with(['user', 'images', 'location'])
+            ->where('status', 'approved') 
             ->where('is_available', true);
 
         // Get featured listings
@@ -129,20 +129,38 @@ class ListingController extends Controller
                 throw new Exception('Listing not available');
             }
 
-            // Get related listings that are available (only for approved listings)
-            $relatedListings = $listing->status === 'approved' ? 
-                Listing::whereHas('user', function (Builder $query) {
-                    $query->where('role', '!=', 'suspended');
-                })
-                ->with(['images', 'user'])
+            // Get related listings from the same category
+            $relatedListings = Listing::whereHas('user', function (Builder $query) {
+                $query->where('status', '!=', 'suspended');
+            })
+                ->with(['images', 'user', 'location'])
                 ->where('category_id', $listing->category_id)
                 ->where('id', '!=', $id)
                 ->where('status', 'approved')
                 ->where('is_available', true)
                 ->inRandomOrder()
-                ->limit(4)
-                ->get()
-                : collect([]);
+                ->limit(8)
+                ->get();
+
+            // If we don't have 8 related listings, get random listings to fill the gap
+            if ($relatedListings->count() < 8) {
+                $remaining = 8 - $relatedListings->count();
+                
+                $randomListings = Listing::whereHas('user', function (Builder $query) {
+                    $query->where('status', '!=', 'suspended');
+                })
+                    ->with(['images', 'user', 'location'])
+                    ->where('id', '!=', $id)
+                    ->where('category_id', '!=', $listing->category_id) // Exclude current category
+                    ->where('status', 'approved')
+                    ->where('is_available', true)
+                    ->inRandomOrder()
+                    ->limit($remaining)
+                    ->get();
+
+                // Merge the related and random listings
+                $relatedListings = $relatedListings->concat($randomListings);
+            }
 
             return Inertia::render('Listing/Show', [
                 'listing' => $listing,
