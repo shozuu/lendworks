@@ -5,16 +5,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Separator from "@/Components/ui/separator/Separator.vue";
 import Button from "@/Components/ui/button/Button.vue";
-import { format } from "date-fns";
 import RentalForm from "@/Components/RentalForm.vue";
 import { Link } from "@inertiajs/vue3";
 import { useForm, router } from "@inertiajs/vue3";
 import { ref } from "vue";
 import ItemCard from "@/Components/ItemCard.vue";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, CalendarDays, XCircle } from "lucide-vue-next";
+import { AlertTriangle, XCircle } from "lucide-vue-next";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
-import { formatDate, formatDateTime, timeAgo } from "@/lib/formatters";
+import { formatDate, timeAgo } from "@/lib/formatters";
 
 const props = defineProps({
 	listing: Object,
@@ -131,11 +130,8 @@ const handleDelete = () => {
 				/>
 			</div>
 
-			<!-- details -->
-			<div class="space-y-4">
-				<h1 class="text-xl sm:text-2xl lg:text-3xl font-bold">{{ listing.title }}</h1>
-				<p class="text-sm sm:text-base text-muted-foreground">{{ listing.desc }}</p>
-			</div>
+			<!-- desc -->
+			<p class="text-sm sm:text-base text-muted-foreground">{{ listing.desc }}</p>
 
 			<Separator class="my-4" />
 
@@ -192,11 +188,9 @@ const handleDelete = () => {
 						<div>
 							<h4 class="font-semibold">Listed By {{ listing.user.name }}</h4>
 
-							<div class="flex items-center mt-2">
-								<CalendarDays class="opacity-70 w-4 h-4 mr-2 shrink-0" />
-								<span class="text-muted-foreground text-xs">
-									Joined {{ formatDate(listing.user.created_at) }}
-								</span>
+							<div class="text-muted-foreground text-xs mt-1">
+								<p>Joined {{ formatDate(listing.user.created_at) }}</p>
+								<p>Listed {{ timeAgo(listing.created_at) }}</p>
 							</div>
 						</div>
 					</div>
