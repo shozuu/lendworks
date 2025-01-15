@@ -374,8 +374,7 @@ watchEffect(() => {
 				</FormItem>
 			</FormField>
 		</div>
-
-		<Button type="submit" :disabled="inertiaForm.processing">
+		<Button type="submit" :disabled="inertiaForm.processing || !form.meta.valid">
 			{{ inertiaForm.processing ? "Submitting..." : "Submit" }}
 		</Button>
 	</form>

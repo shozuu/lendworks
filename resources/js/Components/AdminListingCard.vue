@@ -136,11 +136,9 @@ const getStatusBadge = (listing) => {
 								<PhilippinePeso class="w-4 h-4" />
 								{{ formatNumber(listing.price) }}/day
 							</div>
-							<div
-								class="flex items-center gap-1 truncate max-w-[200px] sm:max-w-[300px]"
-							>
+							<div class="flex items-center gap-1">
 								<MapPin class="shrink-0 w-4 h-4" />
-								<span class="truncate">
+								<span class="line-clamp-1">
 									{{ listing.location?.address ?? "No address specified" }},
 									{{ listing.location?.city ?? "No city specified" }}
 								</span>
