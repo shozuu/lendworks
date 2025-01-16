@@ -55,7 +55,9 @@ class Listing extends Model
 
     public function latestRejection()
     {
-        return $this->hasOne(ListingRejection::class)->latest();
+        return $this->hasOne(ListingRejection::class)
+            ->latest()
+            ->with('rejectionReason');
     }
 
     public function getRejectionDetailsAttribute()
