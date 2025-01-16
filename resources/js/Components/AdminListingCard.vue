@@ -2,9 +2,9 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatNumber } from "@/lib/formatters";
-import { Tags, MapPin, PhilippinePeso } from "lucide-vue-next";
-import { ref } from "vue";
+import { formatNumber, timeAgo } from "@/lib/formatters";
+import { Tags, MapPin, PhilippinePeso, XCircle, Clock, User } from "lucide-vue-next";
+import { ref, computed } from "vue";
 import { router } from "@inertiajs/vue3";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 
@@ -18,7 +18,7 @@ const props = defineProps({
 		required: true,
 	},
 });
-
+console.log(props.listing);
 const emit = defineEmits(["updateStatus"]);
 
 const showApproveDialog = ref(false);
@@ -102,16 +102,45 @@ const getStatusBadge = (listing) => {
 			};
 	}
 };
+
+const rejectionDetails = computed(() => {
+	if (props.listing.status !== "rejected") return null;
+
+	// If we have latest_rejection data
+	if (props.listing.latest_rejection?.rejection_reason) {
+		return {
+			label: props.listing.latest_rejection.rejection_reason.label,
+			description: props.listing.latest_rejection.rejection_reason.description,
+			feedback: props.listing.latest_rejection.custom_feedback,
+		};
+	}
+
+	return null;
+});
 </script>
 
 <template>
-	<Card class="overflow-hidden">
-		<div class="flex items-center gap-4 p-4">
-			<!-- Thumbnail -->
+	<Card>
+		<!-- rejection reason -->
+		<div
+			v-if="listing.status === 'rejected' && listing.latest_rejection"
+			class="bg-destructive/10 p-3 text-sm"
+		>
 			<div
-				class="shrink-0 sm:h-32 sm:w-32 w-24 h-24 overflow-hidden rounded-md self-start"
+				class="flex flex-col items-center gap-2 text-destructive sm:flex-row sm:items-start"
 			>
-				<Link :href="route('admin.listings.show', listing.id)">
+				<div class="flex items-center gap-2">
+					<XCircle class="w-4 h-4 shrink-0" />
+					<p class="font-medium">Rejection Reason:</p>
+				</div>
+				{{ listing.latest_rejection.rejection_reason.label }}
+			</div>
+		</div>
+
+		<div class="flex flex-col sm:flex-row gap-4 p-4">
+			<!-- thumbnail -->
+			<div class="sm:w-32 sm:h-32 w-24 h-24 overflow-hidden rounded-md shrink-0">
+				<Link :href="route('admin.listings.show', listing.id)" class="h-full">
 					<img
 						:src="
 							listing.images[0]
@@ -124,50 +153,64 @@ const getStatusBadge = (listing) => {
 				</Link>
 			</div>
 
-			<!-- Content -->
-			<div class="flex flex-col flex-1 gap-2">
-				<div class="flex items-start justify-between gap-4">
-					<div class="space-y-1">
-						<Link
-							:href="route('admin.listings.show', listing.id)"
-							class="hover:underline line-clamp-1 font-semibold"
-						>
-							{{ listing.title }}
-						</Link>
-						<div class="text-muted-foreground flex flex-col gap-1 text-sm">
-							<div class="flex items-center gap-1">
-								<Tags class="w-4 h-4" />
-								{{ listing.category?.name }}
-							</div>
-							<div class="flex items-center gap-1">
-								<PhilippinePeso class="w-4 h-4" />
-								{{ formatNumber(listing.price) }}/day
-							</div>
-							<div class="flex items-center gap-1">
-								<MapPin class="shrink-0 w-4 h-4" />
-								<span class="line-clamp-1">
-									{{ listing.location?.address ?? "No address specified" }},
-									{{ listing.location?.city ?? "No city specified" }}
-								</span>
-							</div>
-						</div>
-						<div class="flex items-center gap-2 pt-1">
-							<span class="text-sm">Owner:</span>
-							<Link
-								:href="route('admin.users.show', listing.user.id)"
-								class="text-primary hover:underline text-sm"
-							>
-								{{ listing.user.name }}
-							</Link>
-						</div>
-					</div>
-					<Badge :variant="getStatusBadge(listing).variant">
+			<!-- content -->
+			<div class="flex-1 flex flex-col gap-3">
+				<!-- title and badge -->
+				<div class="flex items-start flex-col sm:flex-row justify-between gap-1">
+					<Link
+						:href="route('admin.listings.show', listing.id)"
+						class="hover:underline font-semibold text-sm sm:text-base line-clamp-1"
+					>
+						{{ listing.title }}
+					</Link>
+					<Badge
+						:variant="getStatusBadge(listing).variant"
+						class="whitespace-nowrap shrink-0"
+					>
 						{{ getStatusBadge(listing).label }}
 					</Badge>
 				</div>
 
+				<!-- details -->
+				<div class="text-muted-foreground text-xs sm:text-sm space-y-1.5 flex-1">
+					<div class="flex items-center gap-1">
+						<Tags class="w-4 h-4 shrink-0" />
+						<span class="truncate">{{ listing.category?.name }}</span>
+					</div>
+
+					<div class="flex items-center gap-1">
+						<PhilippinePeso class="w-4 h-4 shrink-0" />
+						<span class="whitespace-nowrap">{{ formatNumber(listing.price) }}/day</span>
+					</div>
+
+					<div class="flex items-center gap-1">
+						<MapPin class="w-4 h-4 shrink-0" />
+						<span class="line-clamp-1">
+							{{ listing.location?.address ?? "No location specified" }}
+						</span>
+					</div>
+
+					<div class="flex items-center gap-1">
+						<Clock class="w-4 h-4 shrink-0" />
+						<span>Listed {{ timeAgo(listing.created_at) }}</span>
+					</div>
+
+					<div class="flex items-center gap-1">
+						<User class="w-4 h-4 shrink-0" />
+						<Link
+							:href="route('admin.users.show', listing.user.id)"
+							class="text-primary hover:underline text-sm"
+						>
+							{{ listing.user.name }}
+						</Link>
+					</div>
+				</div>
+
 				<!-- actions -->
-				<div v-if="listing.status === 'pending'" class="flex justify-end gap-2 pt-2">
+				<div
+					v-if="listing.status === 'pending'"
+					class="flex flex-wrap gap-2 sm:justify-end"
+				>
 					<Button variant="default" size="sm" @click="showApproveDialog = true">
 						Approve
 					</Button>
