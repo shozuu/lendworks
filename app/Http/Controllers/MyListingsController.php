@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Listing;
-use App\Models\RejectionReason;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -19,14 +18,6 @@ class MyListingsController extends Controller
 
         return Inertia::render('MyListings/MyListings', [
             'listings' => $listings,
-            'rejectionReasons' => RejectionReason::select('id', 'label', 'code', 'description', 'action_needed')
-                ->get()
-                ->map(fn($reason) => [
-                    'value' => (string) $reason->id,
-                    'label' => $reason->label,
-                    'description' => $reason->description,
-                    'action_needed' => $reason->action_needed
-                ])
         ]);
     }
 }
