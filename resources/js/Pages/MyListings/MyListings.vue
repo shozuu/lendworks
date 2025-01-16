@@ -14,7 +14,6 @@ import { ref } from "vue";
 
 const props = defineProps({
 	listings: Array,
-	rejectionReasons: Array,
 });
 
 const form = useForm({});
@@ -80,7 +79,6 @@ const filterListings = (value) => {
 							v-for="listing in filterListings(tab.value)"
 							:key="listing.id"
 							:listing="listing"
-							:rejection-reasons="rejectionReasons"
 							@toggleAvailability="toggleAvailability"
 						/>
 					</div>
@@ -111,7 +109,6 @@ const filterListings = (value) => {
 						v-for="listing in filterListings(selectedTab)"
 						:key="listing.id"
 						:listing="listing"
-						:rejection-reasons="rejectionReasons"
 						@toggleAvailability="toggleAvailability"
 					/>
 				</div>
