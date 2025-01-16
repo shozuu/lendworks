@@ -11,6 +11,9 @@ use Illuminate\Http\Request;
 use App\Notifications\ListingApproved;
 use App\Notifications\ListingRejected;
 use App\Notifications\ListingTakenDown;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class AdminController extends Controller
 {
@@ -165,33 +168,59 @@ class AdminController extends Controller
 
     public function rejectListing(Request $request, Listing $listing)
     {
-        $validated = $request->validate([
-            'rejection_reason' => 'required|exists:rejection_reasons,id', 
-            'feedback' => [ 
-                function ($attribute, $value, $fail) use ($request) {
-                    $reason = RejectionReason::find($request->rejection_reason);
-                    if ($reason && $reason->code === 'other' && empty($value)) {
-                        $fail('Custom feedback is required when selecting "Other" as the reason.');
-                    }
-                },
+        $validator = Validator::make($request->all(), [
+            'rejection_reason' => ['required', 'exists:rejection_reasons,id'],
+            'feedback' => [
+                'required_if:rejection_reason,other',
                 'nullable',
                 'string',
-                'max:1000'
+                'min:10',
+                'max:1000',
+                // Prevent common XSS patterns
+                'regex:/^[^<>{}]*$/',
+                function ($attribute, $value, $fail) {
+                    // Check for suspicious patterns
+                    $suspicious = ['javascript:', 'onerror=', 'onclick=', 'eval('];
+                    foreach ($suspicious as $pattern) {
+                        if (stripos($value, $pattern) !== false) {
+                            $fail('The feedback contains invalid content.');
+                        }
+                    }
+                },
             ]
         ]);
 
-        // Update listing status
-        $listing->update(['status' => 'rejected']);
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput();
+        }
 
-        // Create rejection record
-        $listing->rejectionReasons()->attach($validated['rejection_reason'], [
-            'custom_feedback' => $validated['feedback']
-        ]);
+        $validated = $validator->validated();
 
-        // Notify user
-        $listing->user->notify(new ListingRejected($listing));
+        // Sanitize the feedback before saving
+        if (!empty($validated['feedback'])) {
+            $validated['feedback'] = Str::of($validated['feedback'])
+                ->trim()
+                ->replace(['<', '>', '{', '}', '[', ']'], '')
+                ->limit(1000);
+        }
 
-        return back()->with('success', 'Listing rejected successfully');
+        try {
+            // Update listing status
+            $listing->update(['status' => 'rejected']);
+
+            // Create rejection record with sanitized feedback
+            $listing->rejectionReasons()->attach($validated['rejection_reason'], [
+                'custom_feedback' => $validated['feedback']
+            ]);
+
+            // Notify user
+            $listing->user->notify(new ListingRejected($listing));
+
+            return back()->with('success', 'Listing rejected successfully');
+        } catch (\Exception $e) {
+            report($e);
+            return back()->with('error', 'Failed to reject listing. Please try again.');
+        }
     }
 
     public function takedownListing(Request $request, Listing $listing)
