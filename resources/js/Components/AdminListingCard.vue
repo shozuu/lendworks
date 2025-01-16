@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatNumber } from "@/lib/formatters";
 import { Tags, MapPin, PhilippinePeso } from "lucide-vue-next";
-import { ref, computed } from "vue";
+import { ref } from "vue";
 import { router } from "@inertiajs/vue3";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 
@@ -53,6 +53,13 @@ const handleUpdateStatus = async (status) => {
 	} else if (status === "rejected") {
 		if (isRejecting.value) return;
 		isRejecting.value = true;
+
+		// Check if "Other" reason requires custom feedback
+		const isOtherReason =
+			props.rejectionReasons.find((r) => r.value === selectedReason.value)?.code ===
+			"other";
+
+		if (isOtherReason && !customFeedback.value.trim()) return;
 
 		await router.patch(
 			route("admin.listings.reject", props.listing.id),
@@ -191,7 +198,7 @@ const getStatusBadge = (listing) => {
 		<ConfirmDialog
 			:show="showRejectDialog"
 			title="Reject Listing"
-			description="Please select a reason for rejecting this listing. This will help the owner understand what needs to be changed."
+			description="Please select a reason for rejecting this listing."
 			confirmLabel="Reject"
 			confirmVariant="destructive"
 			:processing="isRejecting"
@@ -199,13 +206,17 @@ const getStatusBadge = (listing) => {
 			showSelect
 			:selectOptions="rejectionReasons"
 			:selectValue="selectedReason"
+			:textareaValue="customFeedback"
+			textareaPlaceholder="Please provide specific details about why this listing was rejected..."
 			@update:show="showRejectDialog = $event"
 			@update:selectValue="selectedReason = $event"
+			@update:textareaValue="customFeedback = $event"
 			@confirm="handleUpdateStatus('rejected')"
 			@cancel="
 				() => {
 					showRejectDialog = false;
 					selectedReason = '';
+					customFeedback = '';
 				}
 			"
 		/>
