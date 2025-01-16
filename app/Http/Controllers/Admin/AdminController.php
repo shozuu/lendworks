@@ -97,6 +97,7 @@ class AdminController extends Controller
         return back()->with('success', 'User activated successfully');
     }
 
+    // for select options
     private function getFormattedRejectionReasons()
     {
         return RejectionReason::select('id', 'label', 'code', 'description', 'action_needed')
@@ -114,21 +115,39 @@ class AdminController extends Controller
 
     public function listings()
     {
-        $listings = Listing::with(['user', 'category', 'images', 'location'])
+        $listings = Listing::with([
+            'user', 
+            'category', 
+            'images', 
+            'location',
+            'latestRejection.rejectionReason',
+        ])
             ->latest()
             ->paginate(10);
 
+        // only load rejection reasons if there are pending listings (for select options)
+        $hasPendingListings = collect($listings->items())->contains('status', 'pending');
+
         return Inertia::render('Admin/Listings', [
             'listings' => $listings,
-            'rejectionReasons' => $this->getFormattedRejectionReasons()
+            'rejectionReasons' => $hasPendingListings ? $this->getFormattedRejectionReasons() : []
         ]);
     }
 
     public function showListing(Listing $listing)
     {
+        $listing->load([
+            'user', 
+            'category', 
+            'location', 
+            'images',
+            'latestRejection.rejectionReason'
+        ]);
+
+        // only load rejection reasons if there are pending listings (for select options)
         return Inertia::render('Admin/ListingDetails', [
-            'listing' => $listing->load(['user', 'category', 'location', 'images']),
-            'rejectionReasons' => $this->getFormattedRejectionReasons()
+            'listing' => $listing,
+            'rejectionReasons' => $listing->status === 'pending' ? $this->getFormattedRejectionReasons() : []
         ]);
     }
 
