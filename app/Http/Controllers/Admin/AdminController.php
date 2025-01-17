@@ -141,10 +141,13 @@ class AdminController extends Controller
             'category', 
             'location', 
             'images',
-            'latestRejection.rejectionReason'
+            'latestRejection.rejectionReason',
+            'rejectionReasons' => function($query) {
+                $query->orderBy('listing_rejections.created_at', 'desc');
+            }
         ]);
 
-        // only load rejection reasons if there are pending listings (for select options)
+        // only load rejectionReasons if there are pending listings (for select options)
         return Inertia::render('Admin/ListingDetails', [
             'listing' => $listing,
             'rejectionReasons' => $listing->status === 'pending' ? $this->getFormattedRejectionReasons() : []
