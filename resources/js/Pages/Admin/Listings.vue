@@ -1,7 +1,6 @@
 <script setup>
 import AdminLayout from "../../Layouts/AdminLayout.vue";
 import AdminListingCard from "@/Components/AdminListingCard.vue";
-import { Button } from "@/components/ui/button";
 import { router } from "@inertiajs/vue3";
 
 defineOptions({ layout: AdminLayout });
