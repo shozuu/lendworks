@@ -65,7 +65,7 @@ class AdminController extends Controller
                 $query->latest();
         }
 
-        $users = $query->paginate(10)->withQueryString();
+        $users = $query->paginate(10)->appends($request->query());
 
         return Inertia::render('Admin/Users', [
             'users' => $users,
@@ -113,24 +113,70 @@ class AdminController extends Controller
             ->all();
     }
 
-    public function listings()
+    public function listings(Request $request)
     {
-        $listings = Listing::with([
+        $query = Listing::with([
             'user', 
             'category', 
             'images', 
             'location',
             'latestRejection.rejectionReason',
-        ])
-            ->latest()
-            ->paginate(10);
+        ]);
 
-        // only load rejection reasons if there are pending listings (for select options)
+        // Get total counts before applying filters
+        $listingCounts = [
+            'total' => Listing::count(),
+            'pending' => Listing::where('status', 'pending')->count(),
+            'approved' => Listing::where('status', 'approved')->count(),
+            'rejected' => Listing::where('status', 'rejected')->count(),
+        ];
+
+        // Apply search filter
+        if ($search = $request->input('search')) {
+            $query->where(function($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('desc', 'like', "%{$search}%")
+                  ->orWhereHas('user', function($q) use ($search) {
+                      $q->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Status filter
+        if ($status = $request->input('status')) {
+            if ($status !== 'all') {
+                $query->where('status', $status);
+            }
+        }
+
+        // Apply sorting
+        switch ($request->input('sortBy', 'latest')) {
+            case 'oldest':
+                $query->oldest();
+                break;
+            case 'title':
+                $query->orderBy('title');
+                break;
+            case 'price-high':
+                $query->orderByDesc('price');
+                break;
+            case 'price-low':
+                $query->orderBy('price');
+                break;
+            default: // latest
+                $query->latest();
+        }
+
+        $listings = $query->paginate(10)->appends($request->query());
+
+        // only load rejection reasons if there are pending listings
         $hasPendingListings = collect($listings->items())->contains('status', 'pending');
 
         return Inertia::render('Admin/Listings', [
             'listings' => $listings,
-            'rejectionReasons' => $hasPendingListings ? $this->getFormattedRejectionReasons() : []
+            'rejectionReasons' => $hasPendingListings ? $this->getFormattedRejectionReasons() : [],
+            'filters' => $request->only(['search', 'status', 'sortBy']),
+            'listingCounts' => $listingCounts // Add the counts to the response
         ]);
     }
 
