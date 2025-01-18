@@ -299,7 +299,7 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 								<Badge
 									:variant="listing.user.status === 'active' ? 'success' : 'destructive'"
 								>
-									{{ listing.user.status }}
+									{{ listing.user.status === "active" ? "Active" : "Suspended" }}
 								</Badge>
 							</div>
 						</div>
@@ -321,13 +321,6 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 								@click="showActivateDialog = true"
 							>
 								Activate User
-							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								@click="router.get(route('admin.users.show', listing.user.id))"
-							>
-								View User Details
 							</Button>
 						</div>
 					</CardContent>
@@ -411,8 +404,7 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 						</div>
 
 						<!-- actions -->
-						<div class="space-y-2">
-							<!-- Existing action buttons -->
+						<div class="space-y-6">
 							<div v-if="listing.status === 'pending'" class="flex flex-wrap gap-2">
 								<Button variant="default" size="sm" @click="showApproveDialog = true">
 									Approve
@@ -432,7 +424,7 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 								Takedown Listing
 							</Button>
 
-							<!-- Single Rejection History Button - always show if there's history -->
+							<!-- always show if there's history -->
 							<Button
 								v-if="hasRejectionHistory"
 								variant="outline"

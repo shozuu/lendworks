@@ -18,7 +18,7 @@ const props = defineProps({
 		required: true,
 	},
 });
-console.log(props.listing);
+
 const emit = defineEmits(["updateStatus"]);
 
 const showApproveDialog = ref(false);

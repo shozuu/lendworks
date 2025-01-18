@@ -83,7 +83,7 @@ const filterListings = (value) => {
 						/>
 					</div>
 					<div v-else class="text-muted-foreground py-10 text-center">
-						No listings found in this category.
+						You have no listings yet.
 					</div>
 				</TabsContent>
 			</Tabs>
@@ -113,7 +113,7 @@ const filterListings = (value) => {
 					/>
 				</div>
 				<div v-else class="text-muted-foreground py-10 text-center">
-					No listings found in this category.
+					You have no listings yet.
 				</div>
 			</div>
 		</div>
