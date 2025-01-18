@@ -20,7 +20,7 @@ return new class extends Migration
         // Create pivot table for listing rejections
         Schema::create('listing_rejections', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('listing_id')->constrained(); // foreign key to listings table
+            $table->foreignId('listing_id')->constrained()->cascadeOnDelete(); // foreign key to listings table with cascade delete
             $table->foreignId('rejection_reason_id')->constrained(); // foreign key to rejection_reasons table
             $table->text('custom_feedback')->nullable();  // admin's specific feedback
             $table->timestamps(); // when the rejection happened
