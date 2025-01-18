@@ -5,17 +5,20 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
+	SelectLabel,
 	SelectValue,
 } from "@/components/ui/select";
 import PaginationLinks from "@/Components/PaginationLinks.vue";
 import debounce from "lodash/debounce";
 import { ref, watch } from "vue";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
+import { formatDate } from "@/lib/formatters";
 
 defineOptions({ layout: AdminLayout });
 
@@ -33,10 +36,10 @@ const props = defineProps({
 
 const getStatusBadge = (status) => {
 	const badges = {
-		active: "success",
-		suspended: "destructive",
+		active: { variant: "success", label: "Active" },
+		suspended: { variant: "destructive", label: "Suspended" },
 	};
-	return badges[status] || "default";
+	return badges[status] || { variant: "default", label: status };
 };
 
 const search = ref(props.filters?.search ?? "");
@@ -115,6 +118,8 @@ const handleAction = () => {
 						<SelectValue placeholder="Filter by status" />
 					</SelectTrigger>
 					<SelectContent>
+						<SelectLabel class="p-1 text-center">Filter Status</SelectLabel>
+						<Separator class="my-2" />
 						<SelectItem value="all">All Status</SelectItem>
 						<SelectItem value="active">Active</SelectItem>
 						<SelectItem value="suspended">Suspended</SelectItem>
@@ -128,6 +133,8 @@ const handleAction = () => {
 						<SelectValue placeholder="Sort by" />
 					</SelectTrigger>
 					<SelectContent>
+						<SelectLabel class="p-1 text-center">Sort Users</SelectLabel>
+						<Separator class="my-2" />
 						<SelectItem value="latest">Latest</SelectItem>
 						<SelectItem value="oldest">Oldest</SelectItem>
 						<SelectItem value="name">Name</SelectItem>
@@ -139,48 +146,53 @@ const handleAction = () => {
 
 		<!-- Users List -->
 		<div v-if="users.data.length" class="space-y-4">
-			<Card v-for="user in users.data" :key="user.id" class="p-6">
-				<div class="flex items-center justify-between">
-					<div class="space-y-1">
-						<div class="flex items-center gap-2">
-							<h3 class="font-semibold">{{ user.name }}</h3>
-							<Badge :variant="getStatusBadge(user.status)">
-								{{ user.status }}
-							</Badge>
+			<Card
+				v-for="user in users.data"
+				:key="user.id"
+				class="p-4 sm:p-6 hover:ring-1 hover:ring-primary/20 transition-all cursor-pointer group"
+			>
+				<Link :href="route('admin.users.show', user.id)" class="block">
+					<div class="flex flex-col sm:flex-row sm:items-center gap-4">
+						<!-- User Info -->
+						<div class="flex-1 min-w-0 space-y-2">
+							<div class="flex flex-wrap items-center gap-2">
+								<h3
+									class="font-semibold group-hover:text-primary group-hover:underline transition-colors truncate"
+								>
+									{{ user.name }}
+								</h3>
+								<Badge :variant="getStatusBadge(user.status).variant">
+									{{ getStatusBadge(user.status).label }}
+								</Badge>
+							</div>
+							<div class="space-y-1 text-xs sm:text-sm text-muted-foreground">
+								<p class="truncate">{{ user.email }}</p>
+								<p>Member since {{ formatDate(user.created_at) }}</p>
+								<p>Total Listings: {{ user.listings_count }}</p>
+							</div>
 						</div>
-						<p class="text-sm text-muted-foreground">{{ user.email }}</p>
-						<p class="text-xs text-muted-foreground">
-							Member since {{ new Date(user.created_at).toLocaleDateString() }}
-						</p>
-						<p class="text-sm">Total Listings: {{ user.listings_count }}</p>
-					</div>
 
-					<div class="flex gap-2">
-						<Button
-							v-if="user.status === 'active'"
-							variant="destructive"
-							size="sm"
-							@click="confirmAction(user, 'suspend')"
-						>
-							Suspend
-						</Button>
-						<Button
-							v-if="user.status === 'suspended'"
-							variant="default"
-							size="sm"
-							@click="confirmAction(user, 'activate')"
-						>
-							Activate
-						</Button>
-						<Button
-							variant="outline"
-							size="sm"
-							@click="router.get(route('admin.users.show', user.id))"
-						>
-							View Details
-						</Button>
+						<!-- Actions -->
+						<div class="flex flex-wrap gap-2 sm:justify-end">
+							<Button
+								v-if="user.status === 'active'"
+								variant="destructive"
+								size="sm"
+								@click.prevent="confirmAction(user, 'suspend')"
+							>
+								Suspend
+							</Button>
+							<Button
+								v-if="user.status === 'suspended'"
+								variant="default"
+								size="sm"
+								@click.prevent="confirmAction(user, 'activate')"
+							>
+								Activate
+							</Button>
+						</div>
 					</div>
-				</div>
+				</Link>
 			</Card>
 
 			<PaginationLinks :paginator="users" />
@@ -190,12 +202,14 @@ const handleAction = () => {
 		<!-- Confirmation Dialog -->
 		<ConfirmDialog
 			:show="showDialog"
-			:title="action === 'suspend' ? 'Suspend User' : 'Activate User'"
-			:description="`Are you sure you want to ${
-				action === 'suspend' ? 'suspend' : 'activate'
-			} ${selectedUser?.name}?`"
-			confirmLabel="Confirm"
-			confirmVariant="destructive"
+			:title="action === 'suspend' ? 'Suspend User Account' : 'Activate User Account'"
+			:description="
+				action === 'suspend'
+					? `Are you sure you want to suspend ${selectedUser?.name}? This will also mark all their listings as unavailable.`
+					: `Are you sure you want to activate ${selectedUser?.name}'s account? They will be able to resume normal account activities.`
+			"
+			:confirmLabel="action === 'suspend' ? 'Suspend User' : 'Activate User'"
+			:confirmVariant="action === 'suspend' ? 'destructive' : 'default'"
 			@update:show="showDialog = $event"
 			@confirm="handleAction"
 			@cancel="showDialog = false"
