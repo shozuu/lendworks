@@ -176,19 +176,23 @@ const handleCancelReject = () => {
 };
 
 const latestRejection = computed(() => {
-	return props.listing.rejection_reasons?.[0] ?? null;
-});
-
-const rejectionHistory = computed(() => {
-	if (!props.listing.rejection_reasons?.length) return [];
-	return props.listing.rejection_reasons;
+    const rejection = props.listing.rejection_reasons?.[0];
+    if (!rejection) return null;
+    
+    return {
+        ...rejection,
+        admin_name: rejection.admin_name,
+        custom_feedback: rejection.custom_feedback
+    };
 });
 
 const sortedRejectionHistory = computed(() => {
 	if (!props.listing.rejection_reasons?.length) return [];
 	return props.listing.rejection_reasons.map((rejection) => ({
 		...rejection,
-		formattedDate: formatDateTime(rejection.pivot.created_at),
+		formattedDate: formatDateTime(rejection.rejected_at),
+		adminName: rejection.admin_name,
+		feedback: rejection.custom_feedback
 	}));
 });
 console.log(props.listing);
@@ -199,12 +203,12 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 	<Head :title="`| Admin - Listing Details: ${listing.title}`" />
 
 	<!-- Update the main container spacing -->
-	<div class="space-y-4 sm:space-y-6">
+	<div class="sm:space-y-6 space-y-4">
 		<!-- Make header more responsive -->
 		<div
-			class="flex flex-col sm:flex-row sm:items-center items-start sm:justify-between gap-2"
+			class="sm:flex-row sm:items-center sm:justify-between flex flex-col items-start gap-2"
 		>
-			<h2 class="text-xl sm:text-2xl font-semibold tracking-tight">
+			<h2 class="sm:text-2xl text-xl font-semibold tracking-tight">
 				{{ listing.title }}
 			</h2>
 
@@ -214,11 +218,11 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 		</div>
 
 		<!-- grid layout -->
-		<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-10">
+		<div class="lg:grid-cols-2 lg:gap-10 grid grid-cols-1 gap-4">
 			<!-- First Column (Details) -->
-			<div class="grid gap-4 sm:gap-6">
+			<div class="sm:gap-6 grid gap-4">
 				<!-- Make images container responsive -->
-				<div class="mb-4 sm:mb-6 lg:mb-10">
+				<div class="sm:mb-6 lg:mb-10 mb-4">
 					<ListingImages
 						:images="
 							listing.images.length
@@ -274,15 +278,15 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 			</div>
 
 			<!-- Second Column (Owner & Status) -->
-			<div class="space-y-4 sm:space-y-6">
+			<div class="sm:space-y-6 space-y-4">
 				<!-- Owner Information -->
 				<Card>
-					<CardHeader class="px-4 sm:p-6">
+					<CardHeader class="sm:p-6 px-4">
 						<CardTitle>Owner Information</CardTitle>
 						<CardDescription>Details about the listing owner</CardDescription>
 					</CardHeader>
-					<CardContent class="px-4 pb-4 sm:px-6 sm:pb-6 space-y-4">
-						<div class="space-y-2 sm:space-y-3">
+					<CardContent class="sm:px-6 sm:pb-6 px-4 pb-4 space-y-4">
+						<div class="sm:space-y-3 space-y-2">
 							<p>
 								Name:
 								<Link
@@ -328,30 +332,30 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 
 				<!-- Listing Status -->
 				<Card>
-					<CardHeader class="p-4 sm:p-6">
+					<CardHeader class="sm:p-6 p-4">
 						<CardTitle>Listing Status</CardTitle>
 						<CardDescription>Current state of the listing</CardDescription>
 					</CardHeader>
-					<CardContent class="px-4 pb-4 sm:px-6 sm:pb-6 space-y-4">
+					<CardContent class="sm:px-6 sm:pb-6 px-4 pb-4 space-y-4">
 						<!-- current rejection reason -->
 						<div
 							v-if="listing.status === 'rejected' && latestRejection"
-							class="bg-destructive/5 border-destructive/20 rounded-lg overflow-hidden"
+							class="bg-destructive/5 border-destructive/20 overflow-hidden rounded-lg"
 						>
 							<!-- Header -->
 							<div
-								class="bg-destructive/10 px-3 sm:px-4 py-2 sm:py-3 border-b border-destructive/10"
+								class="bg-destructive/10 sm:px-4 sm:py-3 border-destructive/10 px-3 py-2 border-b"
 							>
 								<div
-									class="flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+									class="sm:flex-row sm:items-center flex flex-col justify-between gap-2"
 								>
 									<div class="flex items-center gap-2">
 										<XCircle class="text-destructive w-5 h-5" />
-										<h3 class="font-medium text-destructive">
+										<h3 class="text-destructive font-medium">
 											{{ latestRejection.label }}
 										</h3>
 									</div>
-									<div class="flex items-center gap-2 text-sm text-muted-foreground">
+									<div class="text-muted-foreground flex items-center gap-2 text-sm">
 										<CalendarClock class="w-4 h-4" />
 										<time>{{ timeAgo(latestRejection.pivot.created_at) }}</time>
 									</div>
@@ -359,26 +363,28 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 							</div>
 
 							<!-- Content -->
-							<div class="p-3 sm:p-4 space-y-3 sm:space-y-4">
+							<div class="sm:p-4 sm:space-y-4 p-3 space-y-3">
 								<!-- Description -->
-								<p class="text-sm text-muted-foreground leading-relaxed">
+								<p class="text-muted-foreground text-sm leading-relaxed">
 									{{ latestRejection.description }}
 								</p>
 
 								<!-- Admin Feedback if exists -->
-								<div
-									v-if="latestRejection.pivot.custom_feedback"
-									class="bg-background border rounded p-3 space-y-1.5"
-								>
-									<p
-										class="text-xs font-medium uppercase tracking-wider text-muted-foreground/70"
-									>
-										Admin Feedback
-									</p>
-									<p class="text-sm text-muted-foreground">
-										{{ latestRejection.pivot.custom_feedback }}
-									</p>
-								</div>
+									<div class="bg-background border rounded p-3 space-y-1.5">
+										<template v-if="latestRejection.custom_feedback">
+											<p class="text-muted-foreground/70 text-xs font-medium tracking-wider uppercase">
+												Admin Feedback
+											</p>
+											<p class="text-muted-foreground text-sm">
+												{{ latestRejection.custom_feedback }}
+											</p>
+										</template>
+										
+										<!-- Always show admin info -->
+										<p class="text-muted-foreground text-xs" :class="{ 'border-t pt-2 mt-2': latestRejection.custom_feedback }">
+											Rejected by {{ latestRejection.admin_name }}
+										</p>
+									</div>
 							</div>
 						</div>
 
@@ -523,29 +529,29 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 			class="w-[calc(100vw-2rem)] sm:w-full sm:max-w-2xl mx-auto h-[calc(100vh-4rem)] sm:h-auto flex flex-col p-0 rounded-lg"
 		>
 			<DialogHeader class="p-6 border-b">
-				<DialogTitle class="flex items-center gap-2 justify-center">
+				<DialogTitle class="flex items-center justify-center gap-2">
 					<History class="w-5 h-5" />
 					Rejection History
 				</DialogTitle>
 			</DialogHeader>
 
-			<div class="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
+			<div class="sm:px-6 flex-1 px-4 py-4 overflow-y-auto">
 				<div class="space-y-5">
 					<div
 						v-for="(rejection, index) in sortedRejectionHistory"
 						:key="rejection.pivot.created_at"
 					>
 						<!-- card entry for each rejection -->
-						<div class="bg-muted/50 rounded-lg border">
+						<div class="bg-muted/50 border rounded-lg">
 							<!-- Header -->
-							<div class="border-b bg-muted/30 p-3">
+							<div class="bg-muted/30 p-3 border-b">
 								<div class="flex items-center justify-between gap-2">
 									<div class="flex items-center gap-2">
-										<AlertCircle class="w-5 h-5 text-destructive shrink-0" />
-										<h4 class="font-medium line-clamp-1">{{ rejection.label }}</h4>
+										<AlertCircle class="text-destructive shrink-0 w-5 h-5" />
+										<h4 class="line-clamp-1 font-medium">{{ rejection.label }}</h4>
 									</div>
 								</div>
-								<div class="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+								<div class="text-muted-foreground flex items-center gap-2 mt-2 text-sm">
 									<CalendarClock class="w-4 h-4" />
 									<time>{{ rejection.formattedDate }}</time>
 								</div>
@@ -553,19 +559,25 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 
 							<!-- Content -->
 							<div class="p-3 space-y-3">
-								<div class="text-sm text-muted-foreground">
+								<div class="text-muted-foreground text-sm">
 									{{ rejection.description }}
 								</div>
 
-								<div
-									v-if="rejection.pivot.custom_feedback"
-									class="bg-background border rounded p-3 space-y-1"
-								>
-									<p class="font-medium text-xs tracking-wider text-muted-foreground/70">
-										ADMIN FEEDBACK
-									</p>
-									<p class="text-sm text-muted-foreground">
-										{{ rejection.pivot.custom_feedback }}
+								<!-- Separate container for admin feedback -->
+								<div class="bg-background p-3 space-y-1 border rounded">
+									<!-- Show custom feedback if exists -->
+									<template v-if="rejection.feedback">
+										<p class="text-muted-foreground/70 text-xs font-medium tracking-wider">
+											ADMIN FEEDBACK
+										</p>
+										<p class="text-muted-foreground mb-3 text-sm">
+											{{ rejection.feedback }}
+										</p>
+									</template>
+									
+									<!-- Always show admin info -->
+									<p class="text-muted-foreground text-xs" :class="{ 'border-t pt-2': rejection.feedback }">
+										Rejected by {{ rejection.adminName }}
 									</p>
 								</div>
 							</div>
