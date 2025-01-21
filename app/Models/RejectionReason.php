@@ -11,7 +11,8 @@ class RejectionReason extends Model
     public function listings()
     {
         return $this->belongsToMany(Listing::class, 'listing_rejections')
-            ->withPivot('custom_feedback')
+            ->using(ListingRejection::class)
+            ->withPivot(['custom_feedback', 'admin_id', 'created_at'])
             ->withTimestamps();
     }
 }

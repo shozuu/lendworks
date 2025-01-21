@@ -49,7 +49,7 @@ class Listing extends Model
     {
         return $this->belongsToMany(RejectionReason::class, 'listing_rejections')
             ->using(ListingRejection::class)
-            ->withPivot('custom_feedback')
+            ->withPivot(['custom_feedback', 'admin_id', 'created_at'])
             ->withTimestamps();
     }
 
