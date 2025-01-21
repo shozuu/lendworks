@@ -11,8 +11,8 @@ use Illuminate\Http\Request;
 use App\Notifications\ListingApproved;
 use App\Notifications\ListingRejected;
 use App\Notifications\ListingTakenDown;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
 
 class AdminController extends Controller
@@ -187,13 +187,18 @@ class AdminController extends Controller
             'category', 
             'location', 
             'images',
-            'latestRejection.rejectionReason',
             'rejectionReasons' => function($query) {
-                $query->orderBy('listing_rejections.created_at', 'desc');
+                $query->select([
+                    'rejection_reasons.*',
+                    'listing_rejections.created_at as rejected_at',
+                    'listing_rejections.custom_feedback',
+                    'users.name as admin_name'
+                ])
+                ->leftJoin('users', 'listing_rejections.admin_id', '=', 'users.id')
+                ->orderBy('listing_rejections.created_at', 'desc');
             }
         ]);
 
-        // only load rejectionReasons if there are pending listings (for select options)
         return Inertia::render('Admin/ListingDetails', [
             'listing' => $listing,
             'rejectionReasons' => $listing->status === 'pending' ? $this->getFormattedRejectionReasons() : []
@@ -236,6 +241,11 @@ class AdminController extends Controller
 
     public function rejectListing(Request $request, Listing $listing)
     {
+        // Verify the user is an admin
+        if (!Auth::user()->status === 'admin') {
+            abort(403, 'Only administrators can reject listings.');
+        }
+
         $validator = Validator::make($request->all(), [
             'rejection_reason' => ['required', 'exists:rejection_reasons,id'],
             'feedback' => [
@@ -276,9 +286,10 @@ class AdminController extends Controller
             // Update listing status
             $listing->update(['status' => 'rejected']);
 
-            // Create rejection record with sanitized feedback
+            // Create rejection record with admin info
             $listing->rejectionReasons()->attach($validated['rejection_reason'], [
-                'custom_feedback' => $validated['feedback']
+                'custom_feedback' => $validated['feedback'],
+                'admin_id' => Auth::id() // Add the admin ID
             ]);
 
             // Notify user
