@@ -11,6 +11,9 @@ use Illuminate\Http\Request;
 use App\Notifications\ListingApproved;
 use App\Notifications\ListingRejected;
 use App\Notifications\ListingTakenDown;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class AdminController extends Controller
 {
@@ -62,7 +65,7 @@ class AdminController extends Controller
                 $query->latest();
         }
 
-        $users = $query->paginate(10)->withQueryString();
+        $users = $query->paginate(10)->appends($request->query());
 
         return Inertia::render('Admin/Users', [
             'users' => $users,
@@ -94,6 +97,7 @@ class AdminController extends Controller
         return back()->with('success', 'User activated successfully');
     }
 
+    // for select options
     private function getFormattedRejectionReasons()
     {
         return RejectionReason::select('id', 'label', 'code', 'description', 'action_needed')
@@ -109,23 +113,95 @@ class AdminController extends Controller
             ->all();
     }
 
-    public function listings()
+    public function listings(Request $request)
     {
-        $listings = Listing::with(['user', 'category', 'images', 'location'])
-            ->latest()
-            ->paginate(10);
+        $query = Listing::with([
+            'user', 
+            'category', 
+            'images', 
+            'location',
+            'latestRejection.rejectionReason',
+        ]);
+
+        // Get total counts before applying filters
+        $listingCounts = [
+            'total' => Listing::count(),
+            'pending' => Listing::where('status', 'pending')->count(),
+            'approved' => Listing::where('status', 'approved')->count(),
+            'rejected' => Listing::where('status', 'rejected')->count(),
+        ];
+
+        // Apply search filter
+        if ($search = $request->input('search')) {
+            $query->where(function($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('desc', 'like', "%{$search}%")
+                  ->orWhereHas('user', function($q) use ($search) {
+                      $q->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Status filter
+        if ($status = $request->input('status')) {
+            if ($status !== 'all') {
+                $query->where('status', $status);
+            }
+        }
+
+        // Apply sorting
+        switch ($request->input('sortBy', 'latest')) {
+            case 'oldest':
+                $query->oldest();
+                break;
+            case 'title':
+                $query->orderBy('title');
+                break;
+            case 'price-high':
+                $query->orderByDesc('price');
+                break;
+            case 'price-low':
+                $query->orderBy('price');
+                break;
+            default: // latest
+                $query->latest();
+        }
+
+        $listings = $query->paginate(10)->appends($request->query());
+
+        // only load rejection reasons if there are pending listings
+        $hasPendingListings = collect($listings->items())->contains('status', 'pending');
 
         return Inertia::render('Admin/Listings', [
             'listings' => $listings,
-            'rejectionReasons' => $this->getFormattedRejectionReasons()
+            'rejectionReasons' => $hasPendingListings ? $this->getFormattedRejectionReasons() : [],
+            'filters' => $request->only(['search', 'status', 'sortBy']),
+            'listingCounts' => $listingCounts // Add the counts to the response
         ]);
     }
 
     public function showListing(Listing $listing)
     {
+        $listing->load([
+            'user', 
+            'category', 
+            'location', 
+            'images',
+            'rejectionReasons' => function($query) {
+                $query->select([
+                    'rejection_reasons.*',
+                    'listing_rejections.created_at as rejected_at',
+                    'listing_rejections.custom_feedback',
+                    'users.name as admin_name'
+                ])
+                ->leftJoin('users', 'listing_rejections.admin_id', '=', 'users.id')
+                ->orderBy('listing_rejections.created_at', 'desc');
+            }
+        ]);
+
         return Inertia::render('Admin/ListingDetails', [
-            'listing' => $listing->load(['user', 'category', 'location', 'images']),
-            'rejectionReasons' => $this->getFormattedRejectionReasons()
+            'listing' => $listing,
+            'rejectionReasons' => $listing->status === 'pending' ? $this->getFormattedRejectionReasons() : []
         ]);
     }
 
@@ -165,33 +241,65 @@ class AdminController extends Controller
 
     public function rejectListing(Request $request, Listing $listing)
     {
-        $validated = $request->validate([
-            'rejection_reason' => 'required|exists:rejection_reasons,id', 
-            'feedback' => [ 
-                function ($attribute, $value, $fail) use ($request) {
-                    $reason = RejectionReason::find($request->rejection_reason);
-                    if ($reason && $reason->code === 'other' && empty($value)) {
-                        $fail('Custom feedback is required when selecting "Other" as the reason.');
-                    }
-                },
+        // Verify the user is an admin
+        if (!Auth::user()->status === 'admin') {
+            abort(403, 'Only administrators can reject listings.');
+        }
+
+        $validator = Validator::make($request->all(), [
+            'rejection_reason' => ['required', 'exists:rejection_reasons,id'],
+            'feedback' => [
+                'required_if:rejection_reason,other',
                 'nullable',
                 'string',
-                'max:1000'
+                'min:10',
+                'max:1000',
+                // Prevent common XSS patterns
+                'regex:/^[^<>{}]*$/',
+                function ($attribute, $value, $fail) {
+                    // Check for suspicious patterns
+                    $suspicious = ['javascript:', 'onerror=', 'onclick=', 'eval('];
+                    foreach ($suspicious as $pattern) {
+                        if (stripos($value, $pattern) !== false) {
+                            $fail('The feedback contains invalid content.');
+                        }
+                    }
+                },
             ]
         ]);
 
-        // Update listing status
-        $listing->update(['status' => 'rejected']);
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput();
+        }
 
-        // Create rejection record
-        $listing->rejectionReasons()->attach($validated['rejection_reason'], [
-            'custom_feedback' => $validated['feedback']
-        ]);
+        $validated = $validator->validated();
 
-        // Notify user
-        $listing->user->notify(new ListingRejected($listing));
+        // Sanitize the feedback before saving
+        if (!empty($validated['feedback'])) {
+            $validated['feedback'] = Str::of($validated['feedback'])
+                ->trim()
+                ->replace(['<', '>', '{', '}', '[', ']'], '')
+                ->limit(1000);
+        }
 
-        return back()->with('success', 'Listing rejected successfully');
+        try {
+            // Update listing status
+            $listing->update(['status' => 'rejected']);
+
+            // Create rejection record with admin info
+            $listing->rejectionReasons()->attach($validated['rejection_reason'], [
+                'custom_feedback' => $validated['feedback'],
+                'admin_id' => Auth::id() // Add the admin ID
+            ]);
+
+            // Notify user
+            $listing->user->notify(new ListingRejected($listing));
+
+            return back()->with('success', 'Listing rejected successfully');
+        } catch (\Exception $e) {
+            report($e);
+            return back()->with('error', 'Failed to reject listing. Please try again.');
+        }
     }
 
     public function takedownListing(Request $request, Listing $listing)

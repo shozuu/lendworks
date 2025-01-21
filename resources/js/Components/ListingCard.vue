@@ -13,12 +13,7 @@ const props = defineProps({
 		type: Object,
 		required: true,
 	},
-	rejectionReasons: {
-		type: Array,
-		required: true,
-	},
 });
-
 const getStatusBadge = (listing) => {
 	switch (listing.status) {
 		case "approved":
@@ -64,7 +59,7 @@ const handleDelete = () => {
 </script>
 
 <template>
-	<Card class="h-full">
+	<Card>
 		<!-- rejection reason -->
 		<div
 			v-if="listing.status === 'rejected' && listing.latest_rejection"
@@ -89,7 +84,7 @@ const handleDelete = () => {
 						:src="
 							listing.images[0]
 								? `/storage/${listing.images[0].image_path}`
-								: '/placeholder.jpg'
+								: '/storage/images/listing/default.png'
 						"
 						:alt="listing.title"
 						class="object-cover w-full h-full"
@@ -97,7 +92,7 @@ const handleDelete = () => {
 				</Link>
 			</div>
 
-			<div class="flex-1 min-w-0 flex flex-col gap-3">
+			<div class="flex-1 flex flex-col gap-3">
 				<!-- title and badge -->
 				<div class="flex items-start flex-col sm:flex-row justify-between gap-1">
 					<Link
@@ -133,7 +128,7 @@ const handleDelete = () => {
 					<!-- date -->
 					<div class="flex items-center gap-1">
 						<Clock class="w-4 h-4 shrink-0" />
-						<span>{{ timeAgo(listing.created_at) }}</span>
+						<span>Listed {{ timeAgo(listing.created_at) }}</span>
 					</div>
 				</div>
 

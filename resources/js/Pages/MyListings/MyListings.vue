@@ -14,7 +14,6 @@ import { ref } from "vue";
 
 const props = defineProps({
 	listings: Array,
-	rejectionReasons: Array,
 });
 
 const form = useForm({});
@@ -80,12 +79,11 @@ const filterListings = (value) => {
 							v-for="listing in filterListings(tab.value)"
 							:key="listing.id"
 							:listing="listing"
-							:rejection-reasons="rejectionReasons"
 							@toggleAvailability="toggleAvailability"
 						/>
 					</div>
 					<div v-else class="text-muted-foreground py-10 text-center">
-						No listings found in this category.
+						You have no listings yet.
 					</div>
 				</TabsContent>
 			</Tabs>
@@ -111,12 +109,11 @@ const filterListings = (value) => {
 						v-for="listing in filterListings(selectedTab)"
 						:key="listing.id"
 						:listing="listing"
-						:rejection-reasons="rejectionReasons"
 						@toggleAvailability="toggleAvailability"
 					/>
 				</div>
 				<div v-else class="text-muted-foreground py-10 text-center">
-					No listings found in this category.
+					You have no listings yet.
 				</div>
 			</div>
 		</div>

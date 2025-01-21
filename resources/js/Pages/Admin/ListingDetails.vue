@@ -11,11 +11,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import ListingImages from "@/Components/ListingImages.vue";
-import { formatNumber, formatDate, formatDateTime, timeAgo } from "@/lib/formatters";
+import { formatNumber, formatDateTime, timeAgo } from "@/lib/formatters";
 import Separator from "@/Components/ui/separator/Separator.vue";
 import { ref, computed } from "vue";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import { XCircle } from "lucide-vue-next";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { History, CalendarClock, AlertCircle } from "lucide-vue-next";
 
 defineOptions({ layout: AdminLayout });
 
@@ -33,6 +35,7 @@ const showSuspendDialog = ref(false);
 const showActivateDialog = ref(false);
 const showTakedownDialog = ref(false);
 const takedownReason = ref("");
+const showRejectionHistory = ref(false);
 
 const isApproving = ref(false);
 const isRejecting = ref(false);
@@ -171,24 +174,55 @@ const handleCancelReject = () => {
 	selectedReason.value = "";
 	customFeedback.value = "";
 };
+
+const latestRejection = computed(() => {
+    const rejection = props.listing.rejection_reasons?.[0];
+    if (!rejection) return null;
+    
+    return {
+        ...rejection,
+        admin_name: rejection.admin_name,
+        custom_feedback: rejection.custom_feedback
+    };
+});
+
+const sortedRejectionHistory = computed(() => {
+	if (!props.listing.rejection_reasons?.length) return [];
+	return props.listing.rejection_reasons.map((rejection) => ({
+		...rejection,
+		formattedDate: formatDateTime(rejection.rejected_at),
+		adminName: rejection.admin_name,
+		feedback: rejection.custom_feedback
+	}));
+});
+console.log(props.listing);
+const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.length > 0);
 </script>
 
 <template>
 	<Head :title="`| Admin - Listing Details: ${listing.title}`" />
 
-	<div class="space-y-6">
-		<div class="flex items-center justify-between">
-			<h2 class="text-2xl font-semibold tracking-tight">{{ listing.title }}</h2>
+	<!-- Update the main container spacing -->
+	<div class="sm:space-y-6 space-y-4">
+		<!-- Make header more responsive -->
+		<div
+			class="sm:flex-row sm:items-center sm:justify-between flex flex-col items-start gap-2"
+		>
+			<h2 class="sm:text-2xl text-xl font-semibold tracking-tight">
+				{{ listing.title }}
+			</h2>
+
 			<Badge :variant="getStatusBadge().variant">
 				{{ getStatusBadge().label }}
 			</Badge>
 		</div>
 
-		<div class="lg:grid-cols-2 grid items-start grid-cols-1 gap-10">
+		<!-- grid layout -->
+		<div class="lg:grid-cols-2 lg:gap-10 grid grid-cols-1 gap-4">
 			<!-- First Column (Details) -->
-			<div class="grid gap-6">
-				<!-- Images -->
-				<div class="mb-10">
+			<div class="sm:gap-6 grid gap-4">
+				<!-- Make images container responsive -->
+				<div class="sm:mb-6 lg:mb-10 mb-4">
 					<ListingImages
 						:images="
 							listing.images.length
@@ -244,15 +278,15 @@ const handleCancelReject = () => {
 			</div>
 
 			<!-- Second Column (Owner & Status) -->
-			<div class="space-y-6">
+			<div class="sm:space-y-6 space-y-4">
 				<!-- Owner Information -->
 				<Card>
-					<CardHeader>
+					<CardHeader class="sm:p-6 px-4">
 						<CardTitle>Owner Information</CardTitle>
 						<CardDescription>Details about the listing owner</CardDescription>
 					</CardHeader>
-					<CardContent class="space-y-4">
-						<div class="space-y-2">
+					<CardContent class="sm:px-6 sm:pb-6 px-4 pb-4 space-y-4">
+						<div class="sm:space-y-3 space-y-2">
 							<p>
 								Name:
 								<Link
@@ -269,13 +303,13 @@ const handleCancelReject = () => {
 								<Badge
 									:variant="listing.user.status === 'active' ? 'success' : 'destructive'"
 								>
-									{{ listing.user.status }}
+									{{ listing.user.status === "active" ? "Active" : "Suspended" }}
 								</Badge>
 							</div>
 						</div>
 
 						<!-- User Management Controls -->
-						<div class="flex gap-2 pt-2">
+						<div class="flex flex-wrap gap-2 pt-2">
 							<Button
 								v-if="listing.user.status === 'active'"
 								variant="destructive"
@@ -292,39 +326,66 @@ const handleCancelReject = () => {
 							>
 								Activate User
 							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								@click="router.get(route('admin.users.show', listing.user.id))"
-							>
-								View User Details
-							</Button>
 						</div>
 					</CardContent>
 				</Card>
 
 				<!-- Listing Status -->
 				<Card>
-					<CardHeader>
+					<CardHeader class="sm:p-6 p-4">
 						<CardTitle>Listing Status</CardTitle>
 						<CardDescription>Current state of the listing</CardDescription>
 					</CardHeader>
-					<CardContent class="space-y-4">
-						<!-- Show rejection section first if listing is rejected -->
+					<CardContent class="sm:px-6 sm:pb-6 px-4 pb-4 space-y-4">
+						<!-- current rejection reason -->
 						<div
-							v-if="listing.status === 'rejected' && listing.rejection_reason"
-							class="bg-destructive/10 border-destructive/20 p-4 border rounded-lg"
+							v-if="listing.status === 'rejected' && latestRejection"
+							class="bg-destructive/5 border-destructive/20 overflow-hidden rounded-lg"
 						>
-							<div class="flex items-center gap-2 mb-2">
-								<XCircle class="text-destructive w-5 h-5" />
-								<h3 class="text-destructive font-semibold">Listing Rejected</h3>
+							<!-- Header -->
+							<div
+								class="bg-destructive/10 sm:px-4 sm:py-3 border-destructive/10 px-3 py-2 border-b"
+							>
+								<div
+									class="sm:flex-row sm:items-center flex flex-col justify-between gap-2"
+								>
+									<div class="flex items-center gap-2">
+										<XCircle class="text-destructive w-5 h-5" />
+										<h3 class="text-destructive font-medium">
+											{{ latestRejection.label }}
+										</h3>
+									</div>
+									<div class="text-muted-foreground flex items-center gap-2 text-sm">
+										<CalendarClock class="w-4 h-4" />
+										<time>{{ timeAgo(latestRejection.pivot.created_at) }}</time>
+									</div>
+								</div>
 							</div>
-							<p class="text-destructive/90 text-sm">
-								{{
-									rejectionReasons.find((r) => r.value === listing.rejection_reason)
-										?.label || listing.rejection_reason
-								}}
-							</p>
+
+							<!-- Content -->
+							<div class="sm:p-4 sm:space-y-4 p-3 space-y-3">
+								<!-- Description -->
+								<p class="text-muted-foreground text-sm leading-relaxed">
+									{{ latestRejection.description }}
+								</p>
+
+								<!-- Admin Feedback if exists -->
+									<div class="bg-background border rounded p-3 space-y-1.5">
+										<template v-if="latestRejection.custom_feedback">
+											<p class="text-muted-foreground/70 text-xs font-medium tracking-wider uppercase">
+												Admin Feedback
+											</p>
+											<p class="text-muted-foreground text-sm">
+												{{ latestRejection.custom_feedback }}
+											</p>
+										</template>
+										
+										<!-- Always show admin info -->
+										<p class="text-muted-foreground text-xs" :class="{ 'border-t pt-2 mt-2': latestRejection.custom_feedback }">
+											Rejected by {{ latestRejection.admin_name }}
+										</p>
+									</div>
+							</div>
 						</div>
 
 						<div class="space-y-2">
@@ -349,24 +410,38 @@ const handleCancelReject = () => {
 						</div>
 
 						<!-- actions -->
-						<div v-if="listing.status === 'pending'" class="flex gap-2 pt-2">
-							<Button variant="default" size="sm" @click="showApproveDialog = true">
-								Approve
+						<div class="space-y-6">
+							<div v-if="listing.status === 'pending'" class="flex flex-wrap gap-2">
+								<Button variant="default" size="sm" @click="showApproveDialog = true">
+									Approve
+								</Button>
+								<Button variant="destructive" size="sm" @click="showRejectDialog = true">
+									Reject
+								</Button>
+							</div>
+
+							<!-- takedown listing -->
+							<Button
+								v-if="listing.status === 'approved'"
+								variant="destructive"
+								size="sm"
+								@click="showTakedownDialog = true"
+							>
+								Takedown Listing
 							</Button>
-							<Button variant="destructive" size="sm" @click="showRejectDialog = true">
-								Reject
+
+							<!-- always show if there's history -->
+							<Button
+								v-if="hasRejectionHistory"
+								variant="outline"
+								size="sm"
+								class="w-full"
+								@click="showRejectionHistory = true"
+							>
+								<History class="w-4 h-4" />
+								Rejection History ({{ listing.rejection_reasons.length }})
 							</Button>
 						</div>
-
-						<!-- takedown listing -->
-						<Button
-							v-if="listing.status === 'approved'"
-							variant="destructive"
-							size="sm"
-							@click="showTakedownDialog = true"
-						>
-							Takedown Listing
-						</Button>
 					</CardContent>
 				</Card>
 			</div>
@@ -448,4 +523,106 @@ const handleCancelReject = () => {
 		@confirm="handleTakedown"
 		@cancel="showTakedownDialog = false"
 	/>
+
+	<Dialog :open="showRejectionHistory" @update:open="showRejectionHistory = $event">
+		<DialogContent
+			class="w-[calc(100vw-2rem)] sm:w-full sm:max-w-2xl mx-auto h-[calc(100vh-4rem)] sm:h-auto flex flex-col p-0 rounded-lg"
+		>
+			<DialogHeader class="p-6 border-b">
+				<DialogTitle class="flex items-center justify-center gap-2">
+					<History class="w-5 h-5" />
+					Rejection History
+				</DialogTitle>
+			</DialogHeader>
+
+			<div class="sm:px-6 flex-1 px-4 py-4 overflow-y-auto">
+				<div class="space-y-5">
+					<div
+						v-for="(rejection, index) in sortedRejectionHistory"
+						:key="rejection.pivot.created_at"
+					>
+						<!-- card entry for each rejection -->
+						<div class="bg-muted/50 border rounded-lg">
+							<!-- Header -->
+							<div class="bg-muted/30 p-3 border-b">
+								<div class="flex items-center justify-between gap-2">
+									<div class="flex items-center gap-2">
+										<AlertCircle class="text-destructive shrink-0 w-5 h-5" />
+										<h4 class="line-clamp-1 font-medium">{{ rejection.label }}</h4>
+									</div>
+								</div>
+								<div class="text-muted-foreground flex items-center gap-2 mt-2 text-sm">
+									<CalendarClock class="w-4 h-4" />
+									<time>{{ rejection.formattedDate }}</time>
+								</div>
+							</div>
+
+							<!-- Content -->
+							<div class="p-3 space-y-3">
+								<div class="text-muted-foreground text-sm">
+									{{ rejection.description }}
+								</div>
+
+								<!-- Separate container for admin feedback -->
+								<div class="bg-background p-3 space-y-1 border rounded">
+									<!-- Show custom feedback if exists -->
+									<template v-if="rejection.feedback">
+										<p class="text-muted-foreground/70 text-xs font-medium tracking-wider">
+											ADMIN FEEDBACK
+										</p>
+										<p class="text-muted-foreground mb-3 text-sm">
+											{{ rejection.feedback }}
+										</p>
+									</template>
+									
+									<!-- Always show admin info -->
+									<p class="text-muted-foreground text-xs" :class="{ 'border-t pt-2': rejection.feedback }">
+										Rejected by {{ rejection.adminName }}
+									</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</DialogContent>
+	</Dialog>
 </template>
+
+<style scoped>
+/* Add smooth scrollbar for the rejection history */
+.overflow-y-auto {
+	scrollbar-width: thin;
+	scrollbar-color: hsl(var(--muted)) transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar {
+	width: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+	background-color: hsl(var(--muted));
+	border-radius: 4px;
+}
+
+/* Add responsive padding for dialog content */
+:deep(.dialog-content) {
+	padding: 1rem;
+}
+
+@media (min-width: 640px) {
+	:deep(.dialog-content) {
+		padding: 1.5rem;
+	}
+}
+
+@media (min-width: 640px) {
+	.overflow-y-auto::-webkit-scrollbar {
+		width: 6px;
+	}
+}
+</style>
