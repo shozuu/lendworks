@@ -21,32 +21,43 @@ class ListingTakenDown extends Notification
 
     public function toMail($notifiable)
     {
-        $reason = ListingRejectionReason::from($this->listing->rejection_reason);
+        $takedown = $this->listing->latestTakedown;
+        $reason = $takedown->takedownReason;
         
         return (new MailMessage)
             ->subject('Important: Your Listing Has Been Taken Down')
-            ->line('Your listing has been taken down by our moderation team.')
-            ->line("Listing: {$this->listing->title}")
-            ->line('Reason for takedown:')
-            ->line($reason->label())
-            ->line('What you need to do:')
-            ->line($reason->message())
+            ->greeting('Hi ' . $notifiable->name)
+            ->line('We need to inform you that your listing "' . $this->listing->title . '" has been taken down from LendWorks.')
+            ->line('Here\'s why this action was taken:')
+            ->line($reason->description)
+            ->when($takedown->custom_feedback, fn ($mail) => 
+                $mail->line('Specific feedback:')
+                     ->line($takedown->custom_feedback)
+            )
+            ->line('What this means:')
             ->line('• Your listing is no longer visible to other users')
             ->line('• The listing has been marked as unavailable')
-            ->line('What you can do:')
+            ->line('Next steps:')
             ->line('• Review our listing guidelines')
-            ->line('• Make the necessary changes to comply with our policies')
-            ->line('• Create a new listing that follows our guidelines')
+            ->line('• Consider creating a new listing that follows our policies')
             ->action('View Listing Details', route('listing.show', $this->listing))
-            ->line('If you believe this was done in error, please contact our support team for assistance.');
+            ->line('If you believe this was done in error, please contact our support team for assistance.')
+            ->salutation('Best regards,
+The LendWorks Team');
     }
 
     public function toArray($notifiable)
     {
+        $takedown = $this->listing->latestTakedown;
+        
         return [
             'listing_id' => $this->listing->id,
-            'title' => 'Listing Taken Down',
-            'message' => "Your listing \"{$this->listing->title}\" has been taken down. Reason: {$this->listing->rejection_reason}"
+            'title' => $this->listing->title,
+            'type' => 'error',
+            'icon' => '🚫',
+            'message' => 'Listing taken down: ' . $takedown->takedownReason->label,
+            'reason' => $takedown->takedownReason->description,
+            'custom_feedback' => $takedown->custom_feedback
         ];
     }
 }
