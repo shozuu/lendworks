@@ -117,6 +117,20 @@ const rejectionDetails = computed(() => {
 
 	return null;
 });
+
+const takedownDetails = computed(() => {
+	if (props.listing.status !== "taken_down") return null;
+
+	if (props.listing.latest_takedown?.takedown_reason) {
+		return {
+			label: props.listing.latest_takedown.takedown_reason.label,
+			description: props.listing.latest_takedown.takedown_reason.description,
+			feedback: props.listing.latest_takedown.custom_feedback,
+		};
+	}
+
+	return null;
+});
 </script>
 
 <template>
@@ -134,6 +148,22 @@ const rejectionDetails = computed(() => {
 					<p class="font-medium">Rejection Reason:</p>
 				</div>
 				{{ listing.latest_rejection.rejection_reason.label }}
+			</div>
+		</div>
+
+		<!-- takedown reason -->
+		<div
+			v-if="listing.status === 'taken_down' && listing.latest_takedown"
+			class="bg-destructive/10 p-3 text-sm"
+		>
+			<div
+				class="flex flex-col items-center gap-2 text-destructive sm:flex-row sm:items-start"
+			>
+				<div class="flex items-center gap-2">
+					<XCircle class="w-4 h-4 shrink-0" />
+					<p class="font-medium">Takedown Reason:</p>
+				</div>
+				{{ listing.latest_takedown.takedown_reason.label }}
 			</div>
 		</div>
 
