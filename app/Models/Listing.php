@@ -60,6 +60,21 @@ class Listing extends Model
             ->with('rejectionReason');
     }
 
+    public function takedownReasons()
+    {
+        return $this->belongsToMany(TakedownReason::class, 'listing_takedowns')
+            ->using(ListingTakedown::class)
+            ->withPivot(['custom_feedback', 'admin_id', 'created_at'])
+            ->withTimestamps();
+    }
+
+    public function latestTakedown()
+    {
+        return $this->hasOne(ListingTakedown::class)
+            ->latest()
+            ->with('takedownReason');
+    }
+
     public function getRejectionDetailsAttribute()
     {
         if ($this->status !== 'rejected') {
@@ -78,6 +93,26 @@ class Listing extends Model
             'action_needed' => $rejection->rejectionReason->action_needed,
             'feedback' => $rejection->custom_feedback,
             'date' => $rejection->created_at
+        ];
+    }
+
+    public function getTakedownDetailsAttribute()
+    {
+        if ($this->status !== 'taken_down') {
+            return null;
+        }
+
+        $takedown = $this->latestTakedown()->with('takedownReason')->first();
+        
+        if (!$takedown) {
+            return null;
+        }
+
+        return [
+            'reason' => $takedown->takedownReason->label,
+            'description' => $takedown->takedownReason->description,
+            'feedback' => $takedown->custom_feedback,
+            'date' => $takedown->created_at
         ];
     }
 
