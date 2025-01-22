@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Listing;
 use App\Models\RejectionReason;
+use App\Models\TakedownReason;
 use App\Models\User;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
@@ -113,6 +114,20 @@ class AdminController extends Controller
             ->all();
     }
 
+    private function getFormattedTakedownReasons()
+    {
+        return TakedownReason::select('id', 'label', 'code', 'description')
+            ->get()
+            ->map(fn($reason) => [
+                'value' => (string) $reason->id,
+                'label' => $reason->label,
+                'code' => $reason->code,
+                'description' => $reason->description
+            ])
+            ->values()
+            ->all();
+    }
+
     public function listings(Request $request)
     {
         $query = Listing::with([
@@ -121,6 +136,7 @@ class AdminController extends Controller
             'images', 
             'location',
             'latestRejection.rejectionReason',
+            'latestTakedown.takedownReason', // Simplified!
         ]);
 
         // Get total counts before applying filters
@@ -187,6 +203,7 @@ class AdminController extends Controller
             'category', 
             'location', 
             'images',
+            'latestRejection.rejectionReason',
             'rejectionReasons' => function($query) {
                 $query->select([
                     'rejection_reasons.*',
@@ -196,12 +213,24 @@ class AdminController extends Controller
                 ])
                 ->leftJoin('users', 'listing_rejections.admin_id', '=', 'users.id')
                 ->orderBy('listing_rejections.created_at', 'desc');
+            }, // get all rejection history
+            'takedownReasons' => function($query) { 
+                $query->select([
+                    'takedown_reasons.*',
+                    'listing_takedowns.created_at as taken_down_at',
+                    'listing_takedowns.custom_feedback',
+                    'users.name as admin_name'
+                ])
+                ->leftJoin('users', 'listing_takedowns.admin_id', '=', 'users.id')
+                ->orderBy('listing_takedowns.created_at', 'desc');
             }
         ]);
 
         return Inertia::render('Admin/ListingDetails', [
             'listing' => $listing,
-            'rejectionReasons' => $listing->status === 'pending' ? $this->getFormattedRejectionReasons() : []
+            // for populating select options
+            'rejectionReasons' => $listing->status === 'pending' ? $this->getFormattedRejectionReasons() : [],
+            'takedownReasons' => $listing->status === 'approved' ? $this->getFormattedTakedownReasons() : []
         ]);
     }
 
@@ -304,11 +333,50 @@ class AdminController extends Controller
 
     public function takedownListing(Request $request, Listing $listing)
     {
-        $validated = $request->validate([
-            'reason' => 'required|string|min:10|max:1000'
+        // Check if listing is already taken down
+        if ($listing->status === 'taken_down') {
+            return back()->with('error', 'This listing has already been taken down.');
+        }
+
+        if ($listing->status !== 'approved') {
+            return back()->with('error', 'Only approved listings can be taken down.');
+        }
+
+        $validator = Validator::make($request->all(), [
+            'takedown_reason' => ['required', 'exists:takedown_reasons,id'],
+            'feedback' => [
+                'required_if:takedown_reason,other',
+                'nullable',
+                'string',
+                'min:10',
+                'max:1000',
+                'regex:/^[^<>{}]*$/',
+            ]
         ]);
 
-        $this->updateListingStatus($listing, 'taken_down', $validated['reason']);
-        return back()->with('success', 'Listing taken down successfully');
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput();
+        }
+
+        $validated = $validator->validated();
+
+        try {
+            // Update listing status
+            $listing->update(['status' => 'taken_down']);
+
+            // Create takedown record
+            $listing->takedownReasons()->attach($validated['takedown_reason'], [
+                'custom_feedback' => $validated['feedback'],
+                'admin_id' => Auth::id()
+            ]);
+
+            // Notify user
+            $listing->user->notify(new ListingTakenDown($listing));
+
+            return back()->with('success', 'Listing taken down successfully');
+        } catch (\Exception $e) {
+            report($e);
+            return back()->with('error', 'Failed to take down listing. Please try again.');
+        }
     }
 }
