@@ -24,10 +24,18 @@ defineOptions({ layout: AdminLayout });
 const props = defineProps({
 	listing: Object,
 	rejectionReasons: {
+		// for populating select options
+		type: Array,
+		required: true,
+	},
+	takedownReasons: {
+		// for populating select options
 		type: Array,
 		required: true,
 	},
 });
+
+console.log(props.listing);
 
 const showApproveDialog = ref(false);
 const showRejectDialog = ref(false);
@@ -45,6 +53,8 @@ const isActivating = ref(false);
 
 const selectedReason = ref("");
 const customFeedback = ref("");
+const selectedTakedownReason = ref("");
+const takedownFeedback = ref("");
 
 const handleApprove = async () => {
 	if (isApproving.value) return;
@@ -125,17 +135,21 @@ const handleActivateUser = async () => {
 };
 
 const handleTakedown = async () => {
-	if (isTakingDown.value || !takedownReason.value.trim()) return;
+	if (isTakingDown.value || !selectedTakedownReason.value) return;
 	isTakingDown.value = true;
 
 	await router.patch(
 		route("admin.listings.takedown", props.listing.id),
-		{ reason: takedownReason.value },
+		{
+			takedown_reason: selectedTakedownReason.value,
+			feedback: takedownFeedback.value,
+		},
 		{
 			preserveScroll: true,
 			onSuccess: () => {
 				showTakedownDialog.value = false;
-				takedownReason.value = "";
+				selectedTakedownReason.value = "";
+				takedownFeedback.value = "";
 			},
 			onFinish: () => {
 				isTakingDown.value = false;
@@ -156,6 +170,11 @@ const getStatusBadge = () => {
 				variant: "destructive",
 				label: "Rejected",
 			};
+		case "taken_down":
+			return {
+				variant: "destructive",
+				label: "Taken Down",
+			};
 		default:
 			return {
 				variant: "warning",
@@ -169,21 +188,45 @@ const isOtherReason = computed(() => {
 	return selected?.code === "other";
 });
 
+const isOtherTakedownReason = computed(() => {
+	const selected = props.takedownReasons.find(
+		(r) => r.value === selectedTakedownReason.value
+	);
+	return selected?.code === "other";
+});
+
 const handleCancelReject = () => {
 	showRejectDialog.value = false;
 	selectedReason.value = "";
 	customFeedback.value = "";
 };
 
+const handleCancelTakedown = () => {
+	showTakedownDialog.value = false;
+	selectedTakedownReason.value = "";
+	takedownFeedback.value = "";
+};
+
 const latestRejection = computed(() => {
-    const rejection = props.listing.rejection_reasons?.[0];
-    if (!rejection) return null;
-    
-    return {
-        ...rejection,
-        admin_name: rejection.admin_name,
-        custom_feedback: rejection.custom_feedback
-    };
+	const rejection = props.listing.rejection_reasons?.[0];
+	if (!rejection) return null;
+
+	return {
+		...rejection,
+		admin_name: rejection.admin_name,
+		custom_feedback: rejection.custom_feedback,
+	};
+});
+
+const latestTakedown = computed(() => {
+	const takedown = props.listing.takedown_reasons?.[0];
+	if (!takedown) return null;
+
+	return {
+		...takedown,
+		admin_name: takedown.admin_name,
+		custom_feedback: takedown.custom_feedback,
+	};
 });
 
 const sortedRejectionHistory = computed(() => {
@@ -192,10 +235,10 @@ const sortedRejectionHistory = computed(() => {
 		...rejection,
 		formattedDate: formatDateTime(rejection.rejected_at),
 		adminName: rejection.admin_name,
-		feedback: rejection.custom_feedback
+		feedback: rejection.custom_feedback,
 	}));
 });
-console.log(props.listing);
+
 const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.length > 0);
 </script>
 
@@ -337,9 +380,12 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 						<CardDescription>Current state of the listing</CardDescription>
 					</CardHeader>
 					<CardContent class="sm:px-6 sm:pb-6 px-4 pb-4 space-y-4">
-						<!-- current rejection reason -->
+						<!-- takedown/rejection banner -->
 						<div
-							v-if="listing.status === 'rejected' && latestRejection"
+							v-if="
+								(listing.status === 'rejected' && latestRejection) ||
+								(listing.status === 'taken_down' && latestTakedown)
+							"
 							class="bg-destructive/5 border-destructive/20 overflow-hidden rounded-lg"
 						>
 							<!-- Header -->
@@ -352,12 +398,22 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 									<div class="flex items-center gap-2">
 										<XCircle class="text-destructive w-5 h-5" />
 										<h3 class="text-destructive font-medium">
-											{{ latestRejection.label }}
+											{{
+												listing.status === "rejected"
+													? latestRejection.label
+													: latestTakedown.label
+											}}
 										</h3>
 									</div>
 									<div class="text-muted-foreground flex items-center gap-2 text-sm">
 										<CalendarClock class="w-4 h-4" />
-										<time>{{ timeAgo(latestRejection.pivot.created_at) }}</time>
+										<time>{{
+											timeAgo(
+												listing.status === "rejected"
+													? latestRejection.pivot.created_at
+													: latestTakedown.pivot.created_at
+											)
+										}}</time>
 									</div>
 								</div>
 							</div>
@@ -366,25 +422,54 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 							<div class="sm:p-4 sm:space-y-4 p-3 space-y-3">
 								<!-- Description -->
 								<p class="text-muted-foreground text-sm leading-relaxed">
-									{{ latestRejection.description }}
+									{{
+										listing.status === "rejected"
+											? latestRejection.description
+											: latestTakedown.description
+									}}
 								</p>
 
 								<!-- Admin Feedback if exists -->
-									<div class="bg-background border rounded p-3 space-y-1.5">
-										<template v-if="latestRejection.custom_feedback">
-											<p class="text-muted-foreground/70 text-xs font-medium tracking-wider uppercase">
-												Admin Feedback
-											</p>
-											<p class="text-muted-foreground text-sm">
-												{{ latestRejection.custom_feedback }}
-											</p>
-										</template>
-										
-										<!-- Always show admin info -->
-										<p class="text-muted-foreground text-xs" :class="{ 'border-t pt-2 mt-2': latestRejection.custom_feedback }">
-											Rejected by {{ latestRejection.admin_name }}
+								<div class="bg-background border rounded p-3 space-y-1.5">
+									<template
+										v-if="
+											listing.status === 'rejected'
+												? latestRejection.custom_feedback
+												: latestTakedown.custom_feedback
+										"
+									>
+										<p
+											class="text-muted-foreground/70 text-xs font-medium tracking-wider uppercase"
+										>
+											Admin Feedback
 										</p>
-									</div>
+										<p class="text-muted-foreground text-sm">
+											{{
+												listing.status === "rejected"
+													? latestRejection.custom_feedback
+													: latestTakedown.custom_feedback
+											}}
+										</p>
+									</template>
+
+									<!-- Always show admin info -->
+									<p
+										class="text-muted-foreground text-xs"
+										:class="{
+											'border-t pt-2 mt-2':
+												listing.status === 'rejected'
+													? latestRejection.custom_feedback
+													: latestTakedown.custom_feedback,
+										}"
+									>
+										{{ listing.status === "rejected" ? "Rejected" : "Taken down" }} by
+										{{
+											listing.status === "rejected"
+												? latestRejection.admin_name
+												: latestTakedown.admin_name
+										}}
+									</p>
+								</div>
 							</div>
 						</div>
 
@@ -505,23 +590,23 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 	<ConfirmDialog
 		:show="showTakedownDialog"
 		title="Take Down Listing"
-		description="This listing will be removed from public view and the owner will be notified with your provided reason. Please be specific about why this listing violates our policies."
+		description="Please select a reason for taking down this listing. The owner will be notified."
 		confirmLabel="Take Down"
 		confirmVariant="destructive"
-		showTextarea
-		:textareaValue="takedownReason"
-		textareaPlaceholder="Example: This listing violates our terms by [specific reason]. Please [required changes] to comply with our policies."
-		textareaMinLength="10"
-		:textAreaError="
-			takedownReason.length < 10
-				? 'Please provide a detailed reason (minimum 10 characters)'
-				: ''
-		"
 		:processing="isTakingDown"
+		:disabled="!selectedTakedownReason || (isOtherTakedownReason && !takedownFeedback)"
+		showSelect
+		:selectOptions="takedownReasons"
+		:selectValue="selectedTakedownReason"
+		:showTextarea="isOtherTakedownReason"
+		:textareaValue="takedownFeedback"
+		:textareaRequired="isOtherTakedownReason"
+		textareaPlaceholder="Please provide specific details about why this listing is being taken down..."
 		@update:show="showTakedownDialog = $event"
-		@update:textareaValue="takedownReason = $event"
+		@update:selectValue="selectedTakedownReason = $event"
+		@update:textareaValue="takedownFeedback = $event"
 		@confirm="handleTakedown"
-		@cancel="showTakedownDialog = false"
+		@cancel="handleCancelTakedown"
 	/>
 
 	<Dialog :open="showRejectionHistory" @update:open="showRejectionHistory = $event">
@@ -567,16 +652,21 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 								<div class="bg-background p-3 space-y-1 border rounded">
 									<!-- Show custom feedback if exists -->
 									<template v-if="rejection.feedback">
-										<p class="text-muted-foreground/70 text-xs font-medium tracking-wider">
+										<p
+											class="text-muted-foreground/70 text-xs font-medium tracking-wider"
+										>
 											ADMIN FEEDBACK
 										</p>
 										<p class="text-muted-foreground mb-3 text-sm">
 											{{ rejection.feedback }}
 										</p>
 									</template>
-									
+
 									<!-- Always show admin info -->
-									<p class="text-muted-foreground text-xs" :class="{ 'border-t pt-2': rejection.feedback }">
+									<p
+										class="text-muted-foreground text-xs"
+										:class="{ 'border-t pt-2': rejection.feedback }"
+									>
 										Rejected by {{ rejection.adminName }}
 									</p>
 								</div>
