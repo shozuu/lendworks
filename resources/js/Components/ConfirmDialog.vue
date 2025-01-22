@@ -227,8 +227,12 @@ const isDisabled = computed(() => {
 						class="sm:w-auto w-full"
 					>
 						<template v-if="processing">
+							{{
+								confirmLabel === "Take Down"
+									? "Taking Down..."
+									: confirmLabel.replace(/e$/, "ing")
+							}}
 							<span class="animate-spin inline-block mr-2">⏳</span>
-							{{ confirmLabel.replace(/e?$/, "ing...") }}
 						</template>
 						<template v-else>
 							{{ confirmLabel }}
