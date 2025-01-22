@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,     // Creates users with locations
             ListingSeeder::class,  // Creates listings for users
             RejectionReasonSeeder::class,  
+            TakedownReasonSeeder::class,  
         ]);
     }
 }
