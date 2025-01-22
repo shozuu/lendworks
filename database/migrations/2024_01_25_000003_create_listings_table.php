@@ -18,7 +18,7 @@ return new class extends Migration
             $table->text('desc');
             $table->integer('value');
             $table->integer('price');
-            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
+            $table->enum('status', ['pending', 'approved', 'rejected', 'taken_down'])->default('pending');
             $table->boolean('is_available')->default(true);
             $table->timestamps();
         });
