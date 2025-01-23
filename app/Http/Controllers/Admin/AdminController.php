@@ -245,38 +245,23 @@ class AdminController extends Controller
         ]);
     }
 
-    private function updateListingStatus(Listing $listing, $status, $reason = null)
-    {
-        $data = [
-            'status' => $status,
-            'is_available' => $status === 'approved'
-        ];
-
-        // Only include rejection_reason for rejected or taken down status
-        if (in_array($status, ['rejected', 'taken_down'])) {
-            $data['rejection_reason'] = $reason;
-        }
-
-        $listing->update($data);
-
-        // Notify user based on status
-        switch ($status) {
-            case 'approved':
-                $listing->user->notify(new ListingApproved($listing));
-                break;
-            case 'rejected':
-                $listing->user->notify(new ListingRejected($listing));
-                break;
-            case 'taken_down':
-                $listing->user->notify(new ListingTakenDown($listing));
-                break;
-        }
-    }
-
     public function approveListing(Listing $listing)
     {
-        $this->updateListingStatus($listing, 'approved');
-        return back()->with('success', 'Listing approved successfully');
+        try {
+            // Update listing status directly
+            $listing->update([
+                'status' => 'approved',
+                'is_available' => true
+            ]);
+
+            // Notify user
+            $listing->user->notify(new ListingApproved($listing));
+
+            return back()->with('success', 'Listing approved successfully');
+        } catch (\Exception $e) {
+            report($e);
+            return back()->with('error', 'Failed to approve listing. Please try again.');
+        }
     }
 
     public function rejectListing(Request $request, Listing $listing)
