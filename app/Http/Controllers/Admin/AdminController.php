@@ -82,7 +82,8 @@ class AdminController extends Controller
         }]);
 
         return Inertia::render('Admin/UserDetails', [
-            'user' => $user
+            'user' => $user,
+            'rejectionReasons' => $this->getFormattedRejectionReasons() 
         ]);
     }
 

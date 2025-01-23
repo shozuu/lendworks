@@ -30,6 +30,10 @@ defineOptions({ layout: AdminLayout });
 
 const props = defineProps({
 	user: Object,
+	rejectionReasons: {
+		type: Array,
+		required: true,
+	},
 });
 
 // Add handlers for approve/reject actions
@@ -129,11 +133,11 @@ const listingCounts = computed(() => ({
 	<div class="space-y-6">
 		<!-- User Info Card -->
 		<Card class="overflow-hidden">
-			<CardHeader class="border-b bg-card">
-				<div class="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+			<CardHeader class="bg-card border-b">
+				<div class="sm:flex-row sm:items-center sm:justify-between flex flex-col gap-4">
 					<div class="space-y-1">
-						<CardTitle class="text-xl sm:text-2xl">{{ user.name }}</CardTitle>
-						<p class="text-sm text-muted-foreground">{{ user.email }}</p>
+						<CardTitle class="sm:text-2xl text-xl">{{ user.name }}</CardTitle>
+						<p class="text-muted-foreground text-sm">{{ user.email }}</p>
 					</div>
 					<Badge
 						:variant="user.status === 'active' ? 'success' : 'destructive'"
@@ -147,13 +151,13 @@ const listingCounts = computed(() => ({
 			<CardContent class="p-6">
 				<div class="grid gap-6">
 					<!-- User Stats -->
-					<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+					<div class="sm:grid-cols-4 grid grid-cols-2 gap-4">
 						<div class="space-y-1">
-							<p class="text-sm text-muted-foreground">Member Since</p>
+							<p class="text-muted-foreground text-sm">Member Since</p>
 							<p class="font-medium">{{ formatDate(user.created_at) }}</p>
 						</div>
 						<div class="space-y-1">
-							<p class="text-sm text-muted-foreground">Total Listings</p>
+							<p class="text-muted-foreground text-sm">Total Listings</p>
 							<p class="font-medium">{{ user.listings.length }}</p>
 						</div>
 					</div>
@@ -164,7 +168,7 @@ const listingCounts = computed(() => ({
 							v-if="user.status === 'active'"
 							variant="destructive"
 							@click="showSuspendDialog = true"
-							class="flex-1 sm:flex-none"
+							class="sm:flex-none flex-1"
 						>
 							Suspend User
 						</Button>
@@ -172,7 +176,7 @@ const listingCounts = computed(() => ({
 							v-if="user.status === 'suspended'"
 							variant="default"
 							@click="showActivateDialog = true"
-							class="flex-1 sm:flex-none"
+							class="sm:flex-none flex-1"
 						>
 							Activate User
 						</Button>
@@ -185,7 +189,7 @@ const listingCounts = computed(() => ({
 		<div class="space-y-4">
 			<div class="flex flex-col gap-4">
 				<!-- Header with counts -->
-				<div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
+				<div class="sm:flex-row sm:items-center sm:justify-between flex flex-col gap-2">
 					<h3 class="text-lg font-semibold">User's Listings</h3>
 					<div class="flex flex-wrap gap-2">
 						<Badge variant="outline"> Total: {{ listingCounts.total }} </Badge>
@@ -196,7 +200,7 @@ const listingCounts = computed(() => ({
 				</div>
 
 				<!-- Filters and Search -->
-				<div class="flex flex-col sm:flex-row gap-3">
+				<div class="sm:flex-row flex flex-col gap-3">
 					<div class="flex-1">
 						<Input v-model="search" placeholder="Search listings..." class="max-w-xs" />
 					</div>
@@ -239,19 +243,20 @@ const listingCounts = computed(() => ({
 					v-for="listing in filteredListings"
 					:key="listing.id"
 					:listing="listing"
+					:rejection-reasons="rejectionReasons"
 					@approve="handleApprove"
 					@reject="handleReject"
 				/>
 			</div>
 			<div
 				v-else-if="search || statusFilter !== 'all'"
-				class="text-muted-foreground py-8 text-center rounded-lg border bg-card"
+				class="text-muted-foreground bg-card py-8 text-center border rounded-lg"
 			>
 				No listings match your filters.
 			</div>
 			<div
 				v-else
-				class="text-muted-foreground py-8 text-center rounded-lg border bg-card"
+				class="text-muted-foreground bg-card py-8 text-center border rounded-lg"
 			>
 				This user has no listings.
 			</div>
