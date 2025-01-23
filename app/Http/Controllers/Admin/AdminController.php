@@ -81,9 +81,18 @@ class AdminController extends Controller
                   ->latest();
         }]);
 
+        $listingCounts = [
+            'total' => $user->listings->count(),
+            'pending' => $user->listings->where('status', 'pending')->count(),
+            'approved' => $user->listings->where('status', 'approved')->count(),
+            'rejected' => $user->listings->where('status', 'rejected')->count(),
+            'taken_down' => $user->listings->where('status', 'taken_down')->count(),
+        ];
+
         return Inertia::render('Admin/UserDetails', [
             'user' => $user,
-            'rejectionReasons' => $this->getFormattedRejectionReasons() 
+            'rejectionReasons' => $this->getFormattedRejectionReasons(),
+            'listingCounts' => $listingCounts 
         ]);
     }
 
@@ -146,6 +155,7 @@ class AdminController extends Controller
             'pending' => Listing::where('status', 'pending')->count(),
             'approved' => Listing::where('status', 'approved')->count(),
             'rejected' => Listing::where('status', 'rejected')->count(),
+            'taken_down' => Listing::where('status', 'taken_down')->count(), 
         ];
 
         // Apply search filter
@@ -193,7 +203,7 @@ class AdminController extends Controller
             'listings' => $listings,
             'rejectionReasons' => $hasPendingListings ? $this->getFormattedRejectionReasons() : [],
             'filters' => $request->only(['search', 'status', 'sortBy']),
-            'listingCounts' => $listingCounts // Add the counts to the response
+            'listingCounts' => $listingCounts 
         ]);
     }
 
