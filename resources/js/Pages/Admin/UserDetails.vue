@@ -34,6 +34,10 @@ const props = defineProps({
 		type: Array,
 		required: true,
 	},
+	listingCounts: {
+		type: Object,
+		required: true,
+	},
 });
 
 // Add handlers for approve/reject actions
@@ -117,14 +121,6 @@ const filteredListings = computed(() => {
 
 	return filtered;
 });
-
-// Computed counts for status badges
-const listingCounts = computed(() => ({
-	total: props.user.listings.length,
-	pending: props.user.listings.filter((l) => l.status === "pending").length,
-	approved: props.user.listings.filter((l) => l.status === "approved").length,
-	rejected: props.user.listings.filter((l) => l.status === "rejected").length,
-}));
 </script>
 
 <template>
@@ -196,6 +192,9 @@ const listingCounts = computed(() => ({
 						<Badge variant="warning"> Pending: {{ listingCounts.pending }} </Badge>
 						<Badge variant="success"> Approved: {{ listingCounts.approved }} </Badge>
 						<Badge variant="destructive"> Rejected: {{ listingCounts.rejected }} </Badge>
+						<Badge variant="destructive">
+							Taken Down: {{ listingCounts.taken_down }}
+						</Badge>
 					</div>
 				</div>
 
@@ -216,6 +215,7 @@ const listingCounts = computed(() => ({
 								<SelectItem value="pending">Pending</SelectItem>
 								<SelectItem value="approved">Approved</SelectItem>
 								<SelectItem value="rejected">Rejected</SelectItem>
+								<SelectItem value="taken_down">Taken Down</SelectItem>
 							</SelectContent>
 						</Select>
 
