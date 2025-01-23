@@ -66,48 +66,104 @@ const handleDelete = () => {
 		</AlertDescription>
 	</Alert>
 
-	<!-- Rejection Notice (if rejected) -->
+	<!-- takedown/rejection notice -->
 	<div
-		v-if="listing.status === 'rejected' && listing.latest_rejection"
+		v-if="
+			(listing.status === 'rejected' && listing.latest_rejection) ||
+			(listing.status === 'taken_down' && listing.latest_takedown)
+		"
 		class="bg-destructive/10 mb-6 overflow-hidden rounded-lg"
 	>
-		<!-- Header -->
+		<!-- header -->
 		<div class="bg-destructive/15 px-4 sm:px-6 py-4 border-b border-destructive/10">
 			<div class="flex items-center gap-2">
 				<XCircle class="w-5 h-5 shrink-0 text-destructive" />
-				<h3 class="text-destructive font-semibold">This Listing Has Been Rejected</h3>
+				<h3 class="text-destructive font-semibold">
+					This Listing Has Been
+					{{ listing.status === "rejected" ? "Rejected" : "Taken Down" }}
+				</h3>
 			</div>
 		</div>
 
-		<!-- Content -->
+		<!-- content -->
 		<div class="px-4 sm:px-6 py-4 space-y-4">
-			<!-- Rejection Reason -->
+			<!-- main reason -->
 			<div class="space-y-2">
-				<h4 class="font-medium">Reason for Rejection:</h4>
+				<h4 class="font-medium">
+					Reason for {{ listing.status === "rejected" ? "Rejection" : "Take Down" }}:
+				</h4>
 				<div class="bg-background p-4 border rounded-md">
-					{{ listing.latest_rejection.rejection_reason.description }}
+					{{
+						listing.status === "rejected"
+							? listing.latest_rejection.rejection_reason.description
+							: listing.latest_takedown.takedown_reason.description
+					}}
 				</div>
 			</div>
 
-			<!-- Required Actions -->
-			<div class="space-y-2">
+			<!-- Required Actions (Only for Rejected Listings) -->
+			<div v-if="listing.status === 'rejected'" class="space-y-2">
 				<h4 class="font-medium">How to Fix This:</h4>
 				<div class="bg-background p-4 space-y-2 border rounded-md">
 					<p>{{ listing.latest_rejection.rejection_reason.action_needed }}</p>
-					<p
-						v-if="listing.latest_rejection.custom_feedback"
-						class="text-muted-foreground pt-2 text-sm border-t"
-					>
-						<strong>Additional feedback:</strong><br />
-						{{ listing.latest_rejection.custom_feedback }}
+				</div>
+			</div>
+
+			<!-- Admin Feedback -->
+			<div
+				v-if="
+					(listing.status === 'rejected' && listing.latest_rejection.custom_feedback) ||
+					(listing.status === 'taken_down' && listing.latest_takedown.custom_feedback)
+				"
+				class="space-y-2"
+			>
+				<h4 class="font-medium">Additional Feedback:</h4>
+				<div class="bg-background p-4 space-y-2 border rounded-md">
+					<p class="text-muted-foreground">
+						{{
+							listing.status === "rejected"
+								? listing.latest_rejection.custom_feedback
+								: listing.latest_takedown.custom_feedback
+						}}
 					</p>
 				</div>
 			</div>
 
 			<p class="text-muted-foreground text-xs">
-				Rejected {{ timeAgo(listing.latest_rejection.created_at) }}
+				{{ listing.status === "rejected" ? "Rejected" : "Taken down" }}
+				{{
+					timeAgo(
+						listing.status === "rejected"
+							? listing.latest_rejection.created_at
+							: listing.latest_takedown.created_at
+					)
+				}}
 			</p>
 		</div>
+	</div>
+
+	<div
+		v-if="
+			listing.status === 'taken_down' && listing.user.id === $page.props.auth.user?.id
+		"
+		class="bg-muted p-4 rounded-lg mb-6"
+	>
+		<p class="text-sm text-muted-foreground">
+			This listing has been taken down and cannot be edited. You'll need to create a new
+			listing that follows our platform guidelines.
+		</p>
+	</div>
+
+	<div
+		v-else-if="
+			listing.status === 'rejected' && listing.user.id === $page.props.auth.user?.id
+		"
+		class="bg-muted p-4 rounded-lg mb-6"
+	>
+		<p class="text-sm text-muted-foreground">
+			This listing has been rejected. You can edit it to address the issues and resubmit
+			for approval.
+		</p>
 	</div>
 
 	<h2 class="mb-6 text-2xl font-semibold tracking-tight">
@@ -199,13 +255,18 @@ const handleDelete = () => {
 						v-if="listing.user.id === $page.props.auth.user?.id"
 						class="sm:w-auto grid w-full grid-cols-2 gap-2"
 					>
-						<Link :href="route('listing.edit', listing.id)">
-							<Button variant="outline" class="w-full">Edit</Button>
-						</Link>
-
-						<Button variant="destructive" class="w-full" @click="showDeleteDialog = true"
-							>Delete</Button
+						<Button
+							variant="outline"
+							class="w-full disabled:cursor-not-allowed disabled:pointer-events-auto"
+							:disabled="listing.status === 'taken_down'"
+							@click.stop="router.visit(route('listing.edit', listing.id))"
 						>
+							Edit
+						</Button>
+
+						<Button variant="destructive" class="w-full" @click="showDeleteDialog = true">
+							Delete
+						</Button>
 					</div>
 
 					<Link v-else href="" class="sm:w-auto w-full">
