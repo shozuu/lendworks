@@ -42,7 +42,6 @@ const showRejectDialog = ref(false);
 const showSuspendDialog = ref(false);
 const showActivateDialog = ref(false);
 const showTakedownDialog = ref(false);
-const takedownReason = ref("");
 const showRejectionHistory = ref(false);
 
 const isApproving = ref(false);

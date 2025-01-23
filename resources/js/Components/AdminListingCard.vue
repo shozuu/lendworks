@@ -94,6 +94,11 @@ const getStatusBadge = (listing) => {
 				label: "Rejected",
 				variant: "destructive",
 			};
+		case "taken_down":
+			return {
+				label: "Taken Down",
+				variant: "destructive",
+			};
 		case "pending":
 		default:
 			return {
