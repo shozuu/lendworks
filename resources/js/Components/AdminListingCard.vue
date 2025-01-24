@@ -7,6 +7,7 @@ import { Tags, MapPin, PhilippinePeso, XCircle, Clock, User } from "lucide-vue-n
 import { ref, computed } from "vue";
 import { router } from "@inertiajs/vue3";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
+import ListingStatusBadge from "@/Components/ListingStatusBadge.vue";
 
 const props = defineProps({
 	listing: {
@@ -79,32 +80,6 @@ const handleUpdateStatus = async (status) => {
 				preserveScroll: true,
 			}
 		);
-	}
-};
-
-const getStatusBadge = (listing) => {
-	switch (listing.status) {
-		case "approved":
-			return {
-				label: listing.is_available ? "Available" : "Not Available",
-				variant: listing.is_available ? "success" : "destructive",
-			};
-		case "rejected":
-			return {
-				label: "Rejected",
-				variant: "destructive",
-			};
-		case "taken_down":
-			return {
-				label: "Taken Down",
-				variant: "destructive",
-			};
-		case "pending":
-		default:
-			return {
-				label: "Pending Approval",
-				variant: "warning",
-			};
 	}
 };
 
@@ -198,12 +173,10 @@ const takedownDetails = computed(() => {
 					>
 						{{ listing.title }}
 					</Link>
-					<Badge
-						:variant="getStatusBadge(listing).variant"
-						class="whitespace-nowrap shrink-0"
-					>
-						{{ getStatusBadge(listing).label }}
-					</Badge>
+					<ListingStatusBadge
+						:status="listing.status"
+						:is-available="listing.is_available"
+					/>
 				</div>
 
 				<!-- details -->

@@ -18,6 +18,7 @@ import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import { XCircle } from "lucide-vue-next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { History, CalendarClock, AlertCircle } from "lucide-vue-next";
+import ListingStatusBadge from "@/Components/ListingStatusBadge.vue";
 
 defineOptions({ layout: AdminLayout });
 
@@ -157,31 +158,6 @@ const handleTakedown = async () => {
 	);
 };
 
-const getStatusBadge = () => {
-	switch (props.listing.status) {
-		case "approved":
-			return {
-				variant: "success",
-				label: "Approved",
-			};
-		case "rejected":
-			return {
-				variant: "destructive",
-				label: "Rejected",
-			};
-		case "taken_down":
-			return {
-				variant: "destructive",
-				label: "Taken Down",
-			};
-		default:
-			return {
-				variant: "warning",
-				label: "Pending",
-			};
-	}
-};
-
 const isOtherReason = computed(() => {
 	const selected = props.rejectionReasons.find((r) => r.value === selectedReason.value);
 	return selected?.code === "other";
@@ -254,9 +230,7 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 				{{ listing.title }}
 			</h2>
 
-			<Badge :variant="getStatusBadge().variant">
-				{{ getStatusBadge().label }}
-			</Badge>
+			<ListingStatusBadge :status="listing.status" :is-available="listing.is_available" />
 		</div>
 
 		<!-- grid layout -->
