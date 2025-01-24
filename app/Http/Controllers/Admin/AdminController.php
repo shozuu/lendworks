@@ -81,8 +81,18 @@ class AdminController extends Controller
                   ->latest();
         }]);
 
+        $listingCounts = [
+            'total' => $user->listings->count(),
+            'pending' => $user->listings->where('status', 'pending')->count(),
+            'approved' => $user->listings->where('status', 'approved')->count(),
+            'rejected' => $user->listings->where('status', 'rejected')->count(),
+            'taken_down' => $user->listings->where('status', 'taken_down')->count(),
+        ];
+
         return Inertia::render('Admin/UserDetails', [
-            'user' => $user
+            'user' => $user,
+            'rejectionReasons' => $this->getFormattedRejectionReasons(),
+            'listingCounts' => $listingCounts 
         ]);
     }
 
@@ -145,6 +155,7 @@ class AdminController extends Controller
             'pending' => Listing::where('status', 'pending')->count(),
             'approved' => Listing::where('status', 'approved')->count(),
             'rejected' => Listing::where('status', 'rejected')->count(),
+            'taken_down' => Listing::where('status', 'taken_down')->count(), 
         ];
 
         // Apply search filter
@@ -192,7 +203,7 @@ class AdminController extends Controller
             'listings' => $listings,
             'rejectionReasons' => $hasPendingListings ? $this->getFormattedRejectionReasons() : [],
             'filters' => $request->only(['search', 'status', 'sortBy']),
-            'listingCounts' => $listingCounts // Add the counts to the response
+            'listingCounts' => $listingCounts 
         ]);
     }
 
@@ -234,38 +245,23 @@ class AdminController extends Controller
         ]);
     }
 
-    private function updateListingStatus(Listing $listing, $status, $reason = null)
-    {
-        $data = [
-            'status' => $status,
-            'is_available' => $status === 'approved'
-        ];
-
-        // Only include rejection_reason for rejected or taken down status
-        if (in_array($status, ['rejected', 'taken_down'])) {
-            $data['rejection_reason'] = $reason;
-        }
-
-        $listing->update($data);
-
-        // Notify user based on status
-        switch ($status) {
-            case 'approved':
-                $listing->user->notify(new ListingApproved($listing));
-                break;
-            case 'rejected':
-                $listing->user->notify(new ListingRejected($listing));
-                break;
-            case 'taken_down':
-                $listing->user->notify(new ListingTakenDown($listing));
-                break;
-        }
-    }
-
     public function approveListing(Listing $listing)
     {
-        $this->updateListingStatus($listing, 'approved');
-        return back()->with('success', 'Listing approved successfully');
+        try {
+            // Update listing status directly
+            $listing->update([
+                'status' => 'approved',
+                'is_available' => true
+            ]);
+
+            // Notify user
+            $listing->user->notify(new ListingApproved($listing));
+
+            return back()->with('success', 'Listing approved successfully');
+        } catch (\Exception $e) {
+            report($e);
+            return back()->with('error', 'Failed to approve listing. Please try again.');
+        }
     }
 
     public function rejectListing(Request $request, Listing $listing)
@@ -363,6 +359,7 @@ class AdminController extends Controller
         try {
             // Update listing status
             $listing->update(['status' => 'taken_down']);
+            $listing->update(['is_available' => false]);
 
             // Create takedown record
             $listing->takedownReasons()->attach($validated['takedown_reason'], [

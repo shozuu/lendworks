@@ -119,6 +119,9 @@ watch(sortBy, (newVal) => {
 					<Badge variant="warning"> Pending: {{ listingCounts.pending }} </Badge>
 					<Badge variant="success"> Approved: {{ listingCounts.approved }} </Badge>
 					<Badge variant="destructive"> Rejected: {{ listingCounts.rejected }} </Badge>
+					<Badge variant="destructive">
+						Taken Down: {{ listingCounts.taken_down }}
+					</Badge>
 				</div>
 			</div>
 
@@ -139,6 +142,7 @@ watch(sortBy, (newVal) => {
 							<SelectItem value="pending">Pending</SelectItem>
 							<SelectItem value="approved">Approved</SelectItem>
 							<SelectItem value="rejected">Rejected</SelectItem>
+							<SelectItem value="taken_down">Taken Down</SelectItem>
 						</SelectContent>
 					</Select>
 

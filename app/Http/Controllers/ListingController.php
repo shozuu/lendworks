@@ -115,7 +115,14 @@ class ListingController extends Controller
             $query = Listing::whereHas('user', function (Builder $query) {
                 $query->where('role', '!=', 'suspended');
             })
-            ->with(['images', 'user', 'category', 'location', 'latestRejection.rejectionReason'])
+            ->with([
+                'images', 
+                'user', 
+                'category', 
+                'location', 
+                'latestRejection.rejectionReason',
+                'latestTakedown.takedownReason'
+            ])
             ->where('id', $id);
 
             $listing = $query->first();
@@ -190,6 +197,17 @@ class ListingController extends Controller
     public function edit(Listing $listing)
     {
         $this->checkIfSuspended();
+        
+        // Ensure user owns the listing
+        if ($listing->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        // Prevent editing taken down listings
+        if ($listing->status === 'taken_down') {
+            abort(403);
+        }
+
         $listing->load(['category', 'images', 'location']);
         $categories = Category::select('id', 'name')->get();
         $locations = Auth::user()->locations;
@@ -204,6 +222,17 @@ class ListingController extends Controller
     public function update(Request $request, Listing $listing)
     {
         $this->checkIfSuspended();
+
+        // Ensure user owns the listing
+        if ($listing->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        // Prevent updating taken down listings
+        if ($listing->status === 'taken_down') {
+            abort(403);
+        }
+
         $fields = $request->validate([
             'title' => ['required', 'string', 'min:5', 'max:100'],
             'desc' => ['required', 'string', 'min:10', 'max:1000'],

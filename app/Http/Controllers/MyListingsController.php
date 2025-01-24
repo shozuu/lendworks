@@ -12,7 +12,13 @@ class MyListingsController extends Controller
     public function index(Request $request)
     {
         $listings = Listing::where('user_id', Auth::id())
-            ->with(['category', 'images', 'location', 'latestRejection.rejectionReason'])
+            ->with([
+                'category', 
+                'images', 
+                'location', 
+                'latestRejection.rejectionReason',
+                'latestTakedown.takedownReason' 
+            ])
             ->latest()
             ->get();
 
