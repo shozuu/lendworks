@@ -359,6 +359,7 @@ class AdminController extends Controller
         try {
             // Update listing status
             $listing->update(['status' => 'taken_down']);
+            $listing->update(['is_available' => false]);
 
             // Create takedown record
             $listing->takedownReasons()->attach($validated['takedown_reason'], [
