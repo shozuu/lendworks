@@ -31,7 +31,9 @@ const tabs = [
 	{ value: "all", label: "All Listings" },
 	{ value: "available", label: "Available" },
 	{ value: "unavailable", label: "Unavailable" },
-	{ value: "pending", label: "Pending Approval" },
+	{ value: "pending", label: "Pending" },
+	{ value: "rejected", label: "Rejected" },
+	{ value: "taken_down", label: "Taken Down" },
 ];
 
 const filterListings = (value) => {
@@ -39,9 +41,13 @@ const filterListings = (value) => {
 		case "available":
 			return props.listings.filter((l) => l.status === "approved" && l.is_available);
 		case "unavailable":
-			return props.listings.filter((l) => l.approved && !l.is_available);
+			return props.listings.filter((l) => l.status === "approved" && !l.is_available);
 		case "pending":
-			return props.listings.filter((l) => l.status !== "approved");
+			return props.listings.filter((l) => l.status === "pending");
+		case "rejected":
+			return props.listings.filter((l) => l.status === "rejected");
+		case "taken_down":
+			return props.listings.filter((l) => l.status === "taken_down");
 		default:
 			return props.listings;
 	}
