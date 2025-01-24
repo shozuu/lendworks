@@ -53,8 +53,12 @@ const handleDelete = () => {
 		class="lg:flex hidden mb-10"
 	/>
 
-	<!-- Pending Status Alert -->
-	<Alert v-if="listing.status === 'pending'" variant="warning" class="mb-6">
+	<!-- pending status alert - only visible to owner -->
+	<Alert
+		v-if="listing.status === 'pending' && listing.user.id === $page.props.auth.user?.id"
+		variant="warning"
+		class="mb-6"
+	>
 		<AlertTriangle class="w-4 h-4" />
 		<AlertDescription v-if="justUpdated">
 			Listing has been successfully updated. It will be visible to other users once
@@ -66,11 +70,12 @@ const handleDelete = () => {
 		</AlertDescription>
 	</Alert>
 
-	<!-- takedown/rejection notice -->
+	<!-- takedown/rejection notice - only visible to owner -->
 	<div
 		v-if="
-			(listing.status === 'rejected' && listing.latest_rejection) ||
-			(listing.status === 'taken_down' && listing.latest_takedown)
+			((listing.status === 'rejected' && listing.latest_rejection) ||
+				(listing.status === 'taken_down' && listing.latest_takedown)) &&
+			listing.user.id === $page.props.auth.user?.id
 		"
 		class="bg-destructive/10 mb-6 overflow-hidden rounded-lg"
 	>
