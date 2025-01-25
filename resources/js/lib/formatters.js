@@ -9,6 +9,15 @@ export function formatNumber(value) {
     return `₱${new Intl.NumberFormat("en-US").format(value)}`;
 }
 
+/**
+ * Format date in MMM d, yyyy format without time
+ * Used primarily for rental dates display
+ */
+export function formatRentalDate(date) {
+    if (!date) return '';
+    return format(new Date(date), 'MMM d, yyyy');
+}
+
 export function formatDate(date) {
     if (!date) return '';
     const dateObj = new Date(date);
@@ -22,6 +31,11 @@ export function formatDate(date) {
     }
 
     return format(dateObj, 'MMM d, yyyy');
+}
+
+export function formatShortDate(date) {
+    if (!date) return '';
+    return format(new Date(date), 'MMM d, yyyy');
 }
 
 export function formatDateTime(date) {
