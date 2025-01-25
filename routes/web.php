@@ -7,6 +7,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MyRentalsController;
 use App\Http\Controllers\MyListingsController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\RentalRequestController;
 use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -33,6 +34,11 @@ Route::middleware(['auth', 'verified'])->group(function() {
     // notification 
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/{id}/mark-as-read', [NotificationController::class, 'markAsRead']);
+
+    // rental request
+    Route::post('/rentals', [RentalRequestController::class, 'store'])->name('rentals.store');
+    Route::patch('/rentals/{rentalRequest}/approve', [RentalRequestController::class, 'approve'])->name('rentals.approve');
+    Route::patch('/rentals/{rentalRequest}/reject', [RentalRequestController::class, 'reject'])->name('rentals.reject');
 });
 
 // Admin routes with auth and admin middleware
