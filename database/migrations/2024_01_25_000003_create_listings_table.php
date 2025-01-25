@@ -20,6 +20,7 @@ return new class extends Migration
             $table->integer('price');
             $table->enum('status', ['pending', 'approved', 'rejected', 'taken_down'])->default('pending');
             $table->boolean('is_available')->default(true);
+            $table->boolean('is_rented')->default(false);
             $table->timestamps();
         });
     }

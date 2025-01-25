@@ -1,0 +1,117 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class RentalRequest extends Model
+{
+    protected $fillable = [
+        'listing_id',
+        'renter_id',
+        'start_date',
+        'end_date',
+        'base_price',
+        'discount',
+        'service_fee',
+        'total_price',
+        'status',
+        'rejection_reason',
+        'handover_at',
+        'return_at'
+    ];
+
+    protected $casts = [
+        'start_date' => 'date',
+        'end_date' => 'date',
+        'base_price' => 'decimal:2',
+        'discount' => 'decimal:2',
+        'service_fee' => 'decimal:2',
+        'total_price' => 'decimal:2',
+        'handover_at' => 'datetime',
+        'return_at' => 'datetime'
+    ];
+
+    // Define status constants
+    const STATUS_PENDING = 'pending';
+    const STATUS_APPROVED = 'approved';
+    const STATUS_REJECTED = 'rejected';
+    const STATUS_CANCELLED = 'cancelled';
+    const STATUS_ACTIVE = 'active';
+    const STATUS_COMPLETED = 'completed';
+
+    // Relationships
+    public function listing(): BelongsTo
+    {
+        return $this->belongsTo(Listing::class);
+    }
+
+    public function renter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'renter_id');
+    }
+
+    // Accessors
+    public function getHasStartedAttribute(): bool
+    {
+        return $this->handover_at !== null;
+    }
+
+    public function getHasEndedAttribute(): bool
+    {
+        return $this->return_at !== null;
+    }
+
+    public function getIsOverdueAttribute(): bool
+    {
+        if (!$this->hasStarted || $this->hasEnded) {
+            return false;
+        }
+        return now()->greaterThan($this->end_date);
+    }
+
+    // Scopes
+    public function scopeActive($query)
+    {
+        return $query->where('status', self::STATUS_ACTIVE);
+    }
+
+    public function scopePending($query)
+    {
+        return $query->where('status', self::STATUS_PENDING);
+    }
+
+    public function scopeCompleted($query)
+    {
+        return $query->where('status', self::STATUS_COMPLETED);
+    }
+
+    // Helper methods
+    public function isStatus(string $status): bool
+    {
+        return $this->status === $status;
+    }
+
+    public function canBeApproved(): bool
+    {
+        return $this->isStatus(self::STATUS_PENDING) && 
+               !$this->listing->is_rented;
+    }
+
+    public function canBeRejected(): bool
+    {
+        return $this->isStatus(self::STATUS_PENDING);
+    }
+
+    public function canBeCancelled(): bool
+    {
+        return in_array($this->status, [self::STATUS_PENDING, self::STATUS_APPROVED]);
+    }
+
+    public function canBeCompleted(): bool
+    {
+        return $this->isStatus(self::STATUS_ACTIVE) && 
+               $this->return_at !== null;
+    }
+}
