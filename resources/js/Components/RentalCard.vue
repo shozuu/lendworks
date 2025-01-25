@@ -2,9 +2,8 @@
 import { computed, ref } from "vue";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { format, formatDistance } from "date-fns";
-import { Link, router } from "@inertiajs/vue3";
-import { formatNumber } from "@/lib/formatters";
+import { Link, router, useForm } from "@inertiajs/vue3"; // Add useForm here
+import { formatNumber, formatRentalDate, timeAgo } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Clock, AlertTriangle, MessageCircle } from "lucide-vue-next";
 import {
@@ -26,33 +25,72 @@ const props = defineProps({
 
 const showReturnDialog = ref(false);
 
-const statusColors = {
-	1: "yellow", // pending approval
-	2: "blue",   // to pay
-	3: "green",  // ready for pickup
-	4: "orange", // active/ongoing
-	5: "default", // completed
-	6: "destructive", // cancelled
-};
-
 const showActions = computed(() => ({
-	canCancel: [1, 2].includes(props.rental.status.id),
-	canPay: props.rental.status.id === 2,
-	canReturn: props.rental.status.id === 4 && !props.rental.return_at,
-	canReview: props.rental.status.id === 5 && !props.rental.reviews?.length,
-	canPickup: props.rental.status.id === 3 && !props.rental.handover_at,
-	isRenting: props.rental.status.id === 3 && props.rental.handover_at,
+	canCancel: ["pending", "approved"].includes(props.rental.status),
+	canPay: props.rental.status === "approved",
+	canReturn: props.rental.status === "active" && !props.rental.return_at,
+	canReview: props.rental.status === "completed" && !props.rental.reviews?.length,
+	canPickup: props.rental.status === "approved" && !props.rental.handover_at,
+	isRenting: props.rental.status === "active",
 }));
 
-const statusText = computed(() => {
-	switch (props.rental.status.id) {
-		case 1: return "Waiting for owner's approval";
-		case 2: return "Pending payment";
-		case 3: return props.rental.handover_at ? "Currently renting" : "Ready for pickup";
-		case 4: return props.rental.return_at ? "Return initiated" : "Currently renting";
-		case 5: return "Completed";
-		case 6: return "Cancelled";
-		default: return props.rental.status.name;
+const statusInfo = computed(() => {
+	switch (props.rental.status) {
+		case "pending":
+			return {
+				label: "Pending",
+				variant: "warning",
+			};
+		case "approved":
+			return {
+				label: "Approved",
+				variant: "info",
+			};
+		case "active":
+			return {
+				label: "Active",
+				variant: "success",
+			};
+		case "completed":
+			return {
+				label: "Completed",
+				variant: "default",
+			};
+		case "rejected":
+			return {
+				label: "Rejected",
+				variant: "destructive",
+			};
+		case "cancelled":
+			return {
+				label: "Cancelled",
+				variant: "muted",
+			};
+		default:
+			return {
+				label: props.rental.status,
+				variant: "default",
+			};
+	}
+});
+
+// Move the longer status text to a separate computed property
+const detailedStatus = computed(() => {
+	switch (props.rental.status) {
+		case "pending":
+			return "Waiting for owner's approval";
+		case "approved":
+			return "Ready for handover";
+		case "active":
+			return props.rental.return_at ? "Return initiated" : "Currently renting";
+		case "completed":
+			return "Rental completed";
+		case "rejected":
+			return props.rental.rejection_reason || "Request rejected";
+		case "cancelled":
+			return "Request cancelled";
+		default:
+			return props.rental.status;
 	}
 });
 
@@ -81,9 +119,49 @@ const handleReturn = () => {
 	);
 };
 
-const timeAgo = (date) => {
-	return formatDistance(new Date(date), new Date(), { addSuffix: true });
+const emit = defineEmits(["approve", "reject"]);
+
+const handleApprove = () => {
+	router.patch(
+		route("rentals.approve", props.rental.id),
+		{},
+		{
+			preserveScroll: true,
+			onSuccess: () => {
+				// Optional: show success message
+			},
+		}
+	);
 };
+
+const rejectForm = useForm({
+	rejection_reason: "",
+});
+
+const handleReject = () => {
+	rejectForm.patch(route("rentals.reject", props.rental.id), {
+		preserveScroll: true,
+		onSuccess: () => {
+			rejectForm.reset();
+			showRejectDialog.value = false;
+		},
+	});
+};
+
+const showRejectDialog = ref(false);
+
+// Add a computed property to safely get the owner name
+const ownerName = computed(() => {
+	return props.rental?.listing?.user?.name ?? "Unknown Owner";
+});
+
+// Add a computed property to safely handle the listing image
+const listingImage = computed(() => {
+	const images = props.rental?.listing?.images;
+	return images && images.length > 0
+		? images[0].url
+		: "/storage/images/listing/default.png";
+});
 </script>
 
 <template>
@@ -100,22 +178,22 @@ const timeAgo = (date) => {
 							{{ rental.listing.title }}
 						</Link>
 						<div>
-							<Badge :variant="statusColors[rental.status.id]">
-								{{ rental.status.name }}
+							<Badge :variant="statusInfo.variant">
+								{{ statusInfo.label }}
 							</Badge>
 						</div>
 					</div>
 
 					<div class="text-muted-foreground text-sm">
 						<p>
-							{{ format(new Date(rental.start_date), "MMM d, yyyy") }} -
-							{{ format(new Date(rental.end_date), "MMM d, yyyy") }}
+							{{ formatRentalDate(rental.start_date) }} -
+							{{ formatRentalDate(rental.end_date) }}
 						</p>
 						<p class="mt-1">Total: {{ formatNumber(rental.total_price) }}</p>
 					</div>
 
 					<div class="text-sm">
-						<p>Owner: {{ rental.listing.user.name }}</p>
+						<p>Owner: {{ ownerName }}</p>
 					</div>
 
 					<!-- Status Indicators -->
@@ -165,7 +243,7 @@ const timeAgo = (date) => {
 											<p v-if="isEarlyReturn" class="text-warning">
 												You are returning this item before the scheduled end date. The
 												rental period ends
-												{{ format(new Date(rental.end_date), "MMM d, yyyy") }}.
+												{{ formatDate(rental.end_date) }}.
 											</p>
 											<p>Are you sure you want to return this item?</p>
 										</div>
@@ -196,21 +274,59 @@ const timeAgo = (date) => {
 							Currently Renting
 						</Button>
 					</div>
+
+					<!-- Add approval/rejection buttons for received requests -->
+					<div v-if="rental.status === 'pending' && isOwner" class="flex gap-2 mt-4">
+						<Button @click="handleApprove">Approve</Button>
+						<Button variant="destructive" @click="showRejectDialog = true">Reject</Button>
+					</div>
+
+					<!-- Rejection Dialog -->
+					<Dialog v-model:open="showRejectDialog">
+						<DialogContent>
+							<DialogHeader>
+								<DialogTitle>Reject Rental Request</DialogTitle>
+								<DialogDescription>
+									Please provide a reason for rejecting this rental request.
+								</DialogDescription>
+							</DialogHeader>
+							<div class="grid gap-4 py-4">
+								<textarea
+									v-model="rejectForm.rejection_reason"
+									class="min-h-[100px] w-full rounded-md border p-3"
+									placeholder="Explain why you're rejecting this request..."
+								></textarea>
+							</div>
+							<DialogFooter>
+								<Button variant="outline" @click="showRejectDialog = false"
+									>Cancel</Button
+								>
+								<Button
+									variant="destructive"
+									@click="handleReject"
+									:disabled="rejectForm.processing || !rejectForm.rejection_reason"
+								>
+									Reject Request
+								</Button>
+							</DialogFooter>
+						</DialogContent>
+					</Dialog>
 				</div>
 
 				<!-- Listing Image -->
 				<div class="sm:order-last aspect-square order-first overflow-hidden rounded-md">
 					<img
-						:src="rental.listing.images[0]?.url || '/storage/images/listing/default.png'"
-						:alt="rental.listing.title"
+						:src="listingImage"
+						:alt="rental.listing?.title || 'Listing image'"
 						class="object-cover w-full h-full"
 					/>
 				</div>
 			</div>
-			<div class="text-muted-foreground space-y-1 text-sm">
-				<p>{{ statusText }}</p>
-				<p v-if="rental.status.id === 4">
-					Due: {{ format(new Date(rental.end_date), "MMM d, yyyy") }}
+			<!-- Move detailed status to bottom -->
+			<div class="text-muted-foreground space-y-1 text-sm mt-2">
+				<p>{{ detailedStatus }}</p>
+				<p v-if="rental.status === 'active'">
+					Due: {{ formatRentalDate(rental.end_date) }}
 				</p>
 			</div>
 		</CardContent>

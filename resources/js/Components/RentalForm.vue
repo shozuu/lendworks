@@ -1,20 +1,12 @@
 <script setup>
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardFooter,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Separator from "@/Components/ui/separator/Separator.vue";
 import Button from "@/Components/ui/button/Button.vue";
 import RentalDatesPicker from "./RentalDatesPicker.vue";
 import { calculateRentalPrice } from "@/lib/rentalCalculator";
-import { formatNumber } from "@/lib/formatters";
+import { formatNumber, formatDate } from "@/lib/formatters";
 import { ref, reactive, watch, onMounted } from "vue";
 import { useForm as useInertiaForm } from "@inertiajs/vue3";
-import { format } from "date-fns"; // Add this import
 
 const props = defineProps({
 	listing: {
@@ -54,6 +46,9 @@ const selectedDates = ref({
 	end: null,
 });
 
+const errors = ref({});
+const isSubmitting = ref(false);
+
 function updateRentalPrice() {
 	const result = calculateRentalPrice(dailyRate, itemValue, rentalDays.value);
 	Object.assign(rentalPrice, result);
@@ -77,8 +72,8 @@ watch(
 	selectedDates,
 	(newVal) => {
 		if (newVal.start && newVal.end) {
-			rentalForm.start_date = format(new Date(newVal.start), "yyyy-MM-dd");
-			rentalForm.end_date = format(new Date(newVal.end), "yyyy-MM-dd");
+			rentalForm.start_date = formatDate(new Date(newVal.start), "yyyy-MM-dd");
+			rentalForm.end_date = formatDate(new Date(newVal.end), "yyyy-MM-dd");
 			updateRentalDays(newVal.start, newVal.end);
 			rentalForm.base_price = rentalPrice.basePrice;
 			rentalForm.discount = rentalPrice.discount;
@@ -95,10 +90,16 @@ const handleSubmit = () => {
 	}
 
 	rentalForm.post(route("rentals.store"), {
+		onStart: () => {
+			isSubmitting.value = true;
+			errors.value = {};
+		},
 		onSuccess: () => {
-			// Reset form
-			selectedDates.value = { start: null, end: null };
-			rentalForm.reset();
+			isSubmitting.value = false;
+		},
+		onError: (err) => {
+			errors.value = err;
+			isSubmitting.value = false;
 		},
 		preserveScroll: true,
 	});
@@ -118,9 +119,9 @@ onMounted(() => {
 		<CardContent class="md:p-6 md:pt-0 p-4 pt-0">
 			<Separator class="my-4" />
 
-			<div class="font-semibold mb-4">Price Range</div>
+			<div class="mb-4 font-semibold">Price Range</div>
 
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+			<div class="md:grid-cols-3 grid grid-cols-1 gap-4 text-sm">
 				<Card
 					v-for="days in [3, 7, 30]"
 					:key="days"
@@ -139,13 +140,20 @@ onMounted(() => {
 
 			<Separator class="my-4" />
 
-			<template v-if="!isOwner">
-				<div v-if="!$page.props.auth.user" class="text-center text-muted-foreground py-4">
+			<!-- Owner check should be at top level inside CardContent -->
+			<div v-if="isOwner" class="text-muted-foreground py-4 text-center">
+				This is your listing. Switch to My Listings to manage it.
+			</div>
+			<template v-else>
+				<div v-if="!$page.props.auth.user" class="text-muted-foreground py-4 text-center">
 					<p>
 						Please
 						<Link :href="route('login')" class="text-primary hover:underline">login</Link>
 						to rent this item.
 					</p>
+				</div>
+				<div v-else-if="listing.is_rented" class="text-muted-foreground py-4 text-center">
+					<p>This item is currently rented and unavailable.</p>
 				</div>
 				<template v-else>
 					<div class="space-y-2">
@@ -176,7 +184,7 @@ onMounted(() => {
 							</div>
 							<!-- Maybe add total here for clarity -->
 							<div
-								class="flex items-center justify-between font-bold mt-2 pt-2 border-t text-green-400"
+								class="flex items-center justify-between pt-2 mt-2 font-bold text-green-400 border-t"
 							>
 								<div>Total</div>
 								<div>{{ formatNumber(rentalPrice.totalPrice) }}</div>
@@ -186,22 +194,23 @@ onMounted(() => {
 
 					<Separator class="my-4" />
 
+					<!-- Add error display -->
+					<div v-if="Object.keys(errors).length" class="text-destructive mt-2 text-sm">
+						<p v-for="error in errors" :key="error">{{ error }}</p>
+					</div>
+
 					<Button
 						class="w-full"
-						:disabled="
-							!selectedDates.start || !selectedDates.end || rentalForm.processing
-						"
+						:disabled="!selectedDates.start || !selectedDates.end || isSubmitting"
 						@click.prevent="handleSubmit"
 					>
-						{{ rentalForm.processing ? "Processing..." : "Send Rent Request" }}
+						<template v-if="isSubmitting">
+							<span class="loading-spinner mr-2"></span>
+							Processing...
+						</template>
+						<template v-else> Send Rent Request </template>
 					</Button>
 				</template>
-			</template>
-
-			<template v-else>
-				<div class="text-muted-foreground text-center py-4">
-					This is your listing. Switch to My Listings to manage it.
-				</div>
 			</template>
 		</CardContent>
 	</Card>
