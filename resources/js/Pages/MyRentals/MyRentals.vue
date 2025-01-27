@@ -1,6 +1,7 @@
 <script setup>
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import StatCard from "@/Components/StatCard.vue";
+import RentalCard from "@/Components/RentalCard.vue";
 import {
 	Select,
 	SelectContent,
@@ -8,7 +9,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import RentalsList from "@/Components/RentalsList.vue";
 import { ref } from "vue";
 
 const props = defineProps({
@@ -35,6 +35,7 @@ const handleValueChange = (value) => {
 <template>
 	<Head title="| My Rentals" />
 	<div class="space-y-6">
+		<!-- header -->
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 			<div class="space-y-1">
 				<h2 class="text-2xl font-semibold tracking-tight">My Rentals</h2>
@@ -52,8 +53,8 @@ const handleValueChange = (value) => {
 			/>
 		</div>
 
-		<!-- Tabs for md+ screens -->
-		<div class="hidden md:block">
+		<!-- Tabs for lg+ screens -->
+		<div class="hidden lg:block">
 			<Tabs v-model="selectedTab" class="w-full" @update:modelValue="handleValueChange">
 				<TabsList class="w-full justify-start">
 					<TabsTrigger v-for="tab in tabs" :key="tab.id" :value="tab.id">
@@ -62,13 +63,22 @@ const handleValueChange = (value) => {
 				</TabsList>
 
 				<TabsContent v-for="tab in tabs" :key="tab.id" :value="tab.id">
-					<RentalsList :rentals="rentals[tab.id] || []" :show-pagination="false" />
+					<div v-if="rentals[tab.id]?.length" class="space-y-4">
+						<RentalCard
+							v-for="rental in rentals[tab.id]"
+							:key="rental.id"
+							:rental="rental"
+						/>
+					</div>
+					<div v-else class="text-muted-foreground py-10 text-center">
+						No rentals found
+					</div>
 				</TabsContent>
 			</Tabs>
 		</div>
 
-		<!-- Select for sm screens -->
-		<div class="md:hidden">
+		<!-- Select dropdown for md screens -->
+		<div class="lg:hidden">
 			<Select v-model="selectedTab" @update:modelValue="handleValueChange">
 				<SelectTrigger class="w-full">
 					<SelectValue :placeholder="tabs.find((t) => t.id === selectedTab)?.label" />
@@ -82,7 +92,14 @@ const handleValueChange = (value) => {
 
 			<!-- Content for mobile -->
 			<div class="mt-4">
-				<RentalsList :rentals="rentals[selectedTab] || []" :show-pagination="false" />
+				<div v-if="rentals[selectedTab]?.length" class="space-y-4">
+					<RentalCard
+						v-for="rental in rentals[selectedTab]"
+						:key="rental.id"
+						:rental="rental"
+					/>
+				</div>
+				<div v-else class="text-muted-foreground py-10 text-center">No rentals found</div>
 			</div>
 		</div>
 	</div>
