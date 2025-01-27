@@ -1,8 +1,7 @@
 <script setup>
 import { computed, ref } from "vue";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Link, router, useForm } from "@inertiajs/vue3"; // Add useForm here
+import { Link, router } from "@inertiajs/vue3";
 import { formatNumber, formatRentalDate, timeAgo } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Clock, AlertTriangle, MessageCircle } from "lucide-vue-next";
@@ -15,6 +14,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
+import RentalStatusBadge from "@/Components/RentalStatusBadge.vue";
 
 const props = defineProps({
 	rental: {
@@ -26,73 +26,13 @@ const props = defineProps({
 const showReturnDialog = ref(false);
 
 const showActions = computed(() => ({
-	canCancel: ["pending", "approved"].includes(props.rental.status),
-	canPay: props.rental.status === "approved",
-	canReturn: props.rental.status === "active" && !props.rental.return_at,
-	canReview: props.rental.status === "completed" && !props.rental.reviews?.length,
-	canPickup: props.rental.status === "approved" && !props.rental.handover_at,
-	isRenting: props.rental.status === "active",
+	canCancel: [1, 2].includes(props.rental.status.id),
+	canPay: props.rental.status.id === 2,
+	canReturn: props.rental.status.id === 4 && !props.rental.return_at,
+	canReview: props.rental.status.id === 5 && !props.rental.reviews?.length,
+	canPickup: props.rental.status.id === 3 && !props.rental.handover_at,
+	isRenting: props.rental.status.id === 3 && props.rental.handover_at,
 }));
-
-const statusInfo = computed(() => {
-	switch (props.rental.status) {
-		case "pending":
-			return {
-				label: "Pending",
-				variant: "warning",
-			};
-		case "approved":
-			return {
-				label: "Approved",
-				variant: "info",
-			};
-		case "active":
-			return {
-				label: "Active",
-				variant: "success",
-			};
-		case "completed":
-			return {
-				label: "Completed",
-				variant: "default",
-			};
-		case "rejected":
-			return {
-				label: "Rejected",
-				variant: "destructive",
-			};
-		case "cancelled":
-			return {
-				label: "Cancelled",
-				variant: "muted",
-			};
-		default:
-			return {
-				label: props.rental.status,
-				variant: "default",
-			};
-	}
-});
-
-// Move the longer status text to a separate computed property
-const detailedStatus = computed(() => {
-	switch (props.rental.status) {
-		case "pending":
-			return "Waiting for owner's approval";
-		case "approved":
-			return "Ready for handover";
-		case "active":
-			return props.rental.return_at ? "Return initiated" : "Currently renting";
-		case "completed":
-			return "Rental completed";
-		case "rejected":
-			return props.rental.rejection_reason || "Request rejected";
-		case "cancelled":
-			return "Request cancelled";
-		default:
-			return props.rental.status;
-	}
-});
 
 const isEarlyReturn = computed(() => {
 	return props.rental.status.id === 3 && new Date(props.rental.end_date) > new Date();
@@ -119,48 +59,33 @@ const handleReturn = () => {
 	);
 };
 
-const emit = defineEmits(["approve", "reject"]);
-
-const handleApprove = () => {
-	router.patch(
-		route("rentals.approve", props.rental.id),
-		{},
-		{
-			preserveScroll: true,
-			onSuccess: () => {
-				// Optional: show success message
-			},
-		}
-	);
-};
-
-const rejectForm = useForm({
-	rejection_reason: "",
-});
-
-const handleReject = () => {
-	rejectForm.patch(route("rentals.reject", props.rental.id), {
-		preserveScroll: true,
-		onSuccess: () => {
-			rejectForm.reset();
-			showRejectDialog.value = false;
-		},
-	});
-};
-
-const showRejectDialog = ref(false);
-
-// Add a computed property to safely get the owner name
-const ownerName = computed(() => {
-	return props.rental?.listing?.user?.name ?? "Unknown Owner";
-});
-
-// Add a computed property to safely handle the listing image
+// computed property for image URL
 const listingImage = computed(() => {
-	const images = props.rental?.listing?.images;
-	return images && images.length > 0
-		? images[0].url
-		: "/storage/images/listing/default.png";
+	const image = props.rental?.listing?.images?.[0];
+	if (image?.image_path) {
+		return `/storage/${image.image_path}`;
+	}
+	return "/storage/images/listing/default.png";
+});
+
+// Add detailedStatus computed property
+const detailedStatus = computed(() => {
+	switch (props.rental.status) {
+		case "pending":
+			return "Waiting for owner's approval";
+		case "approved":
+			return "Ready for handover";
+		case "active":
+			return props.rental.return_at ? "Return initiated" : "Currently renting";
+		case "completed":
+			return "Rental completed";
+		case "rejected":
+			return props.rental.rejection_reason || "Request rejected";
+		case "cancelled":
+			return "Request cancelled";
+		default:
+			return props.rental.status;
+	}
 });
 </script>
 
@@ -178,9 +103,7 @@ const listingImage = computed(() => {
 							{{ rental.listing.title }}
 						</Link>
 						<div>
-							<Badge :variant="statusInfo.variant">
-								{{ statusInfo.label }}
-							</Badge>
+							<RentalStatusBadge :status="rental.status" />
 						</div>
 					</div>
 
@@ -193,7 +116,7 @@ const listingImage = computed(() => {
 					</div>
 
 					<div class="text-sm">
-						<p>Owner: {{ ownerName }}</p>
+						<p>Owner: {{ rental.listing.user.name }}</p>
 					</div>
 
 					<!-- Status Indicators -->
@@ -243,7 +166,7 @@ const listingImage = computed(() => {
 											<p v-if="isEarlyReturn" class="text-warning">
 												You are returning this item before the scheduled end date. The
 												rental period ends
-												{{ formatDate(rental.end_date) }}.
+												{{ formatRentalDate(rental.end_date) }}.
 											</p>
 											<p>Are you sure you want to return this item?</p>
 										</div>
@@ -274,43 +197,6 @@ const listingImage = computed(() => {
 							Currently Renting
 						</Button>
 					</div>
-
-					<!-- Add approval/rejection buttons for received requests -->
-					<div v-if="rental.status === 'pending' && isOwner" class="flex gap-2 mt-4">
-						<Button @click="handleApprove">Approve</Button>
-						<Button variant="destructive" @click="showRejectDialog = true">Reject</Button>
-					</div>
-
-					<!-- Rejection Dialog -->
-					<Dialog v-model:open="showRejectDialog">
-						<DialogContent>
-							<DialogHeader>
-								<DialogTitle>Reject Rental Request</DialogTitle>
-								<DialogDescription>
-									Please provide a reason for rejecting this rental request.
-								</DialogDescription>
-							</DialogHeader>
-							<div class="grid gap-4 py-4">
-								<textarea
-									v-model="rejectForm.rejection_reason"
-									class="min-h-[100px] w-full rounded-md border p-3"
-									placeholder="Explain why you're rejecting this request..."
-								></textarea>
-							</div>
-							<DialogFooter>
-								<Button variant="outline" @click="showRejectDialog = false"
-									>Cancel</Button
-								>
-								<Button
-									variant="destructive"
-									@click="handleReject"
-									:disabled="rejectForm.processing || !rejectForm.rejection_reason"
-								>
-									Reject Request
-								</Button>
-							</DialogFooter>
-						</DialogContent>
-					</Dialog>
 				</div>
 
 				<!-- Listing Image -->
@@ -322,7 +208,6 @@ const listingImage = computed(() => {
 					/>
 				</div>
 			</div>
-			<!-- Move detailed status to bottom -->
 			<div class="text-muted-foreground space-y-1 text-sm mt-2">
 				<p>{{ detailedStatus }}</p>
 				<p v-if="rental.status === 'active'">
