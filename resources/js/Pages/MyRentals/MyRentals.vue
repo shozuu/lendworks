@@ -10,6 +10,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { ref } from "vue";
+import { formatLabel } from "@/lib/formatters";
 
 const props = defineProps({
 	rentals: Object,
@@ -46,10 +47,10 @@ const handleValueChange = (value) => {
 		<!-- status summary cards -->
 		<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
 			<StatCard
-				v-for="tab in tabs"
-				:key="tab.id"
-				:label="tab.label"
-				:value="stats[tab.id]"
+				v-for="(count, status) in stats"
+				:key="status"
+				:label="formatLabel(status)"
+				:value="count"
 			/>
 		</div>
 

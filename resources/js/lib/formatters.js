@@ -10,6 +10,18 @@ export function formatNumber(value) {
 }
 
 /**
+ * Converts snake_case or kebab-case to Title Case
+ * e.g., "pending_requests" -> "Pending Requests"
+ */
+export function formatLabel(text) {
+    if (!text) return '';
+    return text
+        .split(/[_-]/)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+}
+
+/**
  * Format date in MMM d, yyyy format without time
  * Used primarily for rental dates display
  */

@@ -12,6 +12,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { ref } from "vue";
+import { formatLabel } from "@/lib/formatters";
 
 const props = defineProps({
 	listings: Array,
@@ -54,14 +55,6 @@ const filterListings = (value) => {
 			return props.listings;
 	}
 };
-
-const formatLabel = (status) => {
-	// Convert snake_case to Title Case and handle special cases
-	return status
-		.split("_")
-		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-		.join(" ");
-};
 </script>
 
 <template>
@@ -81,7 +74,6 @@ const formatLabel = (status) => {
 					</Button>
 				</Link>
 			</div>
-
 			<!-- Listing Stats -->
 			<div class="sm:grid-cols-3 lg:grid-cols-6 grid grid-cols-2 gap-3">
 				<StatCard

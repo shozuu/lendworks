@@ -10,6 +10,7 @@ import {
 import StatCard from "@/Components/StatCard.vue";
 import LenderListingCard from "@/Components/LenderListingCard.vue";
 import { ref } from "vue";
+import { formatLabel } from "@/lib/formatters";
 
 const props = defineProps({
 	groupedListings: Object,
@@ -28,13 +29,6 @@ const tabs = [
 
 const handleValueChange = (value) => {
 	selectedTab.value = value;
-};
-
-const formatLabel = (status) => {
-	return status
-		.split("_")
-		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-		.join(" ");
 };
 </script>
 
