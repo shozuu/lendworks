@@ -2,9 +2,9 @@
 import { computed, ref } from "vue";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link, router } from "@inertiajs/vue3";
-import { formatNumber, formatRentalDate, timeAgo } from "@/lib/formatters";
+import { formatNumber, formatRentalDate } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
-import { Clock, AlertTriangle, MessageCircle } from "lucide-vue-next";
+import { MessageCircle } from "lucide-vue-next";
 import {
 	Dialog,
 	DialogContent,
@@ -92,13 +92,25 @@ const detailedStatus = computed(() => {
 <template>
 	<Card>
 		<CardContent class="sm:p-6 p-4">
-			<div class="grid gap-4 sm:grid-cols-[1fr_120px]">
+			<div class="flex flex-col sm:flex-row gap-4">
+				<!-- thumbnail -->
+				<div class="sm:w-32 sm:h-32 w-24 h-24 overflow-hidden rounded-md shrink-0">
+					<Link :href="route('listing.show', rental.listing.id)" class="h-full">
+						<img
+							:src="listingImage"
+							:alt="rental.listing.title"
+							class="object-cover w-full h-full"
+						/>
+					</Link>
+				</div>
+
 				<!-- Rental Info -->
-				<div class="space-y-3">
-					<div class="space-y-2">
+				<div class="flex-1 flex flex-col gap-3">
+					<!-- title and badge -->
+					<div class="flex items-start flex-col sm:flex-row justify-between gap-1">
 						<Link
 							:href="route('listing.show', rental.listing.id)"
-							class="hover:underline font-semibold"
+							class="hover:underline font-semibold line-clamp-1"
 						>
 							{{ rental.listing.title }}
 						</Link>
@@ -106,36 +118,30 @@ const detailedStatus = computed(() => {
 							<RentalStatusBadge :status="rental.status" />
 						</div>
 					</div>
-
-					<div class="text-muted-foreground text-sm">
-						<p>
-							{{ formatRentalDate(rental.start_date) }} -
-							{{ formatRentalDate(rental.end_date) }}
+					<div class="text-muted-foreground space-y-1 text-sm">
+						<p>{{ detailedStatus }}</p>
+						<p v-if="rental.status === 'active'">
+							Due: {{ formatRentalDate(rental.end_date) }}
 						</p>
-						<p class="mt-1">Total: {{ formatNumber(rental.total_price) }}</p>
 					</div>
 
-					<div class="text-sm">
-						<p>Owner: {{ rental.listing.user.name }}</p>
-					</div>
-
-					<!-- Status Indicators -->
-					<div
-						class="text-muted-foreground flex items-center gap-2 text-xs"
-						v-if="rental.hasStarted"
-					>
-						<Clock class="w-4 h-4" />
-						<span v-if="rental.hasEnded">Ended {{ timeAgo(rental.end_date) }}</span>
-						<span v-else>Started {{ timeAgo(rental.start_date) }}</span>
-					</div>
-
-					<!-- Warning Indicators -->
-					<div
-						v-if="showActions.needsAttention"
-						class="text-warning flex items-center gap-2 text-xs"
-					>
-						<AlertTriangle class="w-4 h-4" />
-						<span>Has ongoing dispute</span>
+					<!-- rental details -->
+					<div class="text-muted-foreground text-sm">
+						<div class="flex gap-2">
+							<span class="font-medium">Total:</span>
+							<span>{{ formatNumber(rental.total_price) }}</span>
+						</div>
+						<div class="flex gap-2">
+							<span class="font-medium">Period:</span>
+							<span>
+								{{ formatRentalDate(rental.start_date) }} -
+								{{ formatRentalDate(rental.end_date) }}
+							</span>
+						</div>
+						<div class="flex gap-2">
+							<span class="font-medium">Owner:</span>
+							<span>{{ rental.listing.user.name }}</span>
+						</div>
 					</div>
 
 					<!-- Action Buttons -->
@@ -152,37 +158,6 @@ const detailedStatus = computed(() => {
 							Pay Now
 						</Button>
 
-						<Dialog v-model:open="showReturnDialog">
-							<DialogTrigger asChild v-if="showActions.canReturn">
-								<Button size="sm" :variant="isEarlyReturn ? 'outline' : 'default'">
-									Return Item
-								</Button>
-							</DialogTrigger>
-							<DialogContent>
-								<DialogHeader>
-									<DialogTitle>Return Item</DialogTitle>
-									<DialogDescription>
-										<div class="space-y-2">
-											<p v-if="isEarlyReturn" class="text-warning">
-												You are returning this item before the scheduled end date. The
-												rental period ends
-												{{ formatRentalDate(rental.end_date) }}.
-											</p>
-											<p>Are you sure you want to return this item?</p>
-										</div>
-									</DialogDescription>
-								</DialogHeader>
-								<DialogFooter>
-									<Button variant="outline" @click="showReturnDialog = false"
-										>Cancel</Button
-									>
-									<Button variant="default" @click="handleReturn">
-										Confirm Return
-									</Button>
-								</DialogFooter>
-							</DialogContent>
-						</Dialog>
-
 						<Button v-if="showActions.canReview" size="sm" variant="outline">
 							Leave Review
 						</Button>
@@ -198,22 +173,34 @@ const detailedStatus = computed(() => {
 						</Button>
 					</div>
 				</div>
-
-				<!-- Listing Image -->
-				<div class="sm:order-last aspect-square order-first overflow-hidden rounded-md">
-					<img
-						:src="listingImage"
-						:alt="rental.listing?.title || 'Listing image'"
-						class="object-cover w-full h-full"
-					/>
-				</div>
-			</div>
-			<div class="text-muted-foreground space-y-1 text-sm mt-2">
-				<p>{{ detailedStatus }}</p>
-				<p v-if="rental.status === 'active'">
-					Due: {{ formatRentalDate(rental.end_date) }}
-				</p>
 			</div>
 		</CardContent>
 	</Card>
+
+	<Dialog v-model:open="showReturnDialog">
+		<DialogTrigger asChild v-if="showActions.canReturn">
+			<Button size="sm" :variant="isEarlyReturn ? 'outline' : 'default'">
+				Return Item
+			</Button>
+		</DialogTrigger>
+		<DialogContent>
+			<DialogHeader>
+				<DialogTitle>Return Item</DialogTitle>
+				<DialogDescription>
+					<div class="space-y-2">
+						<p v-if="isEarlyReturn" class="text-warning">
+							You are returning this item before the scheduled end date. The rental period
+							ends
+							{{ formatRentalDate(rental.end_date) }}.
+						</p>
+						<p>Are you sure you want to return this item?</p>
+					</div>
+				</DialogDescription>
+			</DialogHeader>
+			<DialogFooter>
+				<Button variant="outline" @click="showReturnDialog = false">Cancel</Button>
+				<Button variant="default" @click="handleReturn"> Confirm Return </Button>
+			</DialogFooter>
+		</DialogContent>
+	</Dialog>
 </template>
