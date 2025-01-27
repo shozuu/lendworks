@@ -1,12 +1,11 @@
 <script setup>
 import BaseListingCard from "./BaseListingCard.vue";
 import { Button } from "@/components/ui/button";
-import { XCircle, User } from "lucide-vue-next";
+import { XCircle } from "lucide-vue-next";
 import { Link } from "@inertiajs/vue3";
 import { ref } from "vue";
 import { router } from "@inertiajs/vue3";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
-import ListingStatusBadge from "@/Components/ListingStatusBadge.vue";
 
 const props = defineProps({
 	listing: {
@@ -116,10 +115,10 @@ const handleUpdateStatus = async (status) => {
 		<!-- details unique to admins -->
 		<template #extra-details>
 			<div class="flex items-center gap-1">
-				<User class="w-4 h-4 shrink-0" />
+				<p>Owner:</p>
 				<Link
 					:href="route('admin.users.show', listing.user.id)"
-					class="text-primary hover:underline text-sm"
+					class="hover:underline text-sm"
 				>
 					{{ listing.user.name }}
 				</Link>
