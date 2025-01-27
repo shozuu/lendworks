@@ -3,7 +3,14 @@ import NavLink from "../Components/NavLink.vue";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import Logo from "../Components/Logo.vue";
-import { Home, Menu, HandHelping, Telescope, Package } from "lucide-vue-next";
+import {
+	Home,
+	Menu,
+	HandHelping,
+	Telescope,
+	Package,
+	LayoutDashboard,
+} from "lucide-vue-next";
 import { ref, onMounted, onUnmounted } from "vue";
 
 const theme = ref(document.body.getAttribute("data-theme"));
@@ -68,6 +75,15 @@ onMounted(() => {
 				<NavLink routeName="my-listings" componentName="MyListings/MyListings" size="sm">
 					<Package class="w-5 h-5" />
 					My Listings
+				</NavLink>
+
+				<NavLink
+					routeName="lender-dashboard"
+					componentName="LenderDashboard/LenderDashboard"
+					size="sm"
+				>
+					<LayoutDashboard class="w-5 h-5" />
+					Lender Dashboard
 				</NavLink>
 			</nav>
 
