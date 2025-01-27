@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\ExploreController;
+use App\Http\Controllers\LenderDashboardController;
 use App\Http\Controllers\ListingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MyRentalsController;
@@ -39,6 +40,9 @@ Route::middleware(['auth', 'verified'])->group(function() {
     Route::post('/rentals', [RentalRequestController::class, 'store'])->name('rentals.store');
     Route::patch('/rentals/{rentalRequest}/approve', [RentalRequestController::class, 'approve'])->name('rentals.approve');
     Route::patch('/rentals/{rentalRequest}/reject', [RentalRequestController::class, 'reject'])->name('rentals.reject');
+
+    // lender dashboard
+    Route::get('/lender-dashboard', [LenderDashboardController::class, 'index'])->name('lender-dashboard');
 });
 
 // Admin routes with auth and admin middleware
