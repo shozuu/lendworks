@@ -13,7 +13,12 @@ class MyRentalsController extends Controller
     {
         // Get rentals where user is the renter
         $rentals = RentalRequest::where('renter_id', Auth::id())
-            ->with(['listing.user', 'listing.images']) 
+            ->with([
+                'listing.user', 
+                'listing.images',
+                'listing.category', 
+                'listing.location'   
+            ]) 
             ->latest()
             ->get()
             ->groupBy('status');
