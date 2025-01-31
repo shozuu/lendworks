@@ -11,28 +11,45 @@ class LenderDashboardController extends Controller
     public function index()
     {
         $listings = Listing::where('user_id', Auth::id())
-            ->with(['rentalRequests.renter', 'images'])
+            ->with(['rentalRequests' => function($query) {
+                // Default eager loading with order
+                $query->orderBy('created_at', 'asc');
+            }, 'rentalRequests.renter', 'images', 'category', 'location'])
             ->get();
 
-            
-        // group listings by their rental status
         $groupedListings = [
-            'pending_requests' => $listings->filter(fn($listing) => 
-                $listing->rentalRequests->contains('status', 'pending')),
-            'to_handover' => $listings->filter(fn($listing) => 
-                $listing->rentalRequests->contains(fn($req) => 
-                    $req->status === 'approved' && !$req->handover_at)),
-            'active_rentals' => $listings->filter(fn($listing) => 
-                $listing->rentalRequests->contains(fn($req) => 
-                    $req->status === 'active' && !$req->return_at)),
-            'pending_returns' => $listings->filter(fn($listing) => 
-                $listing->rentalRequests->contains(fn($req) => 
-                    $req->status === 'active' && $req->return_at)),
-            'completed' => $listings->filter(fn($listing) => 
-                $listing->rentalRequests->contains('status', 'completed'))
+            'pending_requests' => $listings->flatMap(function($listing) {
+                return $listing->rentalRequests
+                    ->where('status', 'pending')
+                    ->sortBy('created_at') // First requested first
+                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
+            })->values(),
+            'to_handover' => $listings->flatMap(function($listing) {
+                return $listing->rentalRequests
+                    ->filter(fn($req) => $req->status === 'approved' && !$req->handover_at)
+                    ->sortBy('created_at') // First approved first
+                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
+            })->values(),
+            'active_rentals' => $listings->flatMap(function($listing) {
+                return $listing->rentalRequests
+                    ->filter(fn($req) => $req->status === 'active' && !$req->return_at)
+                    ->sortBy('created_at') // First activated first
+                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
+            })->values(),
+            'pending_returns' => $listings->flatMap(function($listing) {
+                return $listing->rentalRequests
+                    ->filter(fn($req) => $req->status === 'active' && $req->return_at)
+                    ->sortBy('created_at') // First return request first
+                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
+            })->values(),
+            'completed' => $listings->flatMap(function($listing) {
+                return $listing->rentalRequests
+                    ->where('status', 'completed')
+                    ->sortByDesc('updated_at') // Most recently completed first
+                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
+            })->values(),
         ];
 
-        // counts how many listings are in each group
         $rentalStats = collect($groupedListings)->map->count();
 
         return Inertia::render('LenderDashboard/LenderDashboard', [
