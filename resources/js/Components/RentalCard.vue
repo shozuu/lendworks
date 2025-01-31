@@ -1,7 +1,6 @@
 <script setup>
 import { computed, ref } from "vue";
-import { Card, CardContent } from "@/components/ui/card";
-import { Link, router } from "@inertiajs/vue3";
+import { router } from "@inertiajs/vue3";
 import { formatNumber, formatRentalDate } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { MessageCircle } from "lucide-vue-next";
@@ -14,7 +13,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
-import RentalStatusBadge from "@/Components/RentalStatusBadge.vue";
+import BaseRentalCard from "@/Components/BaseRentalCard.vue";
 
 const props = defineProps({
 	rental: {
@@ -87,95 +86,70 @@ const detailedStatus = computed(() => {
 			return props.rental.status;
 	}
 });
+
+const details = computed(() => [
+	{
+		label: "Total",
+		value: formatNumber(props.rental.total_price),
+	},
+	{
+		label: "Period",
+		value: `${formatRentalDate(props.rental.start_date)} - ${formatRentalDate(
+			props.rental.end_date
+		)}`,
+	},
+	{
+		label: "Owner",
+		value: props.rental.listing.user.name,
+	},
+]);
 </script>
 
 <template>
-	<Card>
-		<CardContent class="sm:p-6 p-4">
-			<div class="flex flex-col sm:flex-row gap-4">
-				<!-- thumbnail -->
-				<div class="sm:w-32 sm:h-32 w-24 h-24 overflow-hidden rounded-md shrink-0">
-					<Link :href="route('listing.show', rental.listing.id)" class="h-full">
-						<img
-							:src="listingImage"
-							:alt="rental.listing.title"
-							class="object-cover w-full h-full"
-						/>
-					</Link>
-				</div>
+	<BaseRentalCard
+		:title="rental.listing.title"
+		:image="listingImage"
+		:status="rental.status"
+		:listing-id="rental.listing.id"
+		:details="details"
+		:status-text="detailedStatus"
+	>
+		<!-- Details slot -->
+		<template #additional-details>
+			<p v-if="rental.status === 'active'" class="text-muted-foreground text-sm">
+				Due: {{ formatRentalDate(rental.end_date) }}
+			</p>
+		</template>
 
-				<!-- Rental Info -->
-				<div class="flex-1 flex flex-col gap-3">
-					<!-- title and badge -->
-					<div class="flex items-start flex-col sm:flex-row justify-between gap-1">
-						<Link
-							:href="route('listing.show', rental.listing.id)"
-							class="hover:underline font-semibold line-clamp-1"
-						>
-							{{ rental.listing.title }}
-						</Link>
-						<div>
-							<RentalStatusBadge :status="rental.status" />
-						</div>
-					</div>
-					<div class="text-muted-foreground space-y-1 text-sm">
-						<p>{{ detailedStatus }}</p>
-						<p v-if="rental.status === 'active'">
-							Due: {{ formatRentalDate(rental.end_date) }}
-						</p>
-					</div>
+		<!-- Actions slot -->
+		<template #actions>
+			<div
+				class="flex flex-wrap gap-2 pt-2"
+				v-if="Object.values(showActions).some(Boolean)"
+			>
+				<Button
+					v-if="showActions.canPay"
+					size="sm"
+					variant="default"
+					@click="handlePayment"
+				>
+					Pay Now
+				</Button>
 
-					<!-- rental details -->
-					<div class="text-muted-foreground text-sm">
-						<div class="flex gap-2">
-							<span class="font-medium">Total:</span>
-							<span>{{ formatNumber(rental.total_price) }}</span>
-						</div>
-						<div class="flex gap-2">
-							<span class="font-medium">Period:</span>
-							<span>
-								{{ formatRentalDate(rental.start_date) }} -
-								{{ formatRentalDate(rental.end_date) }}
-							</span>
-						</div>
-						<div class="flex gap-2">
-							<span class="font-medium">Owner:</span>
-							<span>{{ rental.listing.user.name }}</span>
-						</div>
-					</div>
-
-					<!-- Action Buttons -->
-					<div
-						class="flex flex-wrap gap-2 pt-2"
-						v-if="Object.values(showActions).some(Boolean)"
-					>
-						<Button
-							v-if="showActions.canPay"
-							size="sm"
-							variant="default"
-							@click="handlePayment"
-						>
-							Pay Now
-						</Button>
-
-						<Button v-if="showActions.canReview" size="sm" variant="outline">
-							Leave Review
-						</Button>
-						<Button v-if="showActions.needsAttention" size="sm" variant="destructive">
-							<MessageCircle class="w-4 h-4 mr-2" />
-							View Dispute
-						</Button>
-						<Button v-if="showActions.canPickup" size="sm" disabled>
-							Ready for Pickup
-						</Button>
-						<Button v-if="showActions.canView" size="sm" disabled>
-							Currently Renting
-						</Button>
-					</div>
-				</div>
+				<Button v-if="showActions.canReview" size="sm" variant="outline">
+					Leave Review
+				</Button>
+				<Button v-if="showActions.needsAttention" size="sm" variant="destructive">
+					<MessageCircle class="w-4 h-4 mr-2" />
+					View Dispute
+				</Button>
+				<Button v-if="showActions.canPickup" size="sm" disabled>
+					Ready for Pickup
+				</Button>
+				<Button v-if="showActions.canView" size="sm" disabled> Currently Renting </Button>
 			</div>
-		</CardContent>
-	</Card>
+		</template>
+	</BaseRentalCard>
 
 	<Dialog v-model:open="showReturnDialog">
 		<DialogTrigger asChild v-if="showActions.canReturn">
