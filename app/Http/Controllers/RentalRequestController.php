@@ -16,7 +16,6 @@ class RentalRequestController extends Controller
 {
     public function store(Request $request)
     {
-        // Validate request
         $validated = $request->validate([
             'listing_id' => ['required', 'exists:listings,id'],
             'start_date' => ['required', 'date', 'after_or_equal:today'],
@@ -28,37 +27,52 @@ class RentalRequestController extends Controller
         ]);
 
         try {
-            $listing = Listing::findOrFail($validated['listing_id']);
+            // Eager load the listing with its owner
+            $listing = Listing::with('user')->findOrFail($validated['listing_id']);
 
-            // Check availability and ownership
+            // Validate listing status and ownership
             if (!$listing->is_available || $listing->is_rented || $listing->status !== 'approved') {
-                return back()->with('error', 'This item is not available for rent.');
+                throw new \Exception('This item is not available for rent.');
             }
 
             if ($listing->user_id === Auth::id()) {
-                return back()->with('error', 'You cannot rent your own listing.');
+                throw new \Exception('You cannot rent your own listing.');
             }
 
-            // Create rental request
-            $rentalRequest = RentalRequest::create([
-                'listing_id' => $validated['listing_id'],
+            $dates = $this->parseDates($validated['start_date'], $validated['end_date']);
+
+            $rentalRequest = new RentalRequest([
+                ...$validated,
+                'listing_id' => $listing->id,
                 'renter_id' => Auth::id(),
-                'start_date' => $validated['start_date'],
-                'end_date' => $validated['end_date'],
-                'base_price' => $validated['base_price'],
-                'discount' => $validated['discount'],
-                'service_fee' => $validated['service_fee'],
-                'total_price' => $validated['total_price'],
+                'start_date' => $dates['start'],
+                'end_date' => $dates['end'],
                 'status' => 'pending'
             ]);
 
-            // Notify owner
+            $rentalRequest->save();
+
+            // Explicitly load relationships needed for notification
+            $rentalRequest->load(['renter', 'listing.user']);
             $listing->user->notify(new NewRentalRequest($rentalRequest));
+
+            return redirect()
+                ->route('my-rentals')
+                ->with('success', 'Rental request sent successfully!');
             
-            return redirect()->route('my-rentals')->with('success', 'Rental request submitted successfully!');
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to submit rental request.');
+            return back()->with('error', 'Failed to submit rental request. ' . $e->getMessage());
         }
+    }
+
+    private function parseDates($startDate, $endDate)
+    {
+        date_default_timezone_set('Asia/Manila');
+
+        return [
+            'start' => Carbon::createFromFormat('Y-m-d', $startDate, 'Asia/Manila')->startOfDay(),
+            'end' => Carbon::createFromFormat('Y-m-d', $endDate, 'Asia/Manila')->endOfDay(),
+        ];
     }
 
     public function approve(RentalRequest $rentalRequest)
