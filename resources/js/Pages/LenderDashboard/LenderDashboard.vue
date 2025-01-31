@@ -16,7 +16,7 @@ const props = defineProps({
 	groupedListings: Object,
 	rentalStats: Object,
 });
-
+console.log(props.groupedListings);
 const selectedTab = ref("pending_requests");
 
 const tabs = [
@@ -36,15 +36,15 @@ const handleValueChange = (value) => {
 	<Head title="| Lender Dashboard" />
 	<div class="space-y-6">
 		<!-- Header -->
-		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+		<div class="sm:flex-row sm:items-center sm:justify-between flex flex-col gap-4">
 			<div class="space-y-1">
 				<h2 class="text-2xl font-semibold tracking-tight">Lender Dashboard</h2>
-				<p class="text-sm text-muted-foreground">Manage rentals of your listed items</p>
+				<p class="text-muted-foreground text-sm">Manage rentals of your listed items</p>
 			</div>
 		</div>
 
 		<!-- Stats Cards -->
-		<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+		<div class="sm:grid-cols-3 lg:grid-cols-5 grid grid-cols-2 gap-3">
 			<StatCard
 				v-for="(count, status) in rentalStats"
 				:key="status"
@@ -54,9 +54,9 @@ const handleValueChange = (value) => {
 		</div>
 
 		<!-- Tabs for lg+ screens -->
-		<div class="hidden lg:block">
+		<div class="lg:block hidden">
 			<Tabs v-model="selectedTab" class="w-full" @update:modelValue="handleValueChange">
-				<TabsList class="w-full justify-start">
+				<TabsList class="justify-start w-full">
 					<TabsTrigger v-for="tab in tabs" :key="tab.id" :value="tab.id">
 						{{ tab.label }}
 					</TabsTrigger>
@@ -65,9 +65,9 @@ const handleValueChange = (value) => {
 				<TabsContent v-for="tab in tabs" :key="tab.id" :value="tab.id">
 					<div v-if="groupedListings[tab.id]?.length" class="space-y-4">
 						<LenderListingCard
-							v-for="listing in groupedListings[tab.id]"
-							:key="listing.id"
-							:listing="listing"
+							v-for="item in groupedListings[tab.id]"
+							:key="`${item.listing.id}-${item.rental_request.id}`"
+							:data="item"
 							:selected-status="tab.id"
 						/>
 					</div>
@@ -95,9 +95,9 @@ const handleValueChange = (value) => {
 			<div class="mt-4">
 				<div v-if="groupedListings[selectedTab]?.length" class="space-y-4">
 					<LenderListingCard
-						v-for="listing in groupedListings[selectedTab]"
-						:key="listing.id"
-						:listing="listing"
+						v-for="item in groupedListings[selectedTab]"
+						:key="`${item.listing.id}-${item.rental_request.id}`"
+						:data="item"
 						:selected-status="selectedTab"
 					/>
 				</div>

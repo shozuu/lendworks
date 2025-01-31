@@ -62,7 +62,7 @@ const props = defineProps({
 				</div>
 
 				<!-- Details -->
-				<div class="text-muted-foreground text-xs sm:text-sm space-y-0.5 flex-1">
+				<div class="text-muted-foreground text-sm space-y-0.5 flex-1">
 					<div class="flex items-center gap-1">
 						<p>Category:</p>
 						<span class="truncate">{{ listing.category?.name }}</span>
