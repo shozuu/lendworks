@@ -47,4 +47,17 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->locations()->where('is_default', true)->first();
     }
+
+    public function sentRentalRequests() {
+        return $this->hasMany(RentalRequest::class, 'renter_id');
+    }
+
+    public function receivedRentalRequests() {
+        return $this->hasManyThrough(
+            RentalRequest::class,
+            Listing::class,
+            'user_id',
+            'listing_id'
+        );
+    }
 }

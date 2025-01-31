@@ -176,9 +176,10 @@ const handleDelete = () => {
 	</h2>
 
 	<div class="lg:grid-cols-2 grid grid-cols-1 gap-4 lg:gap-10">
-		<!-- first column -->
-
 		<div class="space-y-6">
+			<Badge v-if="listing.is_rented" variant="warning" class="mb-4">
+				Currently Rented
+			</Badge>
 			<!-- images -->
 			<div class="w-full">
 				<ListingImages

@@ -75,6 +75,10 @@ class Listing extends Model
             ->with('takedownReason');
     }
 
+    public function rentalRequests() {
+        return $this->hasMany(RentalRequest::class);
+    }
+
     public function getRejectionDetailsAttribute()
     {
         if ($this->status !== 'rejected') {
