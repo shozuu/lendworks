@@ -72,20 +72,42 @@ watch(
 	selectedDates,
 	(newVal) => {
 		if (newVal.start && newVal.end) {
-			rentalForm.start_date = formatDate(new Date(newVal.start), "yyyy-MM-dd");
-			rentalForm.end_date = formatDate(new Date(newVal.end), "yyyy-MM-dd");
-			updateRentalDays(newVal.start, newVal.end);
-			rentalForm.base_price = rentalPrice.basePrice;
-			rentalForm.discount = rentalPrice.discount;
-			rentalForm.service_fee = rentalPrice.fee;
-			rentalForm.total_price = rentalPrice.totalPrice;
+			// Format dates to Manila timezone (UTC+8)
+			const formatDateToManila = (date) => {
+				const d = new Date(date);
+				// Convert to Manila time (UTC+8) and ensure it's in YYYY-MM-DD format
+				return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+			};
+
+			// Get current date in Manila time
+			const today = new Date();
+			today.setHours(0, 0, 0, 0);
+
+			const startDate = new Date(newVal.start);
+			startDate.setHours(0, 0, 0, 0);
+
+			// Only proceed if start date is valid
+			if (startDate >= today) {
+				rentalForm.start_date = formatDateToManila(newVal.start);
+				rentalForm.end_date = formatDateToManila(newVal.end);
+				
+				updateRentalDays(newVal.start, newVal.end);
+				rentalForm.base_price = rentalPrice.basePrice;
+				rentalForm.discount = rentalPrice.discount;
+				rentalForm.service_fee = rentalPrice.fee;
+				rentalForm.total_price = rentalPrice.totalPrice;
+			}
 		}
 	},
 	{ deep: true }
 );
 
 const handleSubmit = () => {
-	if (!selectedDates.value.start || !selectedDates.value.end) {
+	if (!rentalForm.start_date || !rentalForm.end_date) {
+		errors.value = {
+			start_date: ['Please select start and end dates'],
+			end_date: ['Please select start and end dates']
+		};
 		return;
 	}
 
@@ -195,7 +217,7 @@ onMounted(() => {
 					<Separator class="my-4" />
 
 					<!-- Add error display -->
-					<div v-if="Object.keys(errors).length" class="text-destructive mt-2 text-sm">
+					<div v-if="Object.keys(errors).length" class="text-destructive my-2 text-sm text-center">
 						<p v-for="error in errors" :key="error">{{ error }}</p>
 					</div>
 
