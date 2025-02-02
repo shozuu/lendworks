@@ -5,6 +5,7 @@ import BaseRentalCard from "@/Components/BaseRentalCard.vue";
 import { Button } from "@/components/ui/button";
 import { useForm } from "@inertiajs/vue3";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
+import RentalDetailsDialog from "@/Components/RentalDetailsDialog.vue";
 
 const props = defineProps({
 	data: {
@@ -75,6 +76,14 @@ const handleReject = () => {
 		preserveScroll: true,
 	});
 };
+
+const showDetails = ref(false);
+
+// Add a computed property to transform the data structure
+const rentalDetails = computed(() => ({
+	...props.data.rental_request,
+	listing: props.data.listing,
+}));
 </script>
 
 <template>
@@ -84,6 +93,7 @@ const handleReject = () => {
 		:status="data.rental_request.status"
 		:listing-id="data.listing.id"
 		:details="details"
+		@click="showDetails = true"
 	>
 		<!-- Actions slot -->
 		<template #actions>
@@ -93,7 +103,7 @@ const handleReject = () => {
 					variant="default"
 					size="sm"
 					:disabled="approveForm.processing"
-					@click="showAcceptDialog = true"
+					 @click.stop="showAcceptDialog = true"
 				>
 					{{ approveForm.processing ? "Approving..." : "Approve" }}
 				</Button>
@@ -103,13 +113,21 @@ const handleReject = () => {
 					variant="destructive"
 					size="sm"
 					:disabled="rejectForm.processing"
-					@click="showRejectDialog = true"
+					 @click.stop="showRejectDialog = true"
 				>
 					Reject
 				</Button>
 			</div>
 		</template>
 	</BaseRentalCard>
+
+	<RentalDetailsDialog
+		v-model:show="showDetails"
+		:rental="rentalDetails"
+		user-role="lender"
+		@approve="showAcceptDialog = true"
+		@reject="showRejectDialog = true"
+	/>
 
 	<!-- Accept Dialog -->
 	<ConfirmDialog
