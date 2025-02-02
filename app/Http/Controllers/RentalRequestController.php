@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Listing;
+use App\Models\RentalRejectionReason;
 use App\Models\RentalRequest;
 use App\Notifications\NewRentalRequest;
 use App\Notifications\RentalRequestApproved;
@@ -87,46 +88,100 @@ class RentalRequestController extends Controller
             return back()->with('error', 'This item is currently rented.');
         }
 
-        // Start a database transaction
-        DB::transaction(function () use ($rentalRequest) {
-            // Update rental request status
-            $rentalRequest->update(['status' => 'approved']);
-            
-            // Mark listing as rented
-            $rentalRequest->listing->update(['is_rented' => true]);
-            
-            // Reject all other pending requests for this listing
-            RentalRequest::where('listing_id', $rentalRequest->listing_id)
-                ->where('id', '!=', $rentalRequest->id)
-                ->where('status', 'pending')
-                ->update(['status' => 'rejected', 'rejection_reason' => 'Item has been rented to another user.']);
-        });
-        
-        // Notify renter
-        $rentalRequest->renter->notify(new RentalRequestApproved($rentalRequest));
+        try {
+            DB::transaction(function () use ($rentalRequest) {
+                // Update rental request status
+                $rentalRequest->update(['status' => 'approved']);
+                
+                // Mark listing as rented
+                $rentalRequest->listing->update(['is_rented' => true]);
+                
+                // Get the "other" rejection reason for automatic rejections
+                $otherRejectionReason = RentalRejectionReason::where('code', 'other')->first();
+                
+                // Find and reject other pending requests
+                $otherRequests = RentalRequest::where('listing_id', $rentalRequest->listing_id)
+                    ->where('id', '!=', $rentalRequest->id)
+                    ->where('status', 'pending')
+                    ->get();
 
-        return back()->with('success', 'Rental request approved successfully.');
+                foreach ($otherRequests as $request) {
+                    $request->update(['status' => 'rejected']);
+                    $request->rejectionReasons()->attach($otherRejectionReason->id, [
+                        'custom_feedback' => 'Item has been rented to another user.',
+                        'lender_id' => Auth::id()
+                    ]);
+                }
+            });
+
+            // Notify renter (outside transaction)
+            $rentalRequest->renter->notify(new RentalRequestApproved($rentalRequest));
+
+            return back()->with('success', 'Rental request approved successfully.');
+        } catch (\Exception $e) {
+            report($e);
+            return back()->with('error', 'Failed to approve rental request. Please try again.');
+        }
     }
 
     public function reject(Request $request, RentalRequest $rentalRequest)
     {
-        // Check if user owns the listing
         if ($rentalRequest->listing->user_id !== Auth::id()) {
             abort(403);
         }
 
         $validated = $request->validate([
-            'rejection_reason' => ['required', 'string', 'max:1000']
+            'rejection_reason_id' => ['required', 'exists:rental_rejection_reasons,id'],
+            'custom_feedback' => [
+                'required_if:rejection_reason_id,other',
+                'nullable',
+                'string',
+                'max:1000'
+            ],
         ]);
 
-        $rentalRequest->update([
-            'status' => 'rejected',
-            'rejection_reason' => $validated['rejection_reason']
-        ]);
+        try {
+            DB::transaction(function () use ($rentalRequest, $validated) {
+                // Update rental request status
+                $rentalRequest->update(['status' => 'rejected']);
 
-        // Notify renter
-        $rentalRequest->renter->notify(new RentalRequestRejected($rentalRequest));
+                // Create rejection record
+                $rentalRequest->rejectionReasons()->attach($validated['rejection_reason_id'], [
+                    'custom_feedback' => $validated['custom_feedback'],
+                    'lender_id' => Auth::id()
+                ]);
+            });
 
-        return back()->with('success', 'Rental request rejected.');
+            // Notify renter
+            $rentalRequest->load('latestRejection.rejectionReason');
+            $rentalRequest->renter->notify(new RentalRequestRejected($rentalRequest));
+
+            return back()->with('success', 'Rental request rejected successfully.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to reject rental request.');
+        }
+    }
+
+    public function cancel(RentalRequest $rentalRequest)
+    {
+        // abort if user is not the renter
+        if ($rentalRequest->renter_id !== Auth::id()) {
+            abort(403);
+        }
+
+        // check if request can be cancelled
+        if (!$rentalRequest->canBeCancelled()) {
+            return back()->with('error', 'This rental request cannot be cancelled.');
+        }
+
+        // update request status
+        $rentalRequest->update(['status' => 'cancelled']);
+
+        // if the request was approved, update listing status
+        if ($rentalRequest->status === 'approved') {
+            $rentalRequest->listing->update(['is_rented' => false]);
+        }
+
+        return back()->with('success', 'Rental request cancelled successfully.');
     }
 }
