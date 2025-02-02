@@ -7,6 +7,8 @@ import { calculateRentalPrice } from "@/lib/rentalCalculator";
 import { formatNumber, formatDate } from "@/lib/formatters";
 import { ref, reactive, watch, onMounted } from "vue";
 import { useForm as useInertiaForm } from "@inertiajs/vue3";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { XCircle } from "lucide-vue-next";
 
 const props = defineProps({
 	listing: {
@@ -16,6 +18,10 @@ const props = defineProps({
 	isOwner: {
 		type: Boolean,
 		default: false,
+	},
+	flashError: {
+		type: String,
+		default: null,
 	},
 });
 
@@ -140,6 +146,18 @@ onMounted(() => {
 
 		<CardContent class="md:p-6 md:pt-0 p-4 pt-0">
 			<Separator class="my-4" />
+
+			<!-- Rental error alert -->
+			<Alert
+				v-if="flashError"
+				variant="destructive"
+				class="flex items-center mb-4"
+			>
+				<XCircle class="w-4 h-4" />
+				<AlertDescription>
+					{{ flashError }}
+				</AlertDescription>
+			</Alert>
 
 			<div class="mb-4 font-semibold">Price Range</div>
 
