@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Carbon\Carbon;
 
 class RentalRequest extends Model
 {
@@ -141,5 +140,22 @@ class RentalRequest extends Model
                 });
             })
             ->get();
+    }
+
+    public static function hasExistingRequest($listingId, $renterId): bool
+    {
+        return static::where('listing_id', $listingId)
+            ->where('renter_id', $renterId)
+            ->whereIn('status', ['pending', 'approved', 'active'])
+            // consider other status
+            ->exists();
+    }
+
+    public static function getExistingRequest($listingId, $renterId)
+    {
+        return static::where('listing_id', $listingId)
+            ->where('renter_id', $renterId)
+            ->whereIn('status', ['pending', 'approved', 'active'])
+            ->first();
     }
 }

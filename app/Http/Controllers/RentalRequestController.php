@@ -31,6 +31,21 @@ class RentalRequestController extends Controller
             // Eager load the listing with its owner
             $listing = Listing::with('user')->findOrFail($validated['listing_id']);
 
+            // Check for existing rental request
+            if (RentalRequest::hasExistingRequest($listing->id, Auth::id())) {
+                $existingRequest = RentalRequest::getExistingRequest($listing->id, Auth::id());
+                $status = $existingRequest->status;
+                
+                $message = match($status) {
+                    'pending' => 'You already have a pending request for this item.',
+                    'approved' => 'Your request for this item has already been approved.',
+                    'active' => 'You are currently renting this item.',
+                    default => 'You cannot create multiple requests for the same item.'
+                };
+                
+                return back()->with('error', $message)->withoutScrolling(false);
+            }
+
             // Validate listing status and ownership
             if (!$listing->is_available || $listing->is_rented || $listing->status !== 'approved') {
                 throw new \Exception('This item is not available for rent.');
@@ -62,7 +77,7 @@ class RentalRequestController extends Controller
                 ->with('success', 'Rental request sent successfully!');
             
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to submit rental request. ' . $e->getMessage());
+            return back()->with('error', 'Failed to submit rental request. ' . $e->getMessage())->withoutScrolling(false); 
         }
     }
 
