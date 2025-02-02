@@ -16,10 +16,7 @@ class RentalRequest extends Model
         'discount',
         'service_fee',
         'total_price',
-        'status',
-        'rejection_reason',
-        'handover_at',
-        'return_at'
+        'status'
     ];
 
     protected $casts = [
@@ -50,6 +47,19 @@ class RentalRequest extends Model
     public function renter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'renter_id');
+    }
+
+    public function rejectionReasons()
+    {
+        return $this->belongsToMany(RentalRejectionReason::class, 'rental_request_rejections')
+            ->using(RentalRequestRejection::class)
+            ->withPivot(['custom_feedback', 'lender_id'])
+            ->withTimestamps();
+    }
+
+    public function latestRejection()
+    {
+        return $this->hasOne(RentalRequestRejection::class)->latest();
     }
 
     // Accessors

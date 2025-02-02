@@ -26,7 +26,6 @@ return new class extends Migration
                 'rejected',  // Owner rejected the request
                 'cancelled'  // Renter cancelled the request
             ])->default('pending');
-            $table->text('rejection_reason')->nullable();
             $table->timestamp('handover_at')->nullable();
             $table->timestamp('return_at')->nullable();
             $table->timestamps();
