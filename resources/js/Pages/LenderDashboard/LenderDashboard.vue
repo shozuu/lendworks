@@ -15,6 +15,7 @@ import { formatLabel } from "@/lib/formatters";
 const props = defineProps({
 	groupedListings: Object,
 	rentalStats: Object,
+	rejectionReasons: Array,
 });
 console.log(props.groupedListings);
 const selectedTab = ref("pending_requests");
@@ -69,6 +70,7 @@ const handleValueChange = (value) => {
 							:key="`${item.listing.id}-${item.rental_request.id}`"
 							:data="item"
 							:selected-status="tab.id"
+							:rejection-reasons="rejectionReasons"
 						/>
 					</div>
 					<div v-else class="text-muted-foreground py-10 text-center">
@@ -99,6 +101,7 @@ const handleValueChange = (value) => {
 						:key="`${item.listing.id}-${item.rental_request.id}`"
 						:data="item"
 						:selected-status="selectedTab"
+						:rejection-reasons="rejectionReasons"
 					/>
 				</div>
 				<div v-else class="text-muted-foreground py-10 text-center">

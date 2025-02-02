@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             ListingSeeder::class,  // Creates listings for users
             RejectionReasonSeeder::class,  
             TakedownReasonSeeder::class,  
+            RentalRejectionReasonSeeder::class,
         ]);
     }
 }

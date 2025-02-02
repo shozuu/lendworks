@@ -1,19 +1,10 @@
 <script setup>
 import { computed, ref } from "vue";
-import { router } from "@inertiajs/vue3";
 import { formatNumber, formatRentalDate } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
-import { MessageCircle } from "lucide-vue-next";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from "@/components/ui/dialog";
 import BaseRentalCard from "@/Components/BaseRentalCard.vue";
+import ConfirmDialog from "@/Components/ConfirmDialog.vue";
+import { useForm } from "@inertiajs/vue3";
 
 const props = defineProps({
 	rental: {
@@ -22,40 +13,15 @@ const props = defineProps({
 	},
 });
 
-const showReturnDialog = ref(false);
+const showCancelDialog = ref(false);
+const cancelForm = useForm({});
 
-const showActions = computed(() => ({
-	canCancel: [1, 2].includes(props.rental.status.id),
-	canPay: props.rental.status.id === 2,
-	canReturn: props.rental.status.id === 4 && !props.rental.return_at,
-	canReview: props.rental.status.id === 5 && !props.rental.reviews?.length,
-	canPickup: props.rental.status.id === 3 && !props.rental.handover_at,
-	isRenting: props.rental.status.id === 3 && props.rental.handover_at,
-}));
-
-const isEarlyReturn = computed(() => {
-	return props.rental.status.id === 3 && new Date(props.rental.end_date) > new Date();
-});
-
-const handlePayment = () => {
-	router.get(route("rentals.payment", props.rental.id));
-};
-
-const handleReturn = () => {
-	router.post(
-		route("rentals.return", props.rental.id),
-		{},
-		{
-			preserveScroll: true,
-			onSuccess: () => {
-				showReturnDialog.value = false;
-			},
-			onError: (errors) => {
-				showReturnDialog.value = false;
-				// You can add error handling here if needed
-			},
-		}
-	);
+const handleCancel = () => {
+	cancelForm.patch(route("rental-request.cancel", props.rental.id), {
+		onSuccess: () => {
+			showCancelDialog.value = false;
+		},
+	});
 };
 
 // computed property for image URL
@@ -123,58 +89,31 @@ const details = computed(() => [
 
 		<!-- Actions slot -->
 		<template #actions>
-			<div
-				class="flex flex-wrap gap-2 pt-2"
-				v-if="Object.values(showActions).some(Boolean)"
-			>
+			<div class="sm:justify-end flex flex-wrap gap-2">
+				<!-- Show Cancel button for pending and approved statuses -->
 				<Button
-					v-if="showActions.canPay"
+					v-if="['pending', 'approved'].includes(rental.status)"
+					variant="destructive"
 					size="sm"
-					variant="default"
-					@click="handlePayment"
+					:disabled="cancelForm.processing"
+					@click="showCancelDialog = true"
 				>
-					Pay Now
+					Cancel Request
 				</Button>
-
-				<Button v-if="showActions.canReview" size="sm" variant="outline">
-					Leave Review
-				</Button>
-				<Button v-if="showActions.needsAttention" size="sm" variant="destructive">
-					<MessageCircle class="w-4 h-4 mr-2" />
-					View Dispute
-				</Button>
-				<Button v-if="showActions.canPickup" size="sm" disabled>
-					Ready for Pickup
-				</Button>
-				<Button v-if="showActions.canView" size="sm" disabled> Currently Renting </Button>
 			</div>
 		</template>
 	</BaseRentalCard>
 
-	<Dialog v-model:open="showReturnDialog">
-		<DialogTrigger asChild v-if="showActions.canReturn">
-			<Button size="sm" :variant="isEarlyReturn ? 'outline' : 'default'">
-				Return Item
-			</Button>
-		</DialogTrigger>
-		<DialogContent>
-			<DialogHeader>
-				<DialogTitle>Return Item</DialogTitle>
-				<DialogDescription>
-					<div class="space-y-2">
-						<p v-if="isEarlyReturn" class="text-warning">
-							You are returning this item before the scheduled end date. The rental period
-							ends
-							{{ formatRentalDate(rental.end_date) }}.
-						</p>
-						<p>Are you sure you want to return this item?</p>
-					</div>
-				</DialogDescription>
-			</DialogHeader>
-			<DialogFooter>
-				<Button variant="outline" @click="showReturnDialog = false">Cancel</Button>
-				<Button variant="default" @click="handleReturn"> Confirm Return </Button>
-			</DialogFooter>
-		</DialogContent>
-	</Dialog>
+	<!-- Cancel Dialog -->
+	<ConfirmDialog
+		:show="showCancelDialog"
+		title="Cancel Rental Request"
+		description="Are you sure you want to cancel this rental request?"
+		confirmLabel="Cancel Request"
+		confirmVariant="destructive"
+		:processing="cancelForm.processing"
+		@update:show="showCancelDialog = $event"
+		@confirm="handleCancel"
+		@cancel="showCancelDialog = false"
+	/>
 </template>

@@ -38,8 +38,11 @@ Route::middleware(['auth', 'verified'])->group(function() {
 
     // rental request
     Route::post('/rentals', [RentalRequestController::class, 'store'])->name('rentals.store');
-    Route::patch('/rentals/{rentalRequest}/approve', [RentalRequestController::class, 'approve'])->name('rentals.approve');
-    Route::patch('/rentals/{rentalRequest}/reject', [RentalRequestController::class, 'reject'])->name('rentals.reject');
+    Route::patch('/rental-request/{rentalRequest}/approve', [RentalRequestController::class, 'approve'])
+        ->name('rental-request.approve');
+    Route::patch('/rental-request/{rentalRequest}/reject', [RentalRequestController::class, 'reject'])
+        ->name('rental-request.reject');
+    Route::patch('/rental-request/{rentalRequest}/cancel', [RentalRequestController::class, 'cancel'])->name('rental-request.cancel');
 
     // lender dashboard
     Route::get('/lender-dashboard', [LenderDashboardController::class, 'index'])->name('lender-dashboard');

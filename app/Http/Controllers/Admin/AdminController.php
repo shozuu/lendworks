@@ -15,6 +15,7 @@ use App\Notifications\ListingTakenDown;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
 {
@@ -308,6 +309,8 @@ class AdminController extends Controller
         }
 
         try {
+            DB::beginTransaction();
+            
             // Update listing status
             $listing->update(['status' => 'rejected']);
 
@@ -317,11 +320,14 @@ class AdminController extends Controller
                 'admin_id' => Auth::id() // Add the admin ID
             ]);
 
-            // Notify user
+            DB::commit();
+
+            // Notify user (outside transaction since it's not a database operation)
             $listing->user->notify(new ListingRejected($listing));
 
             return back()->with('success', 'Listing rejected successfully');
         } catch (\Exception $e) {
+            DB::rollBack();
             report($e);
             return back()->with('error', 'Failed to reject listing. Please try again.');
         }
@@ -357,9 +363,13 @@ class AdminController extends Controller
         $validated = $validator->validated();
 
         try {
-            // Update listing status
-            $listing->update(['status' => 'taken_down']);
-            $listing->update(['is_available' => false]);
+            DB::beginTransaction();
+
+            // Update listing status and availability
+            $listing->update([
+                'status' => 'taken_down',
+                'is_available' => false
+            ]);
 
             // Create takedown record
             $listing->takedownReasons()->attach($validated['takedown_reason'], [
@@ -367,11 +377,14 @@ class AdminController extends Controller
                 'admin_id' => Auth::id()
             ]);
 
-            // Notify user
+            DB::commit();
+
+            // Notify user (outside transaction)
             $listing->user->notify(new ListingTakenDown($listing));
 
             return back()->with('success', 'Listing taken down successfully');
         } catch (\Exception $e) {
+            DB::rollBack();
             report($e);
             return back()->with('error', 'Failed to take down listing. Please try again.');
         }

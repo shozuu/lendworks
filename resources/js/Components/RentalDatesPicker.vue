@@ -45,13 +45,15 @@ watch(
 	calendarValue,
 	(newValue) => {
 		if (newValue.start && newValue.end) {
-			const start = newValue.start.toDate(getLocalTimeZone());
-			const end = newValue.end.toDate(getLocalTimeZone());
+			// Ensure dates are properly converted to local timezone
+			const start = new Date(newValue.start.toDate(getLocalTimeZone()));
+			const end = new Date(newValue.end.toDate(getLocalTimeZone()));
 
-			emit("update:modelValue", {
-				start: start,
-				end: end,
-			});
+			// Ensure proper timezone handling
+			start.setHours(0, 0, 0, 0);
+			end.setHours(23, 59, 59, 999);
+
+			emit("update:modelValue", { start, end });
 		}
 	},
 	{ deep: true }
