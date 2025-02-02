@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Listing;
+use App\Models\RentalRejectionReason;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -52,9 +53,21 @@ class LenderDashboardController extends Controller
 
         $rentalStats = collect($groupedListings)->map->count();
 
+        $rejectionReasons = RentalRejectionReason::select('id', 'label', 'code', 'description')
+            ->get()
+            ->map(fn($reason) => [
+                'value' => (string) $reason->id,
+                'label' => $reason->label,
+                'code' => $reason->code,
+                'description' => $reason->description
+            ])
+            ->values()
+            ->all();
+
         return Inertia::render('LenderDashboard/LenderDashboard', [
             'groupedListings' => $groupedListings,
-            'rentalStats' => $rentalStats
+            'rentalStats' => $rentalStats,
+            'rejectionReasons' => $rejectionReasons
         ]);
     }
 }
