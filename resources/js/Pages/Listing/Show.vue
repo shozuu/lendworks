@@ -20,6 +20,7 @@ const props = defineProps({
 	relatedListings: Object,
 	showPendingMessage: Boolean,
 	justUpdated: Boolean,
+	flashError: String, 
 });
 
 const showDeleteDialog = ref(false);
@@ -53,6 +54,7 @@ const handleDelete = () => {
 		class="lg:flex hidden mb-10"
 	/>
 
+	<!-- rental error for existing rental request -->
 	<!-- pending status alert - only visible to owner -->
 	<Alert
 		v-if="listing.status === 'pending' && listing.user.id === $page.props.auth.user?.id"
@@ -80,9 +82,9 @@ const handleDelete = () => {
 		class="bg-destructive/10 mb-6 overflow-hidden rounded-lg"
 	>
 		<!-- header -->
-		<div class="bg-destructive/15 px-4 sm:px-6 py-4 border-b border-destructive/10">
+		<div class="bg-destructive/15 sm:px-6 border-destructive/10 px-4 py-4 border-b">
 			<div class="flex items-center gap-2">
-				<XCircle class="w-5 h-5 shrink-0 text-destructive" />
+				<XCircle class="shrink-0 text-destructive w-5 h-5" />
 				<h3 class="text-destructive font-semibold">
 					This Listing Has Been
 					{{ listing.status === "rejected" ? "Rejected" : "Taken Down" }}
@@ -91,7 +93,7 @@ const handleDelete = () => {
 		</div>
 
 		<!-- content -->
-		<div class="px-4 sm:px-6 py-4 space-y-4">
+		<div class="sm:px-6 px-4 py-4 space-y-4">
 			<!-- main reason -->
 			<div class="space-y-2">
 				<h4 class="font-medium">
@@ -151,9 +153,9 @@ const handleDelete = () => {
 		v-if="
 			listing.status === 'taken_down' && listing.user.id === $page.props.auth.user?.id
 		"
-		class="bg-muted p-4 rounded-lg mb-6"
+		class="bg-muted p-4 mb-6 rounded-lg"
 	>
-		<p class="text-sm text-muted-foreground">
+		<p class="text-muted-foreground text-sm">
 			This listing has been taken down and cannot be edited. You'll need to create a new
 			listing that follows our platform guidelines.
 		</p>
@@ -163,9 +165,9 @@ const handleDelete = () => {
 		v-else-if="
 			listing.status === 'rejected' && listing.user.id === $page.props.auth.user?.id
 		"
-		class="bg-muted p-4 rounded-lg mb-6"
+		class="bg-muted p-4 mb-6 rounded-lg"
 	>
-		<p class="text-sm text-muted-foreground">
+		<p class="text-muted-foreground text-sm">
 			This listing has been rejected. You can edit it to address the issues and resubmit
 			for approval.
 		</p>
@@ -175,7 +177,7 @@ const handleDelete = () => {
 		{{ listing.title }}
 	</h2>
 
-	<div class="lg:grid-cols-2 grid grid-cols-1 gap-4 lg:gap-10">
+	<div class="lg:grid-cols-2 lg:gap-10 grid grid-cols-1 gap-4">
 		<div class="space-y-6">
 			<Badge v-if="listing.is_rented" variant="warning" class="mb-4">
 				Currently Rented
@@ -193,7 +195,7 @@ const handleDelete = () => {
 			</div>
 
 			<!-- desc -->
-			<p class="text-sm sm:text-base text-muted-foreground">{{ listing.desc }}</p>
+			<p class="sm:text-base text-muted-foreground text-sm">{{ listing.desc }}</p>
 
 			<Separator class="my-4" />
 
@@ -250,7 +252,7 @@ const handleDelete = () => {
 						<div>
 							<h4 class="font-semibold">Listed By {{ listing.user.name }}</h4>
 
-							<div class="text-muted-foreground text-xs mt-1">
+							<div class="text-muted-foreground mt-1 text-xs">
 								<p>Joined {{ formatDate(listing.user.created_at) }}</p>
 								<p>Listed {{ timeAgo(listing.created_at) }}</p>
 							</div>
@@ -263,7 +265,7 @@ const handleDelete = () => {
 					>
 						<Button
 							variant="outline"
-							class="w-full disabled:cursor-not-allowed disabled:pointer-events-auto"
+							class="disabled:cursor-not-allowed disabled:pointer-events-auto w-full"
 							:disabled="listing.status === 'taken_down'"
 							@click.stop="router.visit(route('listing.edit', listing.id))"
 						>
@@ -287,6 +289,7 @@ const handleDelete = () => {
 			<RentalForm
 				:listing="listing"
 				:is-owner="listing.user.id === $page.props.auth.user?.id"
+				:flash-error="flashError"
 				class="w-full lg:min-w-[400px]"
 			/>
 		</div>
@@ -303,7 +306,7 @@ const handleDelete = () => {
 
 		<div
 			v-if="relatedListings?.length"
-			class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+			class="sm:grid-cols-2 lg:grid-cols-4 grid grid-cols-1 gap-4"
 		>
 			<div v-for="listing in relatedListings" :key="listing.id">
 				<ItemCard :listing="listing" />

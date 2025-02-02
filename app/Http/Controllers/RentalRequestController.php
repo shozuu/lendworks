@@ -31,6 +31,21 @@ class RentalRequestController extends Controller
             // Eager load the listing with its owner
             $listing = Listing::with('user')->findOrFail($validated['listing_id']);
 
+            // Check for existing rental request
+            if (RentalRequest::hasExistingRequest($listing->id, Auth::id())) {
+                $existingRequest = RentalRequest::getExistingRequest($listing->id, Auth::id());
+                $status = $existingRequest->status;
+                
+                $message = match($status) {
+                    'pending' => 'You already have a pending request for this item.',
+                    'approved' => 'Your request for this item has already been approved.',
+                    'active' => 'You are currently renting this item.',
+                    default => 'You cannot create multiple requests for the same item.'
+                };
+                
+                return back()->with('error', $message)->withoutScrolling(false);
+            }
+
             // Validate listing status and ownership
             if (!$listing->is_available || $listing->is_rented || $listing->status !== 'approved') {
                 throw new \Exception('This item is not available for rent.');
@@ -62,7 +77,7 @@ class RentalRequestController extends Controller
                 ->with('success', 'Rental request sent successfully!');
             
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to submit rental request. ' . $e->getMessage());
+            return back()->with('error', 'Failed to submit rental request. ' . $e->getMessage())->withoutScrolling(false); 
         }
     }
 
@@ -78,49 +93,57 @@ class RentalRequestController extends Controller
 
     public function approve(RentalRequest $rentalRequest)
     {
-        // Check if user owns the listing
+        // First, verify ownership and availability
         if ($rentalRequest->listing->user_id !== Auth::id()) {
             abort(403);
         }
-
-        // Check if listing is already rented
         if ($rentalRequest->listing->is_rented) {
             return back()->with('error', 'This item is currently rented.');
         }
 
         try {
             DB::transaction(function () use ($rentalRequest) {
-                // Update rental request status
+                // 1. Approve the current request
                 $rentalRequest->update(['status' => 'approved']);
                 
-                // Mark listing as rented
+                // 2. Mark listing as rented
                 $rentalRequest->listing->update(['is_rented' => true]);
                 
-                // Get the "other" rejection reason for automatic rejections
-                $otherRejectionReason = RentalRejectionReason::where('code', 'other')->first();
+                // 3. Find all overlapping pending requests
+                $overlappingRequests = $rentalRequest->getOverlappingRequests();
                 
-                // Find and reject other pending requests
-                $otherRequests = RentalRequest::where('listing_id', $rentalRequest->listing_id)
-                    ->where('id', '!=', $rentalRequest->id)
-                    ->where('status', 'pending')
-                    ->get();
-
-                foreach ($otherRequests as $request) {
+                // 4. Get the rejection reason for unavailability
+                $unavailableReason = RentalRejectionReason::where('code', 'unavailable')->first();
+                
+                // 5. Reject all overlapping requests
+                foreach ($overlappingRequests as $request) {
+                    // Mark as rejected
                     $request->update(['status' => 'rejected']);
-                    $request->rejectionReasons()->attach($otherRejectionReason->id, [
-                        'custom_feedback' => 'Item has been rented to another user.',
+                    
+                    // Add rejection reason with custom message
+                    $request->rejectionReasons()->attach($unavailableReason->id, [
+                        'custom_feedback' => sprintf(
+                            'This item has been rented to another user for the period of %s to %s.',
+                            // if they don't settle the payment, the item will be available again
+                            $rentalRequest->start_date->format('M d, Y'),
+                            $rentalRequest->end_date->format('M d, Y')
+                        ),
                         'lender_id' => Auth::id()
                     ]);
+                    
+                    // Notify rejected renters
+                    $request->load('latestRejection.rejectionReason');
+                    $request->renter->notify(new RentalRequestRejected($request));
                 }
             });
 
-            // Notify renter (outside transaction)
+            // 6. Notify approved renter
             $rentalRequest->renter->notify(new RentalRequestApproved($rentalRequest));
 
             return back()->with('success', 'Rental request approved successfully.');
         } catch (\Exception $e) {
             report($e);
-            return back()->with('error', 'Failed to approve rental request. Please try again.');
+            return back()->with('error', 'Failed to approve rental request.');
         }
     }
 

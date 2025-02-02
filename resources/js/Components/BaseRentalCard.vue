@@ -1,6 +1,5 @@
 <script setup>
 import { Card, CardContent } from "@/components/ui/card";
-import { Link } from "@inertiajs/vue3";
 import RentalStatusBadge from "@/Components/RentalStatusBadge.vue";
 
 defineProps({
@@ -15,29 +14,27 @@ defineProps({
 	},
 	statusText: String,
 });
+
+const emit = defineEmits(["click"]);
 </script>
 
 <template>
-	<Card>
+	<Card
+		@click="$emit('click')"
+		class="cursor-pointer hover:bg-muted/50 transition-colors"
+	>
 		<CardContent class="sm:p-6 p-4">
 			<div class="sm:flex-row flex flex-col gap-4">
-				<!-- thumbnail -->
+				<!-- thumbnail - removed Link wrapper -->
 				<div class="sm:w-32 sm:h-32 shrink-0 w-24 h-24 overflow-hidden rounded-md">
-					<Link :href="route('listing.show', listingId)" class="h-full">
-						<img :src="image" :alt="title" class="object-cover w-full h-full" />
-					</Link>
+					<img :src="image" :alt="title" class="object-cover w-full h-full" />
 				</div>
 
 				<!-- Content section -->
 				<div class="flex flex-col flex-1 gap-3">
-					<!-- Title and Status -->
+					<!-- Title and Status - removed Link -->
 					<div class="sm:flex-row flex flex-col items-start justify-between gap-1">
-						<Link
-							:href="route('listing.show', listingId)"
-							class="hover:underline line-clamp-1 font-semibold"
-						>
-							{{ title }}
-						</Link>
+						<h3 class="line-clamp-1 font-semibold">{{ title }}</h3>
 						<RentalStatusBadge :status="status" />
 					</div>
 

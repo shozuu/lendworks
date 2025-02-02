@@ -172,7 +172,8 @@ class ListingController extends Controller
             return Inertia::render('Listing/Show', [
                 'listing' => $listing,
                 'relatedListings' => $relatedListings,
-                'justUpdated' => session('updated', false)
+                'justUpdated' => session('updated', false),
+                'flashError' => session('error') 
             ]);
 
         } catch (Exception $e) {

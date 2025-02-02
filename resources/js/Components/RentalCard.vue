@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import BaseRentalCard from "@/Components/BaseRentalCard.vue";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import { useForm } from "@inertiajs/vue3";
+import RentalDetailsDialog from "@/Components/RentalDetailsDialog.vue";
 
 const props = defineProps({
 	rental: {
@@ -33,26 +34,6 @@ const listingImage = computed(() => {
 	return "/storage/images/listing/default.png";
 });
 
-// Add detailedStatus computed property
-const detailedStatus = computed(() => {
-	switch (props.rental.status) {
-		case "pending":
-			return "Waiting for owner's approval";
-		case "approved":
-			return "Ready for handover";
-		case "active":
-			return props.rental.return_at ? "Return initiated" : "Currently renting";
-		case "completed":
-			return "Rental completed";
-		case "rejected":
-			return props.rental.rejection_reason || "Request rejected";
-		case "cancelled":
-			return "Request cancelled";
-		default:
-			return props.rental.status;
-	}
-});
-
 const details = computed(() => [
 	{
 		label: "Total",
@@ -69,6 +50,8 @@ const details = computed(() => [
 		value: props.rental.listing.user.name,
 	},
 ]);
+
+const showDetails = ref(false);
 </script>
 
 <template>
@@ -78,7 +61,7 @@ const details = computed(() => [
 		:status="rental.status"
 		:listing-id="rental.listing.id"
 		:details="details"
-		:status-text="detailedStatus"
+		@click="showDetails = true"
 	>
 		<!-- Details slot -->
 		<template #additional-details>
@@ -96,13 +79,20 @@ const details = computed(() => [
 					variant="destructive"
 					size="sm"
 					:disabled="cancelForm.processing"
-					@click="showCancelDialog = true"
+					 @click.stop="showCancelDialog = true"
 				>
 					Cancel Request
 				</Button>
 			</div>
 		</template>
 	</BaseRentalCard>
+
+	<RentalDetailsDialog
+		v-model:show="showDetails"
+		:rental="rental"
+		user-role="renter"
+		@cancel="showCancelDialog = true"
+	/>
 
 	<!-- Cancel Dialog -->
 	<ConfirmDialog

@@ -13,7 +13,7 @@ class RentalRejectionReasonSeeder extends Seeder
             [
                 'code' => 'unavailable',
                 'label' => 'Item Currently Unavailable',
-                'description' => 'The item is temporarily unavailable for the requested dates.',
+                'description' => 'The item is unavailable for the requested dates as it has been rented to another user.',
                 'action_needed' => 'Please try requesting different dates when the item becomes available again.'
             ],
             [

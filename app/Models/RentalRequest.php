@@ -124,4 +124,38 @@ class RentalRequest extends Model
         return $this->isStatus(self::STATUS_ACTIVE) && 
                $this->return_at !== null;
     }
+
+    public function getOverlappingRequests()
+    {
+        return static::where('listing_id', $this->listing_id)
+            ->where('id', '!=', $this->id)  // Exclude current request
+            ->where('status', 'pending')     // Only get pending requests
+            ->where(function ($query) {
+                $query->where(function ($q) {
+                    // Two rentals overlap if:
+                    // Request A's end date is >= Request B's start date AND
+                    // Request A's start date is <= Request B's end date
+                    $q->where('start_date', '<=', $this->end_date)
+                      ->where('end_date', '>=', $this->start_date);
+                });
+            })
+            ->get();
+    }
+
+    public static function hasExistingRequest($listingId, $renterId): bool
+    {
+        return static::where('listing_id', $listingId)
+            ->where('renter_id', $renterId)
+            ->whereIn('status', ['pending', 'approved', 'active'])
+            // consider other status
+            ->exists();
+    }
+
+    public static function getExistingRequest($listingId, $renterId)
+    {
+        return static::where('listing_id', $listingId)
+            ->where('renter_id', $renterId)
+            ->whereIn('status', ['pending', 'approved', 'active'])
+            ->first();
+    }
 }
