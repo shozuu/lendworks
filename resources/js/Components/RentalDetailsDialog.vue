@@ -73,6 +73,17 @@ const roleSpecificName = computed(() => {
 		name: props.rental.renter.name,
 	};
 });
+console.log(props.rental);
+// computed property for rejection details
+const rejectionDetails = computed(() => {
+	if (props.rental.status === "rejected" && props.rental.latest_rejection) {
+		return {
+			reason: props.rental.latest_rejection.rejection_reason.label,
+			feedback: props.rental.latest_rejection.custom_feedback,
+		};
+	}
+	return null;
+});
 </script>
 
 <template>
@@ -92,7 +103,20 @@ const roleSpecificName = computed(() => {
 					</div>
 					<RentalStatusBadge :status="rental.status" />
 				</div>
-				<p v-if="statusMessage" class="text-muted-foreground text-sm">
+
+				<!-- rejection details -->
+				<div v-if="rejectionDetails" class="bg-destructive/10 p-4 rounded-lg space-y-2">
+					<div class="flex items-center gap-2">
+						<XCircle class="w-4 h-4 text-destructive shrink-0" />
+						<p class="font-medium">Reason for Rejection: {{ rejectionDetails.reason }}</p>
+					</div>
+					<p v-if="rejectionDetails.feedback" class="text-sm text-muted-foreground ml-6">
+						{{ rejectionDetails.feedback }}
+					</p>
+				</div>
+
+				<!-- detailed message -->
+				<p v-else-if="statusMessage" class="text-muted-foreground text-sm">
 					{{ statusMessage }}
 				</p>
 			</div>

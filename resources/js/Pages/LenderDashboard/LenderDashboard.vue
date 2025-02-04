@@ -26,6 +26,8 @@ const tabs = [
 	{ id: "active_rentals", label: "Active Rentals" },
 	{ id: "pending_returns", label: "Pending Returns" },
 	{ id: "completed", label: "Completed" },
+	{ id: "rejected", label: "Rejected" },
+	{ id: "cancelled", label: "Cancelled" },
 ];
 
 const handleValueChange = (value) => {
