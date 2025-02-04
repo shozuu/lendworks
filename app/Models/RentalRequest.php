@@ -64,6 +64,21 @@ class RentalRequest extends Model
             ->with('rejectionReason'); 
     }
 
+    public function cancellationReason()
+    {
+        return $this->belongsToMany(RentalCancellationReason::class, 'rental_request_cancellations')
+            ->using(RentalRequestCancellation::class)
+            ->withPivot(['custom_feedback'])
+            ->withTimestamps();
+    }
+
+    public function latestCancellation()
+    {
+        return $this->hasOne(RentalRequestCancellation::class)
+            ->latest()
+            ->with('cancellationReason');
+    }
+
     // Accessors
     public function getHasStartedAttribute(): bool
     {

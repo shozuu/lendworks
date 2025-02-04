@@ -19,6 +19,7 @@ class LenderDashboardController extends Controller
                 },
                 'rentalRequests.renter',
                 'rentalRequests.latestRejection.rejectionReason',
+                'rentalRequests.latestCancellation.cancellationReason',
                 'images',
                 'category',
                 'location'

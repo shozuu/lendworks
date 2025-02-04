@@ -185,7 +185,7 @@ class RentalRequestController extends Controller
         }
     }
 
-    public function cancel(RentalRequest $rentalRequest)
+    public function cancel(Request $request, RentalRequest $rentalRequest)
     {
         // abort if user is not the renter
         if ($rentalRequest->renter_id !== Auth::id()) {
@@ -197,14 +197,34 @@ class RentalRequestController extends Controller
             return back()->with('error', 'This rental request cannot be cancelled.');
         }
 
-        // update request status
-        $rentalRequest->update(['status' => 'cancelled']);
+        $validated = $request->validate([
+            'cancellation_reason_id' => ['required', 'exists:rental_cancellation_reasons,id'],
+            'custom_feedback' => [
+                'required_if:cancellation_reason_id,other',
+                'nullable',
+                'string',
+                'max:1000'
+            ],
+        ]);
 
-        // if the request was approved, update listing status
-        if ($rentalRequest->status === 'approved') {
-            $rentalRequest->listing->update(['is_rented' => false]);
+        try {
+            DB::transaction(function () use ($rentalRequest, $validated) {
+                $rentalRequest->update(['status' => 'cancelled']);
+                
+                // Create cancellation record
+                $rentalRequest->cancellationReason()->attach($validated['cancellation_reason_id'], [
+                    'custom_feedback' => $validated['custom_feedback']
+                ]);
+
+                // If request was approved, update listing status
+                if ($rentalRequest->status === 'approved') {
+                    $rentalRequest->listing->update(['is_rented' => false]);
+                }
+            });
+
+            return back()->with('success', 'Rental request cancelled successfully.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to cancel rental request.');
         }
-
-        return back()->with('success', 'Rental request cancelled successfully.');
     }
 }
