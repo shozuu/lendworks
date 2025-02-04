@@ -77,8 +77,11 @@ console.log(props.rental);
 // computed property for rejection details
 const rejectionDetails = computed(() => {
 	if (props.rental.status === "rejected" && props.rental.latest_rejection) {
+		const reason = props.rental.latest_rejection.rejection_reason;
 		return {
-			reason: props.rental.latest_rejection.rejection_reason.label,
+			label: reason.label,
+			description: reason.description,
+			action_needed: reason.action_needed,
 			feedback: props.rental.latest_rejection.custom_feedback,
 		};
 	}
@@ -105,14 +108,46 @@ const rejectionDetails = computed(() => {
 				</div>
 
 				<!-- rejection details -->
-				<div v-if="rejectionDetails" class="bg-destructive/10 p-4 rounded-lg space-y-2">
-					<div class="flex items-center gap-2">
-						<XCircle class="w-4 h-4 text-destructive shrink-0" />
-						<p class="font-medium">Reason for Rejection: {{ rejectionDetails.reason }}</p>
+				<div
+					v-if="rejectionDetails"
+					class="rounded-lg border bg-card text-card-foreground"
+				>
+					<!-- Header section -->
+					<div class="border-b bg-destructive/5 px-6 py-4 rounded-t-lg">
+						<div class="">
+							<h3 class="font-medium">Request Rejected</h3>
+							<p class="text-sm text-destructive">{{ rejectionDetails.label }}</p>
+						</div>
 					</div>
-					<p v-if="rejectionDetails.feedback" class="text-sm text-muted-foreground ml-6">
-						{{ rejectionDetails.feedback }}
-					</p>
+
+					<!-- Content section -->
+					<div class="px-6 py-4 space-y-4">
+						<!-- Reason Description -->
+						<div class="space-y-2">
+							<h4 class="text-sm font-medium">Reason:</h4>
+							<p class="text-sm text-muted-foreground">
+								{{ rejectionDetails.description }}
+							</p>
+						</div>
+
+						<!-- Action Needed (only for renters) -->
+						<div v-if="userRole === 'renter'" class="space-y-2">
+							<h4 class="text-sm font-medium">What you can do:</h4>
+							<p class="text-sm text-muted-foreground">
+								{{ rejectionDetails.action_needed }}
+							</p>
+						</div>
+
+						<!-- Additional Feedback (if provided) -->
+						<div v-if="rejectionDetails.feedback" class="space-y-2">
+							<h4 class="text-sm font-medium">Additional feedback from lender:</h4>
+							<div class="bg-muted/50 rounded-md p-3">
+								<p class="text-sm text-muted-foreground italic">
+									"{{ rejectionDetails.feedback }}"
+								</p>
+							</div>
+						</div>
+					</div>
 				</div>
 
 				<!-- detailed message -->
