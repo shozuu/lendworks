@@ -13,10 +13,7 @@ class LenderDashboardController extends Controller
     {
         $listings = Listing::where('user_id', Auth::id())
             ->with([
-                'rentalRequests' => function($query) {
-                    // Default eager loading with order
-                    $query->orderBy('created_at', 'asc');
-                },
+                'rentalRequests',
                 'rentalRequests.renter',
                 'rentalRequests.latestRejection.rejectionReason',
                 'rentalRequests.latestCancellation.cancellationReason',

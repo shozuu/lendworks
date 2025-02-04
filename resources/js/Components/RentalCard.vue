@@ -12,15 +12,31 @@ const props = defineProps({
 		type: Object,
 		required: true,
 	},
+	cancellationReasons: {
+		type: Array,
+		required: true,
+	},
 });
 
 const showCancelDialog = ref(false);
-const cancelForm = useForm({});
+
+// Update the cancelForm to include reason
+const cancelForm = useForm({
+	cancellation_reason_id: "",
+	custom_feedback: "",
+});
+
+const isOtherReason = computed(() => {
+	return cancelForm.cancellation_reason_id === "other";
+});
 
 const handleCancel = () => {
 	cancelForm.patch(route("rental-request.cancel", props.rental.id), {
 		onSuccess: () => {
 			showCancelDialog.value = false;
+			// Reset form
+			cancelForm.cancellation_reason_id = "";
+			cancelForm.custom_feedback = "";
 		},
 	});
 };
@@ -79,7 +95,7 @@ const showDetails = ref(false);
 					variant="destructive"
 					size="sm"
 					:disabled="cancelForm.processing"
-					 @click.stop="showCancelDialog = true"
+					@click.stop="showCancelDialog = true"
 				>
 					Cancel Request
 				</Button>
@@ -94,15 +110,27 @@ const showDetails = ref(false);
 		@cancel="showCancelDialog = true"
 	/>
 
-	<!-- Cancel Dialog -->
+	<!-- Update Cancel Dialog -->
 	<ConfirmDialog
 		:show="showCancelDialog"
 		title="Cancel Rental Request"
-		description="Are you sure you want to cancel this rental request?"
+		description="Please select a reason for cancelling this rental request."
 		confirmLabel="Cancel Request"
 		confirmVariant="destructive"
 		:processing="cancelForm.processing"
+		:disabled="
+			!cancelForm.cancellation_reason_id || (isOtherReason && !cancelForm.custom_feedback)
+		"
+		showSelect
+		:selectOptions="cancellationReasons"
+		:selectValue="cancelForm.cancellation_reason_id"
+		:showTextarea="isOtherReason"
+		:textareaValue="cancelForm.custom_feedback"
+		:textareaRequired="isOtherReason"
+		textareaPlaceholder="Please provide specific details about why you are cancelling this rental request..."
 		@update:show="showCancelDialog = $event"
+		@update:selectValue="cancelForm.cancellation_reason_id = $event"
+		@update:textareaValue="cancelForm.custom_feedback = $event"
 		@confirm="handleCancel"
 		@cancel="showCancelDialog = false"
 	/>

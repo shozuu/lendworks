@@ -15,6 +15,7 @@ import { formatLabel } from "@/lib/formatters";
 const props = defineProps({
 	rentals: Object,
 	stats: Object,
+	cancellationReasons: Array,
 });
 
 const selectedTab = ref("pending");
@@ -98,6 +99,7 @@ const handleValueChange = (value) => {
 						v-for="rental in rentals[selectedTab]"
 						:key="rental.id"
 						:rental="rental"
+						:cancellationReasons="cancellationReasons"
 					/>
 				</div>
 				<div v-else class="text-muted-foreground py-10 text-center">No rentals found</div>

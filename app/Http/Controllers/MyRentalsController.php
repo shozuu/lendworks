@@ -20,7 +20,7 @@ class MyRentalsController extends Controller
                 'listing.category', 
                 'listing.location',
                 'latestRejection.rejectionReason',
-                'latestCancellation.cancellationReason' 
+                'latestCancellation.cancellationReason'
             ])
             ->latest()
             ->get()

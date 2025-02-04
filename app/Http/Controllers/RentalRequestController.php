@@ -209,10 +209,11 @@ class RentalRequestController extends Controller
 
         try {
             DB::transaction(function () use ($rentalRequest, $validated) {
+                // Update rental request status
                 $rentalRequest->update(['status' => 'cancelled']);
                 
-                // Create cancellation record
-                $rentalRequest->cancellationReason()->attach($validated['cancellation_reason_id'], [
+                // Create cancellation record - Updated to match rejection pattern
+                $rentalRequest->cancellationReasons()->attach($validated['cancellation_reason_id'], [
                     'custom_feedback' => $validated['custom_feedback']
                 ]);
 
@@ -221,6 +222,9 @@ class RentalRequestController extends Controller
                     $rentalRequest->listing->update(['is_rented' => false]);
                 }
             });
+
+            // Reload the model with the proper relationship structure
+            $rentalRequest->load(['latestCancellation.cancellationReason']);
 
             return back()->with('success', 'Rental request cancelled successfully.');
         } catch (\Exception $e) {

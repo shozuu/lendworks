@@ -76,16 +76,40 @@ const roleSpecificName = computed(() => {
 console.log(props.rental);
 // computed property for rejection details
 const rejectionDetails = computed(() => {
-	if (props.rental.status === "rejected" && props.rental.latest_rejection) {
-		const reason = props.rental.latest_rejection.rejection_reason;
-		return {
-			label: reason.label,
-			description: reason.description,
-			action_needed: reason.action_needed,
-			feedback: props.rental.latest_rejection.custom_feedback,
-		};
+	// Early return if status is not rejected or missing required data
+	if (
+		props.rental.status !== "rejected" ||
+		!props.rental.latest_rejection?.rejection_reason
+	) {
+		return null;
 	}
-	return null;
+
+	const reason = props.rental.latest_rejection.rejection_reason;
+	return {
+		label: reason.label,
+		description: reason.description,
+		action_needed: reason.action_needed,
+		feedback: props.rental.latest_rejection.custom_feedback,
+	};
+});
+
+// Add new computed property for cancellation details
+const cancellationDetails = computed(() => {
+	// Early return if status is not cancelled or missing required data
+	if (
+		props.rental.status !== "cancelled" ||
+		!props.rental.latest_cancellation?.cancellation_reason
+	) {
+		return null;
+	}
+
+	console.log("hu");
+	const reason = props.rental.latest_cancellation.cancellation_reason;
+	return {
+		label: reason.label,
+		description: reason.description,
+		feedback: props.rental.latest_cancellation.custom_feedback,
+	};
 });
 </script>
 
@@ -109,7 +133,7 @@ const rejectionDetails = computed(() => {
 
 				<!-- rejection details -->
 				<div
-					v-if="rejectionDetails"
+					v-if="rejectionDetails && rental.status === 'rejected'"
 					class="rounded-lg border bg-card text-card-foreground"
 				>
 					<!-- Header section -->
@@ -144,6 +168,41 @@ const rejectionDetails = computed(() => {
 							<div class="bg-muted/50 rounded-md p-3">
 								<p class="text-sm text-muted-foreground italic">
 									"{{ rejectionDetails.feedback }}"
+								</p>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Add cancellation details -->
+				<div
+					v-if="cancellationDetails && rental.status === 'cancelled'"
+					class="rounded-lg border bg-card text-card-foreground"
+				>
+					<!-- Header section -->
+					<div class="border-b bg-destructive/5 px-6 py-4 rounded-t-lg">
+						<div>
+							<h3 class="font-medium">Request Cancelled</h3>
+							<p class="text-sm text-destructive">{{ cancellationDetails.label }}</p>
+						</div>
+					</div>
+
+					<!-- Content section -->
+					<div class="px-6 py-4 space-y-4">
+						<!-- Reason Description -->
+						<div class="space-y-2">
+							<h4 class="text-sm font-medium">Reason:</h4>
+							<p class="text-sm text-muted-foreground">
+								{{ cancellationDetails.description }}
+							</p>
+						</div>
+
+						<!-- Additional Feedback (if provided) -->
+						<div v-if="cancellationDetails.feedback" class="space-y-2">
+							<h4 class="text-sm font-medium">Additional details:</h4>
+							<div class="bg-muted/50 rounded-md p-3">
+								<p class="text-sm text-muted-foreground italic">
+									"{{ cancellationDetails.feedback }}"
 								</p>
 							</div>
 						</div>
