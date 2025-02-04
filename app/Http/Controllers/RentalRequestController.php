@@ -28,7 +28,7 @@ class RentalRequestController extends Controller
         ]);
 
         try {
-            // Eager load the listing with its owner
+            // Eager load the listing with its owner and rejection data
             $listing = Listing::with('user')->findOrFail($validated['listing_id']);
 
             // Check for existing rental request
@@ -69,7 +69,7 @@ class RentalRequestController extends Controller
             $rentalRequest->save();
 
             // Explicitly load relationships needed for notification
-            $rentalRequest->load(['renter', 'listing.user']);
+            $rentalRequest->load(['renter', 'listing.user', 'latestRejection.rejectionReason']);
             $listing->user->notify(new NewRentalRequest($rentalRequest));
 
             return redirect()

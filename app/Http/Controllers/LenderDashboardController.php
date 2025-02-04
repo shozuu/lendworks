@@ -12,10 +12,17 @@ class LenderDashboardController extends Controller
     public function index()
     {
         $listings = Listing::where('user_id', Auth::id())
-            ->with(['rentalRequests' => function($query) {
-                // Default eager loading with order
-                $query->orderBy('created_at', 'asc');
-            }, 'rentalRequests.renter', 'images', 'category', 'location'])
+            ->with([
+                'rentalRequests' => function($query) {
+                    // Default eager loading with order
+                    $query->orderBy('created_at', 'asc');
+                },
+                'rentalRequests.renter',
+                'rentalRequests.latestRejection.rejectionReason',
+                'images',
+                'category',
+                'location'
+            ])
             ->get();
 
         $groupedListings = [
@@ -47,6 +54,18 @@ class LenderDashboardController extends Controller
                 return $listing->rentalRequests
                     ->where('status', 'completed')
                     ->sortByDesc('updated_at') // Most recently completed first
+                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
+            })->values(),
+            'rejected' => $listings->flatMap(function($listing) {
+                return $listing->rentalRequests
+                    ->where('status', 'rejected')
+                    ->sortByDesc('updated_at') // Most recently rejected first
+                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
+            })->values(),
+            'cancelled' => $listings->flatMap(function($listing) {
+                return $listing->rentalRequests
+                    ->where('status', 'cancelled')
+                    ->sortByDesc('updated_at') // Most recently cancelled first
                     ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
             })->values(),
         ];

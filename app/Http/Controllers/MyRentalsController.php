@@ -17,8 +17,9 @@ class MyRentalsController extends Controller
                 'listing.user', 
                 'listing.images',
                 'listing.category', 
-                'listing.location'   
-            ]) 
+                'listing.location',
+                'latestRejection.rejectionReason'   
+            ])
             ->latest()
             ->get()
             ->groupBy('status');

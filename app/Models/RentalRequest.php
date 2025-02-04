@@ -59,7 +59,9 @@ class RentalRequest extends Model
 
     public function latestRejection()
     {
-        return $this->hasOne(RentalRequestRejection::class)->latest();
+        return $this->hasOne(RentalRequestRejection::class)
+            ->latest()
+            ->with('rejectionReason'); 
     }
 
     // Accessors
