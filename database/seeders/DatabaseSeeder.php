@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             RejectionReasonSeeder::class,  
             TakedownReasonSeeder::class,  
             RentalRejectionReasonSeeder::class,
+            RentalCancellationReasonSeeder::class,
         ]);
     }
 }

@@ -59,7 +59,24 @@ class RentalRequest extends Model
 
     public function latestRejection()
     {
-        return $this->hasOne(RentalRequestRejection::class)->latest();
+        return $this->hasOne(RentalRequestRejection::class)
+            ->latest()
+            ->with('rejectionReason'); 
+    }
+
+    public function latestCancellation()
+    {
+        return $this->hasOne(RentalRequestCancellation::class)
+            ->latest()
+            ->with('cancellationReason'); 
+    }
+
+    public function cancellationReasons()
+    {
+        return $this->belongsToMany(RentalCancellationReason::class, 'rental_request_cancellations')
+            ->using(RentalRequestCancellation::class)
+            ->withPivot(['custom_feedback'])
+            ->withTimestamps();
     }
 
     // Accessors

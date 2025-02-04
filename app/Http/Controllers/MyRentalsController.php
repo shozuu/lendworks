@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\RentalRequest;
+use App\Models\RentalCancellationReason;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -17,8 +18,10 @@ class MyRentalsController extends Controller
                 'listing.user', 
                 'listing.images',
                 'listing.category', 
-                'listing.location'   
-            ]) 
+                'listing.location',
+                'latestRejection.rejectionReason',
+                'latestCancellation.cancellationReason'
+            ])
             ->latest()
             ->get()
             ->groupBy('status');
@@ -33,9 +36,21 @@ class MyRentalsController extends Controller
             'cancelled' => $rentals->get('cancelled', collect())->count(),
         ];
 
+        $cancellationReasons = RentalCancellationReason::select('id', 'label', 'code', 'description')
+            ->get()
+            ->map(fn($reason) => [
+                'value' => (string) $reason->id,
+                'label' => $reason->label,
+                'code' => $reason->code,
+                'description' => $reason->description
+            ])
+            ->values()
+            ->all();
+
         return Inertia::render('MyRentals/MyRentals', [
             'rentals' => $rentals,
-            'stats' => $stats
+            'stats' => $stats,
+            'cancellationReasons' => $cancellationReasons
         ]);
     }
 }
