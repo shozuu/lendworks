@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\RentalTransactionsController;
 use App\Http\Controllers\ExploreController;
 use App\Http\Controllers\LenderDashboardController;
 use App\Http\Controllers\ListingController;
@@ -64,6 +65,12 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     Route::patch('/listings/{listing}/approve', [AdminController::class, 'approveListing'])->name('listings.approve');
     Route::patch('/listings/{listing}/reject', [AdminController::class, 'rejectListing'])->name('listings.reject');
     Route::patch('/listings/{listing}/takedown', [AdminController::class, 'takedownListing'])->name('listings.takedown');
+
+    // Rental transactions routes
+    Route::get('/rental-transactions', [RentalTransactionsController::class, 'index'])
+        ->name('rental-transactions');
+    Route::get('/rental-transactions/{rental}', [RentalTransactionsController::class, 'show'])
+        ->name('rental-transactions.show');
 });
 
 Route::get('/', [ListingController::class, 'index'])->name('home');
