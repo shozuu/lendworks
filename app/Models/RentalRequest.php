@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 
 class RentalRequest extends Model
 {
@@ -49,14 +51,6 @@ class RentalRequest extends Model
         return $this->belongsTo(User::class, 'renter_id');
     }
 
-    public function rejectionReasons()
-    {
-        return $this->belongsToMany(RentalRejectionReason::class, 'rental_request_rejections')
-            ->using(RentalRequestRejection::class)
-            ->withPivot(['custom_feedback', 'lender_id'])
-            ->withTimestamps();
-    }
-
     public function latestRejection()
     {
         return $this->hasOne(RentalRequestRejection::class)
@@ -69,14 +63,6 @@ class RentalRequest extends Model
         return $this->hasOne(RentalRequestCancellation::class)
             ->latest()
             ->with('cancellationReason'); 
-    }
-
-    public function cancellationReasons()
-    {
-        return $this->belongsToMany(RentalCancellationReason::class, 'rental_request_cancellations')
-            ->using(RentalRequestCancellation::class)
-            ->withPivot(['custom_feedback'])
-            ->withTimestamps();
     }
 
     // Accessors
@@ -112,6 +98,22 @@ class RentalRequest extends Model
     public function scopeCompleted($query)
     {
         return $query->where('status', self::STATUS_COMPLETED);
+    }
+
+    public function scopeRejected($query)
+    {
+        return $query->where('status', self::STATUS_REJECTED);
+    }
+
+    public function scopeCancelled($query)
+    {
+        return $query->where('status', self::STATUS_CANCELLED);
+    }
+
+    // get all rental requests created within the last 7 days
+    public function scopeWithinPeriod(Builder $query, $days)
+    {
+        return $query->where('created_at', '>=', Carbon::now()->subDays($days));
     }
 
     // Helper methods
