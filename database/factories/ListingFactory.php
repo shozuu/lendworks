@@ -11,16 +11,22 @@ class ListingFactory extends Factory
 {
     public function definition(): array
     {
+        $value = fake()->numberBetween(5000, 200000);
+
         return [
             'title' => fake()->words(3, true),
             'desc' => fake()->paragraph(),
-            'value' => fake()->numberBetween(1000, 10000),
+            'value' => $value,
             'price' => fake()->numberBetween(100, 1000),
             'status' => 'pending',
             'is_available' => true,
             'category_id' => Category::inRandomOrder()->first()?->id ?? 1,
             'location_id' => Location::inRandomOrder()->first()?->id ?? 1,
             'user_id' => User::factory(),
+            'deposit_fee' => function() use ($value) {
+                // Calculate deposit fee as 30% of the item's value
+                return (int) ($value * 0.30);
+            },
         ];
     }
 
