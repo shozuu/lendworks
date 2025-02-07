@@ -17,6 +17,7 @@ class RentalRequest extends Model
         'base_price',
         'discount',
         'service_fee',
+        'deposit_fee',
         'total_price',
         'status'
     ];
@@ -24,10 +25,11 @@ class RentalRequest extends Model
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
-        'base_price' => 'decimal:2',
-        'discount' => 'decimal:2',
-        'service_fee' => 'decimal:2',
-        'total_price' => 'decimal:2',
+        'base_price' => 'integer',
+        'discount' => 'integer',
+        'service_fee' => 'integer',
+        'deposit_fee' => 'integer',
+        'total_price' => 'integer',
         'handover_at' => 'datetime',
         'return_at' => 'datetime'
     ];
