@@ -6,6 +6,7 @@ import RentalStatusBadge from "@/Components/RentalStatusBadge.vue";
 import { Button } from "@/components/ui/button";
 import { Link } from "@inertiajs/vue3";
 import { computed } from "vue";
+import { calculateDiscountPercentage } from "@/lib/rentalCalculator";
 
 const props = defineProps({
 	show: Boolean,
@@ -16,6 +17,21 @@ const props = defineProps({
 	},
 });
 
+const rentalDays = computed(() => {
+	const start = new Date(props.rental.start_date);
+	const end = new Date(props.rental.end_date);
+
+	// Set both dates to start of day in Manila timezone
+	start.setHours(0, 0, 0, 0);
+	end.setHours(0, 0, 0, 0);
+
+	const diffTime = Math.abs(end.getTime() - start.getTime());
+
+	// Add 1 to include both start and end dates
+	return Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+});
+
+console.log(props.rental);
 defineEmits(["update:show", "cancel", "approve", "reject"]);
 
 // Replace getStatusMessage with status computed property
@@ -103,7 +119,6 @@ const cancellationDetails = computed(() => {
 		return null;
 	}
 
-	console.log("hu");
 	const reason = props.rental.latest_cancellation.cancellation_reason;
 	return {
 		label: reason.label,
@@ -111,6 +126,10 @@ const cancellationDetails = computed(() => {
 		feedback: props.rental.latest_cancellation.custom_feedback,
 	};
 });
+
+const discountPercentage = computed(() =>
+	calculateDiscountPercentage(rentalDays.value, props.rental.listing.value)
+);
 </script>
 
 <template>
@@ -266,22 +285,30 @@ const cancellationDetails = computed(() => {
 
 			<Separator />
 
-			<!-- Price Breakdown -->
 			<div class="space-y-4">
 				<h3 class="font-medium">Price Details</h3>
+
+				<!-- breakdown -->
 				<div class="space-y-2 text-sm">
 					<div class="flex justify-between">
-						<span class="text-muted-foreground">Base Price</span>
+						<span class="text-muted-foreground">
+							{{ formatNumber(rental.listing.price) }} × {{ rentalDays }} rental days
+						</span>
 						<span>{{ formatNumber(rental.base_price) }}</span>
 					</div>
+
 					<div class="flex justify-between">
-						<span class="text-muted-foreground">Duration Discount</span>
+						<span class="text-muted-foreground"
+							>Duration Discount ({{ discountPercentage }}%)</span
+						>
 						<span>-{{ formatNumber(rental.discount) }}</span>
 					</div>
+
 					<div class="flex justify-between">
-						<span class="text-muted-foreground">Service Fee</span>
+						<span class="text-muted-foreground">LendWorks Fee</span>
 						<span>{{ formatNumber(rental.service_fee) }}</span>
 					</div>
+
 					<div class="flex justify-between">
 						<div class="flex items-center gap-1">
 							<span class="text-muted-foreground">Security Deposit</span>
@@ -289,24 +316,29 @@ const cancellationDetails = computed(() => {
 								>Refundable</span
 							>
 						</div>
-						<span>{{ formatNumber(rental.deposit_fee) }}</span>
+						<span class="text-primary">{{ formatNumber(rental.deposit_fee) }}</span>
 					</div>
-					<Separator />
-					<!-- Subtotal before deposit -->
+
+					<Separator class="my-2" />
+
+					<!-- subtotal before deposit -->
 					<div class="flex justify-between font-medium">
 						<span>Rental Total</span>
 						<span>{{ formatNumber(rental.total_price) }}</span>
 					</div>
-					<!-- Total with deposit -->
+
+					<!-- total with deposit -->
 					<div class="flex justify-between pt-2 mt-2 font-bold text-lg border-t">
-						<span>Total Due</span>
-						<span class="text-primary">{{
-							formatNumber(rental.total_price + rental.deposit_fee)
-						}}</span>
+						<span>{{ userRole === "renter" ? "Total Due" : "Total Earnings" }}</span>
+						<span
+							:class="[userRole === 'renter' ? 'text-blue-600' : 'text-emerald-600']"
+							>{{ formatNumber(rental.total_price + rental.deposit_fee) }}</span
+						>
 					</div>
-					<p class="text-muted-foreground text-xs mt-2">
-						* The security deposit will be refunded after the rental period, subject to
-						item condition
+
+					<p class="text-muted-foreground mt-2 text-xs">
+						* Security deposit will be refunded after the rental period, subject to item
+						condition
 					</p>
 				</div>
 			</div>

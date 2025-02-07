@@ -57,8 +57,20 @@ const errors = ref({});
 const isSubmitting = ref(false);
 
 function updateRentalPrice() {
-	const result = calculateRentalPrice(dailyRate, itemValue, rentalDays.value);
+	const result = calculateRentalPrice(
+		dailyRate,
+		itemValue,
+		rentalDays.value,
+		props.listing.deposit_fee
+	);
 	Object.assign(rentalPrice, result);
+
+	// Update form values
+	rentalForm.base_price = result.basePrice;
+	rentalForm.discount = result.discount;
+	rentalForm.service_fee = result.fee;
+	rentalForm.deposit_fee = props.listing.deposit_fee; // Use listing's deposit fee
+	rentalForm.total_price = result.totalPrice;
 }
 
 function updateRentalDays(startDate, endDate) {
@@ -205,37 +217,60 @@ onMounted(() => {
 
 					<Separator class="my-4" />
 
-					<div
-						v-if="selectedDates.start && selectedDates.end"
-						class="text-muted-foreground space-y-2 text-sm"
-					>
+					<div v-if="selectedDates.start && selectedDates.end" class="space-y-2 text-sm">
 						<div class="text-foreground text-base font-semibold">Rental Summary</div>
 
-						<div class="space-y-1">
+						<!-- breakdown -->
+						<div class="space-y-2">
 							<div class="flex items-center justify-between">
-								<div>{{ formatNumber(dailyRate) }} x {{ rentalDays }} rental days</div>
+								<div class="text-muted-foreground">
+									{{ formatNumber(dailyRate) }} x {{ rentalDays }} rental days
+								</div>
 								<div>{{ formatNumber(rentalPrice.basePrice) }}</div>
 							</div>
+
 							<div class="flex items-center justify-between">
-								<div>Duration Discount ({{ rentalPrice.discountPercentage }}%)</div>
+								<div class="text-muted-foreground">
+									Duration Discount ({{ rentalPrice.discountPercentage }}%)
+								</div>
 								<div>- {{ formatNumber(rentalPrice.discount) }}</div>
 							</div>
+
 							<div class="flex items-center justify-between">
-								<div>LendWorks Fee</div>
+								<div class="text-muted-foreground">LendWorks Fee</div>
 								<div>{{ formatNumber(rentalPrice.fee) }}</div>
 							</div>
+
 							<div class="flex items-center justify-between">
-								<div>Security Deposit (Refundable)</div>
-								<div>{{ formatNumber(listing.deposit_fee) }}</div>
-							</div>
-							<div
-								class="flex items-center justify-between pt-2 mt-2 font-bold text-green-400 border-t"
-							>
-								<div>Total Due</div>
-								<div>
-									{{ formatNumber(rentalPrice.totalPrice + listing.deposit_fee) }}
+								<div class="flex items-center gap-1">
+									<span class="text-muted-foreground">Security Deposit</span>
+									<span class="bg-blue-100 text-blue-700 text-xs px-1.5 rounded-full"
+										>Refundable</span
+									>
+								</div>
+								<div class="text-primary">
+									{{ formatNumber(rentalForm.deposit_fee) }}
 								</div>
 							</div>
+
+							<Separator class="my-2" />
+
+							<!-- subtotal before deposit -->
+							<div class="flex items-center justify-between font-medium">
+								<div>Rental Total</div>
+								<div>{{ formatNumber(rentalForm.total_price) }}</div>
+							</div>
+
+							<!-- total with deposit -->
+							<div
+								class="flex items-center justify-between pt-2 mt-2 font-bold text-lg border-t"
+							>
+								<div>Total Due</div>
+								<div class="text-primary">
+									{{ formatNumber(rentalForm.total_price + rentalForm.deposit_fee) }}
+								</div>
+							</div>
+
 							<p class="text-muted-foreground mt-2 text-xs">
 								* Security deposit will be refunded after the rental period, subject to
 								item condition
