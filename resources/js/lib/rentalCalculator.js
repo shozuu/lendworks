@@ -34,7 +34,7 @@ export function calculateRentalPrice(dailyRate, itemValue, rentalDays) {
     
     const discount = Math.round(basePrice * discountRate);
     const discountedPrice = Math.round(basePrice - discount);
-    const fee = Math.round(discountedPrice * 0.25);
+    const fee = Math.round(discountedPrice * 0.10);
     const totalPrice = Math.round(discountedPrice + fee);
 
     return {
