@@ -17,21 +17,21 @@ class RentalRequestController extends Controller
 {
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'listing_id' => ['required', 'exists:listings,id'],
-            'start_date' => ['required', 'date', 'after_or_equal:today'],
-            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
-            'base_price' => ['required', 'numeric', 'min:0'],
-            'discount' => ['required', 'numeric', 'min:0'],
-            'service_fee' => ['required', 'numeric', 'min:0'],
-            'total_price' => ['required', 'numeric', 'min:0'],
-        ]);
-
         try {
-            // Eager load the listing with its owner and rejection data
+            $validated = $request->validate([
+                'listing_id' => ['required', 'exists:listings,id'],
+                'start_date' => ['required', 'date', 'after_or_equal:today'],
+                'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+                'base_price' => ['required', 'numeric', 'min:0'],
+                'discount' => ['required', 'numeric', 'min:0'],
+                'service_fee' => ['required', 'numeric', 'min:0'],
+                'deposit_fee' => ['required', 'numeric', 'min:0'], 
+                'total_price' => ['required', 'numeric', 'min:0'],
+            ]);
+
             $listing = Listing::with('user')->findOrFail($validated['listing_id']);
 
-            // Check for existing rental request
+            // logic checks for duplicates
             if (RentalRequest::hasExistingRequest($listing->id, Auth::id())) {
                 $existingRequest = RentalRequest::getExistingRequest($listing->id, Auth::id());
                 $status = $existingRequest->status;
@@ -57,27 +57,40 @@ class RentalRequestController extends Controller
 
             $dates = $this->parseDates($validated['start_date'], $validated['end_date']);
 
-            $rentalRequest = new RentalRequest([
-                ...$validated,
-                'listing_id' => $listing->id,
-                'renter_id' => Auth::id(),
-                'start_date' => $dates['start'],
-                'end_date' => $dates['end'],
-                'status' => 'pending'
-            ]);
+            DB::beginTransaction();
+            try {
+                $rentalRequest = new RentalRequest([
+                    ...$validated,
+                    'listing_id' => $listing->id,
+                    'renter_id' => Auth::id(),
+                    'start_date' => $dates['start'],
+                    'end_date' => $dates['end'],
+                    'status' => 'pending'
+                ]);
 
-            $rentalRequest->save();
+                $rentalRequest->save();
+                DB::commit();
 
-            // Explicitly load relationships needed for notification
-            $rentalRequest->load(['renter', 'listing.user', 'latestRejection.rejectionReason']);
-            $listing->user->notify(new NewRentalRequest($rentalRequest));
+                // notify owner
+                $rentalRequest->load(['renter', 'listing.user']);
+                $listing->user->notify(new NewRentalRequest($rentalRequest));
 
-            return redirect()
-                ->route('my-rentals')
-                ->with('success', 'Rental request sent successfully!');
-            
+                return redirect()
+                    ->route('my-rentals')
+                    ->with('success', 'Rental request sent successfully!');
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Let validation exceptions bubble up to be handled by Inertia
+            throw $e;
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to submit rental request. ' . $e->getMessage())->withoutScrolling(false); 
+            report($e);
+            // Return a generic error for other exceptions
+            return back()->with('error', 'An error occurred while processing your request. Please try again.');
         }
     }
 
