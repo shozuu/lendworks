@@ -23,8 +23,8 @@ class RentalRequest extends Model
     ];
 
     protected $casts = [
-        'start_date' => 'date',
-        'end_date' => 'date',
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',    
         'base_price' => 'integer',
         'discount' => 'integer',
         'service_fee' => 'integer',

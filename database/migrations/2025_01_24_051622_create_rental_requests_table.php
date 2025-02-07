@@ -12,8 +12,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('listing_id')->constrained()->onDelete('cascade');
             $table->foreignId('renter_id')->constrained('users')->onDelete('cascade');
-            $table->date('start_date');
-            $table->date('end_date');
+            $table->datetime('start_date');  
+            $table->datetime('end_date');  
             $table->integer('base_price');
             $table->integer('discount');  
             $table->integer('service_fee'); 

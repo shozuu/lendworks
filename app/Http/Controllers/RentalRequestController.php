@@ -97,10 +97,12 @@ class RentalRequestController extends Controller
     private function parseDates($startDate, $endDate)
     {
         date_default_timezone_set('Asia/Manila');
-
+        
         return [
-            'start' => Carbon::createFromFormat('Y-m-d', $startDate, 'Asia/Manila')->startOfDay(),
-            'end' => Carbon::createFromFormat('Y-m-d', $endDate, 'Asia/Manila')->endOfDay(),
+            'start' => Carbon::createFromFormat('Y-m-d', $startDate, 'Asia/Manila')
+                ->startOfDay(), // 00:00:00
+            'end' => Carbon::createFromFormat('Y-m-d', $endDate, 'Asia/Manila')
+                ->endOfDay(), // 23:59:59
         ];
     }
 
