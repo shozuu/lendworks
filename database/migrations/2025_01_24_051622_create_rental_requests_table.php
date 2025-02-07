@@ -14,10 +14,11 @@ return new class extends Migration
             $table->foreignId('renter_id')->constrained('users')->onDelete('cascade');
             $table->date('start_date');
             $table->date('end_date');
-            $table->decimal('base_price', 10, 2);
-            $table->decimal('discount', 10, 2);
-            $table->decimal('service_fee', 10, 2); // platform fee
-            $table->decimal('total_price', 10, 2);
+            $table->integer('base_price');
+            $table->integer('discount');  
+            $table->integer('service_fee'); 
+            $table->integer('deposit_fee');
+            $table->integer('total_price'); 
             $table->enum('status', [
                 'pending',    // Initial state when request is made
                 'approved',   // Owner approved, awaiting handover
