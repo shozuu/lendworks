@@ -274,8 +274,9 @@ const discountPercentage = computed(() =>
 					<div class="space-y-1">
 						<p class="text-muted-foreground">Rental Period</p>
 						<p class="font-medium">
-							{{ formatRentalDate(rental.start_date) }} -
+							{{ formatRentalDate(rental.start_date) }} to
 							{{ formatRentalDate(rental.end_date) }}
+							<span class="text-muted-foreground text-xs">(Including full days)</span>
 						</p>
 						<p class="text-muted-foreground">Request Date</p>
 						<p class="font-medium">{{ timeAgo(rental.created_at) }}</p>
@@ -310,30 +311,18 @@ const discountPercentage = computed(() =>
 					</div>
 
 					<div class="flex justify-between">
-						<div class="flex items-center gap-1">
-							<span class="text-muted-foreground">Security Deposit</span>
-							<span class="bg-blue-100 text-blue-700 text-xs px-1.5 rounded-full"
-								>Refundable</span
-							>
-						</div>
+						<span class="text-muted-foreground">Security Deposit (Refundable)</span>
 						<span class="text-primary">{{ formatNumber(rental.deposit_fee) }}</span>
 					</div>
 
 					<Separator class="my-2" />
 
-					<!-- subtotal before deposit -->
-					<div class="flex justify-between font-medium">
-						<span>Rental Total</span>
-						<span>{{ formatNumber(rental.total_price) }}</span>
-					</div>
-
 					<!-- total with deposit -->
-					<div class="flex justify-between pt-2 mt-2 font-bold text-lg border-t">
+					<div class="flex justify-between font-bold text-lg">
 						<span>{{ userRole === "renter" ? "Total Due" : "Total Earnings" }}</span>
-						<span
-							:class="[userRole === 'renter' ? 'text-blue-600' : 'text-emerald-600']"
-							>{{ formatNumber(rental.total_price + rental.deposit_fee) }}</span
-						>
+						<span :class="[userRole === 'renter' ? 'text-blue-600' : 'text-emerald-600']">
+							{{ formatNumber(rental.total_price) }}
+						</span>
 					</div>
 
 					<p class="text-muted-foreground mt-2 text-xs">

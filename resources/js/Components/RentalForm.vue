@@ -69,8 +69,8 @@ function updateRentalPrice() {
 	rentalForm.base_price = result.basePrice;
 	rentalForm.discount = result.discount;
 	rentalForm.service_fee = result.fee;
-	rentalForm.deposit_fee = props.listing.deposit_fee; // Use listing's deposit fee
-	rentalForm.total_price = result.totalPrice;
+	rentalForm.deposit_fee = result.deposit;
+	rentalForm.total_price = result.totalPrice; // rental cost without deposit
 }
 
 function updateRentalDays(startDate, endDate) {
@@ -173,7 +173,12 @@ onMounted(() => {
 				</AlertDescription>
 			</Alert>
 
-			<div class="mb-4 font-semibold">Price Range</div>
+			<div class="mb-4">
+				<h3 class="font-semibold text-base">Sample Rental Prices</h3>
+				<div class="text-muted-foreground text-xs mt-1">
+					Prices shown include platform fees. Security deposit may apply separately.
+				</div>
+			</div>
 
 			<div class="md:grid-cols-3 grid grid-cols-1 gap-4 text-sm">
 				<Card
@@ -185,6 +190,7 @@ onMounted(() => {
 						<CardTitle class="text-md">{{ days }} Days</CardTitle>
 					</CardHeader>
 					<CardContent>
+						{{ console.log(dailyRate, itemValue, days) }}
 						{{
 							formatNumber(calculateRentalPrice(dailyRate, itemValue, days).totalPrice)
 						}}
@@ -215,7 +221,7 @@ onMounted(() => {
 						<RentalDatesPicker v-model="selectedDates" :min-date="new Date()" />
 					</div>
 
-					<Separator class="my-4" />
+					<Separator class="my-4" v-if="selectedDates.start && selectedDates.end" />
 
 					<div v-if="selectedDates.start && selectedDates.end" class="space-y-2 text-sm">
 						<div class="text-foreground text-base font-semibold">Rental Summary</div>
@@ -242,12 +248,7 @@ onMounted(() => {
 							</div>
 
 							<div class="flex items-center justify-between">
-								<div class="flex items-center gap-1">
-									<span class="text-muted-foreground">Security Deposit</span>
-									<span class="bg-blue-100 text-blue-700 text-xs px-1.5 rounded-full"
-										>Refundable</span
-									>
-								</div>
+								<span class="text-muted-foreground">Security Deposit (Refundable)</span>
 								<div class="text-primary">
 									{{ formatNumber(rentalForm.deposit_fee) }}
 								</div>
@@ -255,16 +256,8 @@ onMounted(() => {
 
 							<Separator class="my-2" />
 
-							<!-- subtotal before deposit -->
-							<div class="flex items-center justify-between font-medium">
-								<div>Rental Total</div>
-								<div>{{ formatNumber(rentalForm.total_price) }}</div>
-							</div>
-
 							<!-- total with deposit -->
-							<div
-								class="flex items-center justify-between pt-2 mt-2 font-bold text-lg border-t"
-							>
+							<div class="flex justify-between font-bold text-lg">
 								<div>Total Due</div>
 								<div class="text-primary">
 									{{ formatNumber(rentalForm.total_price + rentalForm.deposit_fee) }}
@@ -272,8 +265,8 @@ onMounted(() => {
 							</div>
 
 							<p class="text-muted-foreground mt-2 text-xs">
-								* Security deposit will be refunded after the rental period, subject to
-								item condition
+								Note: Security deposit will be refunded after the rental period, subject
+								to item condition
 							</p>
 						</div>
 					</div>
@@ -294,8 +287,7 @@ onMounted(() => {
 						@click.prevent="handleSubmit"
 					>
 						<template v-if="isSubmitting">
-							<span class="loading-spinner mr-2"></span>
-							Processing...
+							<span class="loading-spinner mr-2"></span> Processing...
 						</template>
 						<template v-else> Send Rent Request </template>
 					</Button>
