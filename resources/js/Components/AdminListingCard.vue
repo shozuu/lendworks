@@ -6,6 +6,7 @@ import { Link } from "@inertiajs/vue3";
 import { ref } from "vue";
 import { router } from "@inertiajs/vue3";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
+import { formatNumber } from "@/lib/formatters";
 
 const props = defineProps({
 	listing: {
@@ -123,6 +124,7 @@ const handleUpdateStatus = async (status) => {
 					{{ listing.user.name }}
 				</Link>
 			</div>
+			<p>Security Deposit: {{ formatNumber(listing.deposit_fee) }}</p>
 		</template>
 
 		<!-- Actions slot -->

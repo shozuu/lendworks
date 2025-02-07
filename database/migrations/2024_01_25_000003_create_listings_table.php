@@ -18,6 +18,7 @@ return new class extends Migration
             $table->text('desc');
             $table->integer('value');
             $table->integer('price');
+            $table->integer('deposit_fee');
             $table->enum('status', ['pending', 'approved', 'rejected', 'taken_down'])->default('pending');
             $table->boolean('is_available')->default(true);
             $table->boolean('is_rented')->default(false);

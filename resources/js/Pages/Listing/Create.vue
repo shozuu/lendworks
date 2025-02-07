@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import ImageUpload from "@/Components/ImageUpload.vue";
 import Textarea from "@/Components/ui/textarea/Textarea.vue";
 import { formatNumber } from "@/lib/formatters";
-import { calculateDailyRate } from "@/lib/suggestRate";
+import { calculateDailyRate, calculateDepositFee } from "@/lib/suggestRate";
 import { useForm as useVeeForm } from "vee-validate";
 import { useForm as useInertiaForm } from "@inertiajs/vue3";
 import { toTypedSchema } from "@vee-validate/zod";
@@ -46,6 +46,12 @@ const formSchema = toTypedSchema(
 				.positive()
 				.refine((val) => Number.isInteger(val), {
 					message: "Price must be a whole number (no decimals).",
+				}),
+			deposit_fee: z
+				.number()
+				.positive()
+				.refine((val) => Number.isInteger(val), {
+					message: "Deposit fee must be a whole number (no decimals).",
 				}),
 			images: z.preprocess(
 				(value) => {
@@ -135,6 +141,7 @@ const inertiaForm = useInertiaForm({
 	category_id: "",
 	value: "",
 	price: "",
+	deposit_fee: "",
 	images: [],
 	location_id: "",
 	new_location: false,
@@ -151,6 +158,7 @@ const onSubmit = form.handleSubmit((values) => {
 	inertiaForm.category_id = values.category;
 	inertiaForm.value = values.value;
 	inertiaForm.price = values.price;
+	inertiaForm.deposit_fee = values.deposit_fee;
 	inertiaForm.images = values.images;
 	if (values.location === "new") {
 		inertiaForm.new_location = true;
@@ -174,8 +182,10 @@ defineProps({
 });
 
 let dailyRate;
+let depositFee;
 watchEffect(() => {
 	dailyRate = calculateDailyRate(form.values.value);
+	depositFee = calculateDepositFee(form.values.value);
 });
 </script>
 
@@ -262,6 +272,24 @@ watchEffect(() => {
 					We suggest a daily rental price between
 					{{ formatNumber(dailyRate.minRate) }} and {{ formatNumber(dailyRate.maxRate) }}
 					based on your item's value.
+				</FormDescription>
+			</FormItem>
+		</FormField>
+
+		<FormField v-slot="{ componentField }" name="deposit_fee">
+			<FormItem v-auto-animate>
+				<FormLabel>Security Deposit</FormLabel>
+				<FormDescription>
+					Set the security deposit amount renters must pay. This helps protect your item against damage or loss.
+				</FormDescription>
+				<FormControl>
+					<Input type="number" v-bind="componentField" />
+				</FormControl>
+				<FormMessage />
+				<FormDescription v-if="form.values.value > 0">
+					We suggest a security deposit between
+					{{ formatNumber(depositFee.minRate) }} and {{ formatNumber(depositFee.maxRate) }}
+					based on your item's value
 				</FormDescription>
 			</FormItem>
 		</FormField>

@@ -20,7 +20,8 @@ class Listing extends Model
         'is_available',
         'category_id',
         'user_id',
-        'location_id'
+        'location_id',
+        'deposit_fee'
     ];
 
     protected $casts = [

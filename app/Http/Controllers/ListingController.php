@@ -62,23 +62,7 @@ class ListingController extends Controller
     public function store(Request $request)
     {      
         $this->checkIfSuspended();
-        $fields = $request->validate([
-            'title' => ['required', 'string', 'min:5', 'max:100'],
-            'desc' => ['required', 'string', 'min:10', 'max:1000'],
-            'category_id' => ['required', 'string', 'exists:categories,id'],
-            'location_id' => ['required_if:new_location,false', 'nullable', 'exists:locations,id'],
-            'value' => ['required', 'integer', 'gt:0'],
-            'price' => ['required', 'integer', 'gt:0'],
-            'images' => ['required', 'array', 'min:1'], 
-            'images.*' => ['required', 'image', 'file', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
-            // new location fields if creating new location
-            'new_location' => ['required', 'boolean'],
-            'location_name' => ['required_if:new_location,true', 'nullable', 'string', 'max:100'],
-            'address' => ['required_if:new_location,true', 'nullable', 'string', 'max:255'],
-            'city' => ['required_if:new_location,true', 'nullable', 'string', 'max:100'],
-            'province' => ['required_if:new_location,true', 'nullable', 'string', 'max:100'],
-            'postal_code' => ['required_if:new_location,true', 'nullable', 'string', 'max:20'],
-        ]);
+        $fields = $this->validateListing($request);
 
         // Create new location if requested
         if ($request->new_location) {
@@ -234,24 +218,7 @@ class ListingController extends Controller
             abort(403);
         }
 
-        $fields = $request->validate([
-            'title' => ['required', 'string', 'min:5', 'max:100'],
-            'desc' => ['required', 'string', 'min:10', 'max:1000'],
-            'category_id' => ['required', 'string', 'exists:categories,id'],
-            'location_id' => ['required_if:new_location,false', 'nullable', 'exists:locations,id'],
-            'value' => ['required', 'integer', 'gt:0'],
-            'price' => ['required', 'integer', 'gt:0'],
-            'images' => ['required', 'array', 'min:1'],
-            'images.*' => ['required', 'image', 'file', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
-
-            // new location fields if creating new location
-            'new_location' => ['required', 'boolean'],
-            'location_name' => ['required_if:new_location,true', 'nullable', 'string', 'max:100'],
-            'address' => ['required_if:new_location,true', 'nullable', 'string', 'max:255'],
-            'city' => ['required_if:new_location,true', 'nullable', 'string', 'max:100'],
-            'province' => ['required_if:new_location,true', 'nullable', 'string', 'max:100'],
-            'postal_code' => ['required_if:new_location,true', 'nullable', 'string', 'max:20'],
-        ]);
+        $fields = $this->validateListing($request);
 
         // Store the previous status
         $wasRejected = $listing->status === 'rejected';
@@ -339,5 +306,27 @@ class ListingController extends Controller
         ]);
 
         return back()->with('success', 'Listing availability updated.');
+    }
+
+    protected function validateListing(Request $request): array
+    {
+        return $request->validate([
+            'title' => ['required', 'string', 'min:5', 'max:100'],
+            'desc' => ['required', 'string', 'min:10', 'max:1000'],
+            'category_id' => ['required', 'string', 'exists:categories,id'],
+            'location_id' => ['required_if:new_location,false', 'nullable', 'exists:locations,id'],
+            'value' => ['required', 'integer', 'gt:0'],
+            'price' => ['required', 'integer', 'gt:0'],
+            'images' => ['required', 'array', 'min:1'], 
+            'images.*' => ['required', 'image', 'file', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
+            // new location fields if creating new location
+            'new_location' => ['required', 'boolean'],
+            'location_name' => ['required_if:new_location,true', 'nullable', 'string', 'max:100'],
+            'address' => ['required_if:new_location,true', 'nullable', 'string', 'max:255'],
+            'city' => ['required_if:new_location,true', 'nullable', 'string', 'max:100'],
+            'province' => ['required_if:new_location,true', 'nullable', 'string', 'max:100'],
+            'postal_code' => ['required_if:new_location,true', 'nullable', 'string', 'max:20'],
+            'deposit_fee' => ['required', 'numeric', 'min:0', 'integer'],
+        ]);
     }
 }
