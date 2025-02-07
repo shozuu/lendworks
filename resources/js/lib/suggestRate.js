@@ -10,16 +10,16 @@ export function calculateDailyRate(itemValue) {
     let minRate, maxRate;
     switch (category) {
         case 'low-value':
-            minRate = itemValue * 0.03;
-            maxRate = itemValue * 0.05;
+            minRate = itemValue * 0.01;  // 1%
+            maxRate = itemValue * 0.02;  // 2%
             break;
         case 'mid-value':
-            minRate = itemValue * 0.02;
-            maxRate = itemValue * 0.03;
+            minRate = itemValue * 0.0075;  // 0.75%
+            maxRate = itemValue * 0.015;   // 1.5%
             break;
         case 'high-value':
-            minRate = itemValue * 0.01;
-            maxRate = itemValue * 0.02;
+            minRate = itemValue * 0.005;   // 0.5%
+            maxRate = itemValue * 0.01;    // 1%
             break;
     }
 
@@ -32,16 +32,16 @@ export function calculateDepositFee(itemValue) {
     let minRate, maxRate;
     switch (category) {
         case 'low-value':
-            minRate = itemValue * 0.20;  // 20% of item value
-            maxRate = itemValue * 0.30;  // 30% of item value
+            minRate = itemValue * 0.10;  // 10%
+            maxRate = itemValue * 0.15;  // 15%
             break;
         case 'mid-value':
-            minRate = itemValue * 0.25;  // 25% of item value
-            maxRate = itemValue * 0.35;  // 35% of item value
+            minRate = itemValue * 0.15;  // 15%
+            maxRate = itemValue * 0.20;  // 20%
             break;
         case 'high-value':
-            minRate = itemValue * 0.30;  // 30% of item value
-            maxRate = itemValue * 0.40;  // 40% of item value
+            minRate = itemValue * 0.20;  // 20%
+            maxRate = itemValue * 0.25;  // 25%
             break;
     }
 
