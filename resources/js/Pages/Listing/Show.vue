@@ -13,7 +13,7 @@ import ItemCard from "@/Components/ItemCard.vue";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle, XCircle } from "lucide-vue-next";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
-import { formatDate, timeAgo } from "@/lib/formatters";
+import { formatNumber, formatDate, timeAgo } from "@/lib/formatters";
 
 const props = defineProps({
 	listing: Object,
@@ -198,6 +198,24 @@ const handleDelete = () => {
 			<p class="sm:text-base text-muted-foreground text-sm">{{ listing.desc }}</p>
 
 			<Separator class="my-4" />
+
+				<!-- pricing information -->
+				<div class="space-y-1">
+					<h2 class="text-lg font-semibold tracking-tight">Pricing Information</h2>
+					<div class="text-muted-foreground space-y-2">
+						<p>
+							Daily Rate: <span class="font-medium">{{ formatNumber(listing.price) }}</span>
+						</p>
+						<p>
+							Security Deposit (Refundable): <span class="font-medium">{{ formatNumber(listing.deposit_fee) }}</span>
+						</p>
+						<p class="text-xs">
+							* The security deposit will be refunded after the rental period, subject to item condition
+						</p>
+					</div>
+				</div>
+
+				<Separator class="my-4" />
 
 			<!-- cancellation terms -->
 			<div class="space-y-1">

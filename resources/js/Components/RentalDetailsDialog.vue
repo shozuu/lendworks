@@ -73,7 +73,7 @@ const roleSpecificName = computed(() => {
 		name: props.rental.renter.name,
 	};
 });
-console.log(props.rental);
+
 // computed property for rejection details
 const rejectionDetails = computed(() => {
 	// Early return if status is not rejected or missing required data
@@ -275,18 +275,39 @@ const cancellationDetails = computed(() => {
 						<span>{{ formatNumber(rental.base_price) }}</span>
 					</div>
 					<div class="flex justify-between">
-						<span class="text-muted-foreground">Discount</span>
+						<span class="text-muted-foreground">Duration Discount</span>
 						<span>-{{ formatNumber(rental.discount) }}</span>
 					</div>
 					<div class="flex justify-between">
 						<span class="text-muted-foreground">Service Fee</span>
 						<span>{{ formatNumber(rental.service_fee) }}</span>
 					</div>
+					<div class="flex justify-between">
+						<div class="flex items-center gap-1">
+							<span class="text-muted-foreground">Security Deposit</span>
+							<span class="bg-blue-100 text-blue-700 text-xs px-1.5 rounded-full"
+								>Refundable</span
+							>
+						</div>
+						<span>{{ formatNumber(rental.deposit_fee) }}</span>
+					</div>
 					<Separator />
+					<!-- Subtotal before deposit -->
 					<div class="flex justify-between font-medium">
-						<span>Total</span>
+						<span>Rental Total</span>
 						<span>{{ formatNumber(rental.total_price) }}</span>
 					</div>
+					<!-- Total with deposit -->
+					<div class="flex justify-between pt-2 mt-2 font-bold text-lg border-t">
+						<span>Total Due</span>
+						<span class="text-primary">{{
+							formatNumber(rental.total_price + rental.deposit_fee)
+						}}</span>
+					</div>
+					<p class="text-muted-foreground text-xs mt-2">
+						* The security deposit will be refunded after the rental period, subject to
+						item condition
+					</p>
 				</div>
 			</div>
 

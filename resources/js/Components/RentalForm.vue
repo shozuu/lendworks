@@ -44,6 +44,7 @@ const rentalForm = useInertiaForm({
 	base_price: 0,
 	discount: 0,
 	service_fee: 0,
+	deposit_fee: props.listing.deposit_fee,
 	total_price: 0,
 });
 
@@ -64,8 +65,13 @@ function updateRentalDays(startDate, endDate) {
 	const start = new Date(startDate);
 	const end = new Date(endDate);
 
-	const diffTime = end.getTime() - start.getTime();
-	rentalDays.value = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+	// Set time to midnight to avoid time zone issues
+	start.setHours(0, 0, 0, 0);
+	end.setHours(0, 0, 0, 0);
+
+	const diffTime = Math.abs(end.getTime() - start.getTime());
+	// Add 1 to include both start and end dates in the count
+	rentalDays.value = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
 	updateRentalPrice();
 }
@@ -82,7 +88,7 @@ watch(
 			const formatDateToManila = (date) => {
 				const d = new Date(date);
 				// Convert to Manila time (UTC+8) and ensure it's in YYYY-MM-DD format
-				return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+				return d.toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
 			};
 
 			// Get current date in Manila time
@@ -96,7 +102,7 @@ watch(
 			if (startDate >= today) {
 				rentalForm.start_date = formatDateToManila(newVal.start);
 				rentalForm.end_date = formatDateToManila(newVal.end);
-				
+
 				updateRentalDays(newVal.start, newVal.end);
 				rentalForm.base_price = rentalPrice.basePrice;
 				rentalForm.discount = rentalPrice.discount;
@@ -111,8 +117,8 @@ watch(
 const handleSubmit = () => {
 	if (!rentalForm.start_date || !rentalForm.end_date) {
 		errors.value = {
-			start_date: ['Please select start and end dates'],
-			end_date: ['Please select start and end dates']
+			start_date: ["Please select start and end dates"],
+			end_date: ["Please select start and end dates"],
 		};
 		return;
 	}
@@ -148,12 +154,8 @@ onMounted(() => {
 			<Separator class="my-4" />
 
 			<!-- Rental error alert -->
-			<Alert
-				v-if="flashError"
-				variant="destructive"
-				class="flex items-center mb-4"
-			>
-				<XCircle class="w-4 h-4" />
+			<Alert v-if="flashError" variant="destructive" class="flex items-center mb-4">
+				<XCircle class="w-4 h-4 shrink-0" />
 				<AlertDescription>
 					{{ flashError }}
 				</AlertDescription>
@@ -222,20 +224,32 @@ onMounted(() => {
 								<div>LendWorks Fee</div>
 								<div>{{ formatNumber(rentalPrice.fee) }}</div>
 							</div>
-							<!-- Maybe add total here for clarity -->
+							<div class="flex items-center justify-between">
+								<div>Security Deposit (Refundable)</div>
+								<div>{{ formatNumber(listing.deposit_fee) }}</div>
+							</div>
 							<div
 								class="flex items-center justify-between pt-2 mt-2 font-bold text-green-400 border-t"
 							>
-								<div>Total</div>
-								<div>{{ formatNumber(rentalPrice.totalPrice) }}</div>
+								<div>Total Due</div>
+								<div>
+									{{ formatNumber(rentalPrice.totalPrice + listing.deposit_fee) }}
+								</div>
 							</div>
+							<p class="text-muted-foreground mt-2 text-xs">
+								* Security deposit will be refunded after the rental period, subject to
+								item condition
+							</p>
 						</div>
 					</div>
 
 					<Separator class="my-4" />
 
 					<!-- Add error display -->
-					<div v-if="Object.keys(errors).length" class="text-destructive my-2 text-sm text-center">
+					<div
+						v-if="Object.keys(errors).length"
+						class="text-destructive my-2 text-sm text-center"
+					>
 						<p v-for="error in errors" :key="error">{{ error }}</p>
 					</div>
 

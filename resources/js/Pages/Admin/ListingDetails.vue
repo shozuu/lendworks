@@ -269,6 +269,12 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 							<span class="text-muted-foreground">{{ formatNumber(listing.price) }}</span>
 						</p>
 						<p>
+							Security Deposit:
+							<span class="text-muted-foreground">{{
+								formatNumber(listing.deposit_fee)
+							}}</span>
+						</p>
+						<p>
 							Category:
 							<span class="text-muted-foreground">{{ listing.category.name }}</span>
 						</p>
