@@ -5,7 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import RentalStatusBadge from "@/Components/RentalStatusBadge.vue";
 import { Button } from "@/components/ui/button";
 import { Link } from "@inertiajs/vue3";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { calculateDiscountPercentage } from "@/lib/rentalCalculator";
 
 const props = defineProps({
@@ -237,7 +237,7 @@ const discountPercentage = computed(() =>
 			<Separator />
 
 			<!-- Item Details -->
-			<div class="space-y-4">
+			<div class="space-y-3">
 				<h3 class="font-medium">Item Details</h3>
 				<div class="sm:flex-row flex flex-col gap-4">
 					<!-- Image takes full width on mobile -->
@@ -249,18 +249,11 @@ const discountPercentage = computed(() =>
 						"
 						class="sm:w-20 sm:h-20 object-cover w-full h-40 rounded-md"
 					/>
-					<div class="space-y-3">
+					<div class="space-y-2">
 						<h4 class="font-medium">{{ rental.listing.title }}</h4>
-						<div class="text-muted-foreground grid gap-2 text-sm">
+						<div class="text-muted-foreground grid gap-1 text-sm">
 							<p>Category: {{ rental.listing.category.name }}</p>
-							<p>
-								Location: {{ rental.listing.location.address }},
-								{{ rental.listing.location.city }}
-							</p>
 						</div>
-						<p class="text-muted-foreground text-sm">
-							{{ rental.listing.desc }}
-						</p>
 					</div>
 				</div>
 			</div>
@@ -268,25 +261,26 @@ const discountPercentage = computed(() =>
 			<Separator />
 
 			<!-- Rental Information -->
-			<div class="space-y-4">
+			<div class="space-y-3">
 				<h3 class="font-medium">Rental Information</h3>
-				<div class="grid gap-4 text-sm">
-					<div class="space-y-1">
-						<p class="text-muted-foreground">Rental Period</p>
-						<p class="font-medium">
-							{{ formatRentalDate(rental.start_date) }} to
-							{{ formatRentalDate(rental.end_date) }}
-							<span class="text-muted-foreground text-xs">(Including full days)</span>
-						</p>
-						<p class="text-muted-foreground">Request Date</p>
-						<p class="font-medium">{{ timeAgo(rental.created_at) }}</p>
-					</div>
+				<div class="space-y-1 text-sm">
+					<p class="text-muted-foreground">Rental Period</p>
+					<p class="font-medium">
+						{{ formatRentalDate(rental.start_date) }} to
+						{{ formatRentalDate(rental.end_date) }}
+					</p>
+					<p class="text-muted-foreground">Request Date</p>
+					<p class="font-medium">{{ timeAgo(rental.created_at) }}</p>
+					<p class="text-muted-foreground">Meetup Location:</p>
+					<p class="font-medium">{{ rental.listing.location.address }},
+											{{ rental.listing.location.city }}</p>
+
 				</div>
 			</div>
 
 			<Separator />
 
-			<div class="space-y-4">
+			<div class="space-y-3">
 				<h3 class="font-medium">Price Details</h3>
 
 				<!-- breakdown -->
