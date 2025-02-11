@@ -96,59 +96,49 @@ watch(
 	selectedDates,
 	(newVal) => {
 		if (newVal.start && newVal.end) {
-			// Format dates to Manila timezone (UTC+8)
-			const formatDateToManila = (date) => {
-				const d = new Date(date);
-				// Convert to Manila time (UTC+8) and ensure it's in YYYY-MM-DD format
-				return d.toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
-			};
+			// Format dates in YYYY-MM-DD format for the Manila timezone
+			const manila = new Intl.DateTimeFormat('en-CA', {
+				year: 'numeric',
+				month: '2-digit',
+				day: '2-digit',
+				timeZone: 'Asia/Manila'
+			});
 
-			// Get current date in Manila time
-			const today = new Date();
-			today.setHours(0, 0, 0, 0);
+			rentalForm.start_date = manila.format(newVal.start);
+			rentalForm.end_date = manila.format(newVal.end);
 
-			const startDate = new Date(newVal.start);
-			startDate.setHours(0, 0, 0, 0);
-
-			// Only proceed if start date is valid
-			if (startDate >= today) {
-				rentalForm.start_date = formatDateToManila(newVal.start);
-				rentalForm.end_date = formatDateToManila(newVal.end);
-
-				updateRentalDays(newVal.start, newVal.end);
-				rentalForm.base_price = rentalPrice.basePrice;
-				rentalForm.discount = rentalPrice.discount;
-				rentalForm.service_fee = rentalPrice.fee;
-				rentalForm.total_price = rentalPrice.totalPrice;
-			}
+			updateRentalDays(newVal.start, newVal.end);
+			rentalForm.base_price = rentalPrice.basePrice;
+			rentalForm.discount = rentalPrice.discount;
+			rentalForm.service_fee = rentalPrice.fee;
+			rentalForm.total_price = rentalPrice.totalPrice;
 		}
 	},
 	{ deep: true }
 );
 
 const handleSubmit = () => {
-	if (!rentalForm.start_date || !rentalForm.end_date) {
-		errors.value = {
-			start_date: ["Please select start and end dates"],
-			end_date: ["Please select start and end dates"],
-		};
-		return;
-	}
+    if (!rentalForm.start_date || !rentalForm.end_date) {
+        errors.value = {
+            dates: ["Please select start and end dates"]
+        };
+        return;
+    }
 
-	rentalForm.post(route("rentals.store"), {
-		onStart: () => {
-			isSubmitting.value = true;
-			errors.value = {};
-		},
-		onSuccess: () => {
-			isSubmitting.value = false;
-		},
-		onError: (err) => {
-			errors.value = err;
-			isSubmitting.value = false;
-		},
-		preserveScroll: true,
-	});
+    rentalForm.post(route("rentals.store"), {
+        onStart: () => {
+            isSubmitting.value = true;
+            errors.value = {};
+        },
+        onSuccess: () => {
+            isSubmitting.value = false;
+        },
+        onError: (err) => {
+            errors.value = err;
+            isSubmitting.value = false;
+        },
+        preserveScroll: true,
+    });
 };
 
 onMounted(() => {
@@ -167,15 +157,15 @@ onMounted(() => {
 
 			<!-- Rental error alert -->
 			<Alert v-if="flashError" variant="destructive" class="flex items-center mb-4">
-				<XCircle class="w-4 h-4 shrink-0" />
+				<XCircle class="shrink-0 w-4 h-4" />
 				<AlertDescription>
 					{{ flashError }}
 				</AlertDescription>
 			</Alert>
 
 			<div class="mb-4">
-				<h3 class="font-semibold text-base">Sample Rental Prices</h3>
-				<div class="text-muted-foreground text-xs mt-1">
+				<h3 class="text-base font-semibold">Sample Rental Prices</h3>
+				<div class="text-muted-foreground mt-1 text-xs">
 					Prices shown include platform fees. Security deposit may apply separately.
 				</div>
 			</div>
@@ -190,7 +180,6 @@ onMounted(() => {
 						<CardTitle class="text-md">{{ days }} Days</CardTitle>
 					</CardHeader>
 					<CardContent>
-						{{ console.log(dailyRate, itemValue, days) }}
 						{{
 							formatNumber(calculateRentalPrice(dailyRate, itemValue, days).totalPrice)
 						}}
@@ -257,7 +246,7 @@ onMounted(() => {
 							<Separator class="my-2" />
 
 							<!-- total with deposit -->
-							<div class="flex justify-between font-bold text-lg">
+							<div class="flex justify-between text-lg font-bold">
 								<div>Total Due</div>
 								<div class="text-primary">
 									{{ formatNumber(rentalForm.total_price + rentalForm.deposit_fee) }}

@@ -18,9 +18,13 @@ class RentalRequestController extends Controller
     public function store(Request $request)
     {
         try {
+            // Set timezone to Manila for validation
+            date_default_timezone_set('Asia/Manila');
+            $today = Carbon::today('Asia/Manila')->startOfDay();
+
             $validated = $request->validate([
                 'listing_id' => ['required', 'exists:listings,id'],
-                'start_date' => ['required', 'date', 'after_or_equal:today'],
+                'start_date' => ['required', 'date', 'after_or_equal:'.$today->format('Y-m-d')],
                 'end_date' => ['required', 'date', 'after_or_equal:start_date'],
                 'base_price' => ['required', 'numeric', 'min:0'],
                 'discount' => ['required', 'numeric', 'min:0'],
