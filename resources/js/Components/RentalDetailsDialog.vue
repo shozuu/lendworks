@@ -153,13 +153,13 @@ const discountPercentage = computed(() =>
 				<!-- rejection details -->
 				<div
 					v-if="rejectionDetails && rental.status === 'rejected'"
-					class="rounded-lg border bg-card text-card-foreground"
+					class="bg-card text-card-foreground border rounded-lg"
 				>
 					<!-- Header section -->
-					<div class="border-b bg-destructive/5 px-6 py-4 rounded-t-lg">
+					<div class="bg-destructive/5 px-6 py-4 border-b rounded-t-lg">
 						<div class="">
 							<h3 class="font-medium">Request Rejected</h3>
-							<p class="text-sm text-destructive">{{ rejectionDetails.label }}</p>
+							<p class="text-destructive text-sm">{{ rejectionDetails.label }}</p>
 						</div>
 					</div>
 
@@ -168,7 +168,7 @@ const discountPercentage = computed(() =>
 						<!-- Reason Description -->
 						<div class="space-y-2">
 							<h4 class="text-sm font-medium">Reason:</h4>
-							<p class="text-sm text-muted-foreground">
+							<p class="text-muted-foreground text-sm">
 								{{ rejectionDetails.description }}
 							</p>
 						</div>
@@ -176,7 +176,7 @@ const discountPercentage = computed(() =>
 						<!-- Action Needed (only for renters) -->
 						<div v-if="userRole === 'renter'" class="space-y-2">
 							<h4 class="text-sm font-medium">What you can do:</h4>
-							<p class="text-sm text-muted-foreground">
+							<p class="text-muted-foreground text-sm">
 								{{ rejectionDetails.action_needed }}
 							</p>
 						</div>
@@ -184,8 +184,8 @@ const discountPercentage = computed(() =>
 						<!-- Additional Feedback (if provided) -->
 						<div v-if="rejectionDetails.feedback" class="space-y-2">
 							<h4 class="text-sm font-medium">Additional feedback from lender:</h4>
-							<div class="bg-muted/50 rounded-md p-3">
-								<p class="text-sm text-muted-foreground italic">
+							<div class="bg-muted p-3 rounded-md">
+								<p class="text-muted-foreground text-sm italic">
 									"{{ rejectionDetails.feedback }}"
 								</p>
 							</div>
@@ -196,13 +196,13 @@ const discountPercentage = computed(() =>
 				<!-- Add cancellation details -->
 				<div
 					v-if="cancellationDetails && rental.status === 'cancelled'"
-					class="rounded-lg border bg-card text-card-foreground"
+					class="bg-card text-card-foreground border rounded-lg"
 				>
 					<!-- Header section -->
-					<div class="border-b bg-destructive/5 px-6 py-4 rounded-t-lg">
+					<div class="bg-destructive/5 px-6 py-4 border-b rounded-t-lg">
 						<div>
 							<h3 class="font-medium">Request Cancelled</h3>
-							<p class="text-sm text-destructive">{{ cancellationDetails.label }}</p>
+							<p class="text-destructive text-sm">{{ cancellationDetails.label }}</p>
 						</div>
 					</div>
 
@@ -211,7 +211,7 @@ const discountPercentage = computed(() =>
 						<!-- Reason Description -->
 						<div class="space-y-2">
 							<h4 class="text-sm font-medium">Reason:</h4>
-							<p class="text-sm text-muted-foreground">
+							<p class="text-muted-foreground text-sm">
 								{{ cancellationDetails.description }}
 							</p>
 						</div>
@@ -219,8 +219,8 @@ const discountPercentage = computed(() =>
 						<!-- Additional Feedback (if provided) -->
 						<div v-if="cancellationDetails.feedback" class="space-y-2">
 							<h4 class="text-sm font-medium">Additional details:</h4>
-							<div class="bg-muted/50 rounded-md p-3">
-								<p class="text-sm text-muted-foreground italic">
+							<div class="bg-muted/50 p-3 rounded-md">
+								<p class="text-muted-foreground text-sm italic">
 									"{{ cancellationDetails.feedback }}"
 								</p>
 							</div>
@@ -318,7 +318,7 @@ const discountPercentage = computed(() =>
 					<Separator class="my-2" />
 
 					<!-- total with deposit -->
-					<div class="flex justify-between font-bold text-lg">
+					<div class="flex justify-between text-lg font-bold">
 						<span>{{ userRole === "renter" ? "Total Due" : "Total Earnings" }}</span>
 						<span :class="[userRole === 'renter' ? 'text-blue-600' : 'text-emerald-600']">
 							{{ formatNumber(rental.total_price) }}

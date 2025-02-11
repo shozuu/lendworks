@@ -40,7 +40,6 @@ export function calculateDiscountPercentage(rentalDays, itemValue) {
 }
 
 export function calculateRentalPrice(dailyRate, itemValue, rentalDays, depositFee = 0) {
-    console.log(dailyRate, itemValue, rentalDays)
     if (!dailyRate || !itemValue || !rentalDays || dailyRate < 0 || itemValue < 0 || rentalDays < 1) {
         throw new Error('Invalid input parameters');
     }

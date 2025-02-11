@@ -11,16 +11,10 @@ const props = defineProps({
         required: true
     }
 });
-
-const needsAttention = computed(() => {
-    return props.transaction.status === 'rejected' || 
-           props.transaction.status === 'cancelled' ||
-           props.transaction.has_dispute;
-});
 </script>
 
 <template>
-    <Card :class="{'border-destructive/50': needsAttention }">
+    <Card>
         <Link 
             :href="route('admin.rental-transactions.show', transaction.id)"
             class="hover:bg-muted/50 block p-6 transition-colors"

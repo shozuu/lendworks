@@ -110,7 +110,7 @@ const showDetails = ref(false);
 		@cancel="showCancelDialog = true"
 	/>
 
-	<!-- Update Cancel Dialog -->
+	<!-- Cancel Dialog -->
 	<ConfirmDialog
 		:show="showCancelDialog"
 		title="Cancel Rental Request"
