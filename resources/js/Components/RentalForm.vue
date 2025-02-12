@@ -97,11 +97,11 @@ watch(
 	(newVal) => {
 		if (newVal.start && newVal.end) {
 			// Format dates in YYYY-MM-DD format for the Manila timezone
-			const manila = new Intl.DateTimeFormat('en-CA', {
-				year: 'numeric',
-				month: '2-digit',
-				day: '2-digit',
-				timeZone: 'Asia/Manila'
+			const manila = new Intl.DateTimeFormat("en-CA", {
+				year: "numeric",
+				month: "2-digit",
+				day: "2-digit",
+				timeZone: "Asia/Manila",
 			});
 
 			rentalForm.start_date = manila.format(newVal.start);
@@ -118,27 +118,27 @@ watch(
 );
 
 const handleSubmit = () => {
-    if (!rentalForm.start_date || !rentalForm.end_date) {
-        errors.value = {
-            dates: ["Please select start and end dates"]
-        };
-        return;
-    }
+	if (!rentalForm.start_date || !rentalForm.end_date) {
+		errors.value = {
+			dates: ["Please select start and end dates"],
+		};
+		return;
+	}
 
-    rentalForm.post(route("rentals.store"), {
-        onStart: () => {
-            isSubmitting.value = true;
-            errors.value = {};
-        },
-        onSuccess: () => {
-            isSubmitting.value = false;
-        },
-        onError: (err) => {
-            errors.value = err;
-            isSubmitting.value = false;
-        },
-        preserveScroll: true,
-    });
+	rentalForm.post(route("rentals.store"), {
+		onStart: () => {
+			isSubmitting.value = true;
+			errors.value = {};
+		},
+		onSuccess: () => {
+			isSubmitting.value = false;
+		},
+		onError: (err) => {
+			errors.value = err;
+			isSubmitting.value = false;
+		},
+		preserveScroll: true,
+	});
 };
 
 onMounted(() => {
@@ -249,7 +249,7 @@ onMounted(() => {
 							<div class="flex justify-between text-lg font-bold">
 								<div>Total Due</div>
 								<div class="text-primary">
-									{{ formatNumber(rentalForm.total_price + rentalForm.deposit_fee) }}
+									{{ formatNumber(rentalForm.total_price) }}
 								</div>
 							</div>
 

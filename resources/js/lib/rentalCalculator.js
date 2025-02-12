@@ -54,11 +54,10 @@ export function calculateRentalPrice(dailyRate, itemValue, rentalDays, depositFe
     
     return {
         basePrice,
-        discount,
         fee,
+        discount,
+        discountPercentage: Math.round(discountRate * 100),
         deposit: depositFee,
-        totalPrice: discountedPrice + fee,  // Rental cost without deposit
-        totalWithDeposit: discountedPrice + fee + depositFee, // Total including deposit
-        discountPercentage: Math.round(discountRate * 100)
+        totalPrice: discountedPrice + fee + depositFee  // Rental cost with deposit
     };
 }
