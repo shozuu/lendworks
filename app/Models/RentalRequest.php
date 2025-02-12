@@ -83,6 +83,21 @@ class RentalRequest extends Model
             ->withTimestamps();
     }
 
+    public function timelineEvents()
+    {
+        return $this->hasMany(RentalTimelineEvent::class)->with('actor')->orderBy('created_at', 'desc');
+    }
+
+    public function recordTimelineEvent($eventType, $actorId, $metadata = null)
+    {
+        return $this->timelineEvents()->create([
+            'actor_id' => $actorId,
+            'event_type' => $eventType,
+            'status' => $this->status,
+            'metadata' => $metadata
+        ]);
+    }
+
     // Accessors
     public function getHasStartedAttribute(): bool
     {
