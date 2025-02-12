@@ -5,7 +5,6 @@ import BaseRentalCard from "@/Components/BaseRentalCard.vue";
 import { Button } from "@/components/ui/button";
 import { useForm } from "@inertiajs/vue3";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
-import RentalDetailsDialog from "@/Components/RentalDetailsDialog.vue";
 
 const props = defineProps({
 	data: {
@@ -76,14 +75,6 @@ const handleReject = () => {
 		preserveScroll: true,
 	});
 };
-
-const showDetails = ref(false);
-
-// Add a computed property to transform the data structure
-const rentalDetails = computed(() => ({
-	...props.data.rental_request,
-	listing: props.data.listing,
-}));
 </script>
 
 <template>
@@ -93,7 +84,7 @@ const rentalDetails = computed(() => ({
 		:status="data.rental_request.status"
 		:listing-id="data.listing.id"
 		:details="details"
-		@click="showDetails = true"
+		 @click="$inertia.visit(route('rental.show', data.rental_request.id))"
 	>
 		<!-- Actions slot -->
 		<template #actions>
@@ -120,14 +111,6 @@ const rentalDetails = computed(() => ({
 			</div>
 		</template>
 	</BaseRentalCard>
-
-	<RentalDetailsDialog
-		v-model:show="showDetails"
-		:rental="rentalDetails"
-		user-role="lender"
-		@approve="showAcceptDialog = true"
-		@reject="showRejectDialog = true"
-	/>
 
 	<!-- Accept Dialog -->
 	<ConfirmDialog

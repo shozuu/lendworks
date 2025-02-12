@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import BaseRentalCard from "@/Components/BaseRentalCard.vue";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import { useForm } from "@inertiajs/vue3";
-import RentalDetailsDialog from "@/Components/RentalDetailsDialog.vue";
 
 const props = defineProps({
 	rental: {
@@ -66,8 +65,6 @@ const details = computed(() => [
 		value: props.rental.listing.user.name,
 	},
 ]);
-
-const showDetails = ref(false);
 </script>
 
 <template>
@@ -77,7 +74,7 @@ const showDetails = ref(false);
 		:status="rental.status"
 		:listing-id="rental.listing.id"
 		:details="details"
-		@click="showDetails = true"
+		@click="$inertia.visit(route('rental.show', rental.id))"
 	>
 		<!-- Details slot -->
 		<template #additional-details>
@@ -103,14 +100,7 @@ const showDetails = ref(false);
 		</template>
 	</BaseRentalCard>
 
-	<RentalDetailsDialog
-		v-model:show="showDetails"
-		:rental="rental"
-		user-role="renter"
-		@cancel="showCancelDialog = true"
-	/>
-
-	<!-- Update Cancel Dialog -->
+	<!-- Cancel Dialog -->
 	<ConfirmDialog
 		:show="showCancelDialog"
 		title="Cancel Rental Request"

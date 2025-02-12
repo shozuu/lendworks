@@ -47,7 +47,11 @@ const emit = defineEmits(["click"]);
 					<div class="text-muted-foreground text-sm">
 						<div v-for="(detail, index) in details" :key="index" class="flex gap-2">
 							<span class="font-medium">{{ detail.label }}:</span>
-							<span>{{ detail.value }}</span>
+
+							<span v-if="index === 0" class="text-primary">
+								{{ detail.value }}
+							</span>
+							<span v-else>{{ detail.value }}</span>
 						</div>
 					</div>
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Listing;
 use App\Models\RentalRejectionReason;
+use App\Models\RentalCancellationReason;
 use App\Models\RentalRequest;
 use App\Notifications\NewRentalRequest;
 use App\Notifications\RentalRequestApproved;
@@ -11,16 +12,67 @@ use App\Notifications\RentalRequestRejected;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 
 class RentalRequestController extends Controller
 {
+    public function show(RentalRequest $rental)
+    {
+        // Check if the authenticated user is either the renter or the lender
+        if (Auth::id() !== $rental->renter_id && Auth::id() !== $rental->listing->user_id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $rental->load([
+            'listing' => fn($q) => $q->with([
+                'images', 
+                'category', 
+                'location', 
+                'user' => fn($q) => $q->withCount('listings')
+            ]),
+            'renter' => fn($q) => $q->withCount('listings'),
+            'latestRejection.rejectionReason',
+            'latestCancellation.cancellationReason',
+            'timelineEvents'
+        ]);
+
+        // Determine user role
+        $userRole = Auth::id() === $rental->renter_id ? 'renter' : 'lender';
+        
+        // Format reasons for select options
+        $reasons = [
+            'rejectionReasons' => RentalRejectionReason::all()->map(function($reason) {
+                return [
+                    'value' => $reason->id,
+                    'label' => $reason->label,
+                ];
+            }),
+            'cancellationReasons' => RentalCancellationReason::all()->map(function($reason) {
+                return [
+                    'value' => $reason->id,
+                    'label' => $reason->label,
+                ];
+            })
+        ];
+
+        return Inertia::render('RentalDetails', [
+            'rental' => $rental,
+            'userRole' => $userRole,
+            ...$reasons
+        ]);        
+    }
+
     public function store(Request $request)
     {
         try {
+            // Set timezone to Manila for validation
+            date_default_timezone_set('Asia/Manila');
+            $today = Carbon::today('Asia/Manila')->startOfDay();
+
             $validated = $request->validate([
                 'listing_id' => ['required', 'exists:listings,id'],
-                'start_date' => ['required', 'date', 'after_or_equal:today'],
+                'start_date' => ['required', 'date', 'after_or_equal:'.$today->format('Y-m-d')],
                 'end_date' => ['required', 'date', 'after_or_equal:start_date'],
                 'base_price' => ['required', 'numeric', 'min:0'],
                 'discount' => ['required', 'numeric', 'min:0'],
@@ -69,6 +121,7 @@ class RentalRequestController extends Controller
                 ]);
 
                 $rentalRequest->save();
+                $rentalRequest->recordTimelineEvent('created', Auth::id());
                 DB::commit();
 
                 // notify owner
@@ -97,16 +150,17 @@ class RentalRequestController extends Controller
     private function parseDates($startDate, $endDate)
     {
         date_default_timezone_set('Asia/Manila');
-
+        
         return [
-            'start' => Carbon::createFromFormat('Y-m-d', $startDate, 'Asia/Manila')->startOfDay(),
-            'end' => Carbon::createFromFormat('Y-m-d', $endDate, 'Asia/Manila')->endOfDay(),
+            'start' => Carbon::createFromFormat('Y-m-d', $startDate, 'Asia/Manila')
+                ->startOfDay(), // 00:00:00
+            'end' => Carbon::createFromFormat('Y-m-d', $endDate, 'Asia/Manila')
+                ->endOfDay(), // 23:59:59
         ];
     }
 
     public function approve(RentalRequest $rentalRequest)
     {
-        // First, verify ownership and availability
         if ($rentalRequest->listing->user_id !== Auth::id()) {
             abort(403);
         }
@@ -118,6 +172,7 @@ class RentalRequestController extends Controller
             DB::transaction(function () use ($rentalRequest) {
                 // 1. Approve the current request
                 $rentalRequest->update(['status' => 'approved']);
+                $rentalRequest->recordTimelineEvent('approved', Auth::id());
                 
                 // 2. Mark listing as rented
                 $rentalRequest->listing->update(['is_rented' => true]);
@@ -133,15 +188,27 @@ class RentalRequestController extends Controller
                     // Mark as rejected
                     $request->update(['status' => 'rejected']);
                     
-                    // Add rejection reason with custom message
+                    // Format dates for the message
+                    $periodMessage = sprintf(
+                        'This item has been rented to another user for the period of %s to %s.',
+                        $rentalRequest->start_date->format('M d, Y'),
+                        $rentalRequest->end_date->format('M d, Y')
+                    );
+                    
+                    // Add rejection reason
                     $request->rejectionReasons()->attach($unavailableReason->id, [
-                        'custom_feedback' => sprintf(
-                            'This item has been rented to another user for the period of %s to %s.',
-                            // if they don't settle the payment, the item will be available again
-                            $rentalRequest->start_date->format('M d, Y'),
-                            $rentalRequest->end_date->format('M d, Y')
-                        ),
+                        'custom_feedback' => $periodMessage,
                         'lender_id' => Auth::id()
+                    ]);
+
+                    // Record timeline event with metadata using the rejection reason data
+                    $request->recordTimelineEvent('rejected', Auth::id(), [
+                        'reason' => $unavailableReason->description,
+                        'action_needed' => $unavailableReason->action_needed,
+                        'label' => $unavailableReason->label,
+                        'feedback' => $periodMessage,
+                        'auto_rejected' => true,
+                        'approved_request_id' => $rentalRequest->id
                     ]);
                     
                     // Notify rejected renters
@@ -172,6 +239,7 @@ class RentalRequestController extends Controller
                 'required_if:rejection_reason_id,other',
                 'nullable',
                 'string',
+                'min:10',
                 'max:1000'
             ],
         ]);
@@ -186,6 +254,8 @@ class RentalRequestController extends Controller
                     'custom_feedback' => $validated['custom_feedback'],
                     'lender_id' => Auth::id()
                 ]);
+
+                $rentalRequest->recordTimelineEvent('rejected', Auth::id());
             });
 
             // Notify renter
@@ -216,16 +286,20 @@ class RentalRequestController extends Controller
                 'required_if:cancellation_reason_id,other',
                 'nullable',
                 'string',
+                'min:10', 
                 'max:1000'
             ],
         ]);
 
         try {
             DB::transaction(function () use ($rentalRequest, $validated) {
+                // Get the cancellation reason
+                $cancellationReason = RentalCancellationReason::find($validated['cancellation_reason_id']);
+                
                 // Update rental request status
                 $rentalRequest->update(['status' => 'cancelled']);
                 
-                // Create cancellation record - Updated to match rejection pattern
+                // Create cancellation record
                 $rentalRequest->cancellationReasons()->attach($validated['cancellation_reason_id'], [
                     'custom_feedback' => $validated['custom_feedback']
                 ]);
@@ -234,6 +308,13 @@ class RentalRequestController extends Controller
                 if ($rentalRequest->status === 'approved') {
                     $rentalRequest->listing->update(['is_rented' => false]);
                 }
+
+                // Record timeline event with metadata using the cancellation reason data
+                $rentalRequest->recordTimelineEvent('cancelled', Auth::id(), [
+                    'reason' => $cancellationReason->description,
+                    'label' => $cancellationReason->label,
+                    'feedback' => $validated['custom_feedback']
+                ]);
             });
 
             // Reload the model with the proper relationship structure

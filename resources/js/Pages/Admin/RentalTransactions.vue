@@ -1,7 +1,6 @@
 <script setup>
 import AdminLayout from "@/Layouts/AdminLayout.vue";
 import { Head } from "@inertiajs/vue3";
-import { Card } from "@/components/ui/card";
 import StatCard from "@/Components/StatCard.vue";
 import {
     Select,

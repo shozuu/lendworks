@@ -57,8 +57,20 @@ const errors = ref({});
 const isSubmitting = ref(false);
 
 function updateRentalPrice() {
-	const result = calculateRentalPrice(dailyRate, itemValue, rentalDays.value);
+	const result = calculateRentalPrice(
+		dailyRate,
+		itemValue,
+		rentalDays.value,
+		props.listing.deposit_fee
+	);
 	Object.assign(rentalPrice, result);
+
+	// Update form values
+	rentalForm.base_price = result.basePrice;
+	rentalForm.discount = result.discount;
+	rentalForm.service_fee = result.fee;
+	rentalForm.deposit_fee = result.deposit;
+	rentalForm.total_price = result.totalPrice; // rental cost without deposit
 }
 
 function updateRentalDays(startDate, endDate) {
@@ -84,31 +96,22 @@ watch(
 	selectedDates,
 	(newVal) => {
 		if (newVal.start && newVal.end) {
-			// Format dates to Manila timezone (UTC+8)
-			const formatDateToManila = (date) => {
-				const d = new Date(date);
-				// Convert to Manila time (UTC+8) and ensure it's in YYYY-MM-DD format
-				return d.toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
-			};
+			// Format dates in YYYY-MM-DD format for the Manila timezone
+			const manila = new Intl.DateTimeFormat("en-CA", {
+				year: "numeric",
+				month: "2-digit",
+				day: "2-digit",
+				timeZone: "Asia/Manila",
+			});
 
-			// Get current date in Manila time
-			const today = new Date();
-			today.setHours(0, 0, 0, 0);
+			rentalForm.start_date = manila.format(newVal.start);
+			rentalForm.end_date = manila.format(newVal.end);
 
-			const startDate = new Date(newVal.start);
-			startDate.setHours(0, 0, 0, 0);
-
-			// Only proceed if start date is valid
-			if (startDate >= today) {
-				rentalForm.start_date = formatDateToManila(newVal.start);
-				rentalForm.end_date = formatDateToManila(newVal.end);
-
-				updateRentalDays(newVal.start, newVal.end);
-				rentalForm.base_price = rentalPrice.basePrice;
-				rentalForm.discount = rentalPrice.discount;
-				rentalForm.service_fee = rentalPrice.fee;
-				rentalForm.total_price = rentalPrice.totalPrice;
-			}
+			updateRentalDays(newVal.start, newVal.end);
+			rentalForm.base_price = rentalPrice.basePrice;
+			rentalForm.discount = rentalPrice.discount;
+			rentalForm.service_fee = rentalPrice.fee;
+			rentalForm.total_price = rentalPrice.totalPrice;
 		}
 	},
 	{ deep: true }
@@ -117,8 +120,7 @@ watch(
 const handleSubmit = () => {
 	if (!rentalForm.start_date || !rentalForm.end_date) {
 		errors.value = {
-			start_date: ["Please select start and end dates"],
-			end_date: ["Please select start and end dates"],
+			dates: ["Please select start and end dates"],
 		};
 		return;
 	}
@@ -155,13 +157,18 @@ onMounted(() => {
 
 			<!-- Rental error alert -->
 			<Alert v-if="flashError" variant="destructive" class="flex items-center mb-4">
-				<XCircle class="w-4 h-4 shrink-0" />
+				<XCircle class="shrink-0 w-4 h-4" />
 				<AlertDescription>
 					{{ flashError }}
 				</AlertDescription>
 			</Alert>
 
-			<div class="mb-4 font-semibold">Price Range</div>
+			<div class="mb-4">
+				<h3 class="text-base font-semibold">Sample Rental Prices</h3>
+				<div class="text-muted-foreground mt-1 text-xs">
+					Prices shown include platform fees. Security deposit may apply separately.
+				</div>
+			</div>
 
 			<div class="md:grid-cols-3 grid grid-cols-1 gap-4 text-sm">
 				<Card
@@ -203,42 +210,52 @@ onMounted(() => {
 						<RentalDatesPicker v-model="selectedDates" :min-date="new Date()" />
 					</div>
 
-					<Separator class="my-4" />
+					<Separator class="my-4" v-if="selectedDates.start && selectedDates.end" />
 
-					<div
-						v-if="selectedDates.start && selectedDates.end"
-						class="text-muted-foreground space-y-2 text-sm"
-					>
+					<div v-if="selectedDates.start && selectedDates.end" class="space-y-2 text-sm">
 						<div class="text-foreground text-base font-semibold">Rental Summary</div>
 
-						<div class="space-y-1">
+						<!-- breakdown -->
+						<div class="space-y-2">
 							<div class="flex items-center justify-between">
-								<div>{{ formatNumber(dailyRate) }} x {{ rentalDays }} rental days</div>
+								<div class="text-muted-foreground">
+									{{ formatNumber(dailyRate) }} x {{ rentalDays }} rental days
+								</div>
 								<div>{{ formatNumber(rentalPrice.basePrice) }}</div>
 							</div>
+
 							<div class="flex items-center justify-between">
-								<div>Duration Discount ({{ rentalPrice.discountPercentage }}%)</div>
+								<div class="text-muted-foreground">
+									Duration Discount ({{ rentalPrice.discountPercentage }}%)
+								</div>
 								<div>- {{ formatNumber(rentalPrice.discount) }}</div>
 							</div>
+
 							<div class="flex items-center justify-between">
-								<div>LendWorks Fee</div>
+								<div class="text-muted-foreground">LendWorks Fee</div>
 								<div>{{ formatNumber(rentalPrice.fee) }}</div>
 							</div>
+
 							<div class="flex items-center justify-between">
-								<div>Security Deposit (Refundable)</div>
-								<div>{{ formatNumber(listing.deposit_fee) }}</div>
-							</div>
-							<div
-								class="flex items-center justify-between pt-2 mt-2 font-bold text-green-400 border-t"
-							>
-								<div>Total Due</div>
-								<div>
-									{{ formatNumber(rentalPrice.totalPrice + listing.deposit_fee) }}
+								<span class="text-muted-foreground">Security Deposit (Refundable)</span>
+								<div class="text-primary">
+									{{ formatNumber(rentalForm.deposit_fee) }}
 								</div>
 							</div>
+
+							<Separator class="my-2" />
+
+							<!-- total with deposit -->
+							<div class="flex justify-between text-lg font-bold">
+								<div>Total Due</div>
+								<div class="text-primary">
+									{{ formatNumber(rentalForm.total_price) }}
+								</div>
+							</div>
+
 							<p class="text-muted-foreground mt-2 text-xs">
-								* Security deposit will be refunded after the rental period, subject to
-								item condition
+								Note: Security deposit will be refunded after the rental period, subject
+								to item condition
 							</p>
 						</div>
 					</div>
@@ -259,8 +276,7 @@ onMounted(() => {
 						@click.prevent="handleSubmit"
 					>
 						<template v-if="isSubmitting">
-							<span class="loading-spinner mr-2"></span>
-							Processing...
+							<span class="loading-spinner mr-2"></span> Processing...
 						</template>
 						<template v-else> Send Rent Request </template>
 					</Button>

@@ -38,15 +38,15 @@ const handleValueChange = (value) => {
 	<Head title="| My Rentals" />
 	<div class="space-y-6">
 		<!-- header -->
-		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+		<div class="sm:flex-row sm:items-center sm:justify-between flex flex-col gap-4">
 			<div class="space-y-1">
 				<h2 class="text-2xl font-semibold tracking-tight">My Rentals</h2>
-				<p class="text-sm text-muted-foreground">Manage your rental requests</p>
+				<p class="text-muted-foreground text-sm">Manage your rental requests</p>
 			</div>
 		</div>
 
 		<!-- status summary cards -->
-		<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+		<div class="md:grid-cols-3 lg:grid-cols-6 grid grid-cols-2 gap-3">
 			<StatCard
 				v-for="(count, status) in stats"
 				:key="status"
@@ -56,9 +56,9 @@ const handleValueChange = (value) => {
 		</div>
 
 		<!-- Tabs for lg+ screens -->
-		<div class="hidden lg:block">
+		<div class="lg:block hidden">
 			<Tabs v-model="selectedTab" class="w-full" @update:modelValue="handleValueChange">
-				<TabsList class="w-full justify-start">
+				<TabsList class="justify-start w-full">
 					<TabsTrigger v-for="tab in tabs" :key="tab.id" :value="tab.id">
 						{{ tab.label }}
 					</TabsTrigger>
@@ -70,6 +70,7 @@ const handleValueChange = (value) => {
 							v-for="rental in rentals[tab.id]"
 							:key="rental.id"
 							:rental="rental"
+							:cancellationReasons="cancellationReasons"
 						/>
 					</div>
 					<div v-else class="text-muted-foreground py-10 text-center">

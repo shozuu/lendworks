@@ -23,8 +23,8 @@ class RentalRequest extends Model
     ];
 
     protected $casts = [
-        'start_date' => 'date',
-        'end_date' => 'date',
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',    
         'base_price' => 'integer',
         'discount' => 'integer',
         'service_fee' => 'integer',
@@ -60,11 +60,42 @@ class RentalRequest extends Model
             ->with('rejectionReason'); 
     }
 
+    public function rejectionReasons()
+    {
+        return $this->belongsToMany(RentalRejectionReason::class, 'rental_request_rejections')
+            ->using(RentalRequestRejection::class)
+            ->withPivot(['custom_feedback'])
+            ->withTimestamps();
+    }
+
     public function latestCancellation()
     {
         return $this->hasOne(RentalRequestCancellation::class)
             ->latest()
             ->with('cancellationReason'); 
+    }
+
+    public function cancellationReasons()
+    {
+        return $this->belongsToMany(RentalCancellationReason::class, 'rental_request_cancellations')
+            ->using(RentalRequestCancellation::class)
+            ->withPivot(['custom_feedback'])
+            ->withTimestamps();
+    }
+
+    public function timelineEvents()
+    {
+        return $this->hasMany(RentalTimelineEvent::class)->with('actor')->orderBy('created_at', 'desc');
+    }
+
+    public function recordTimelineEvent($eventType, $actorId, $metadata = null)
+    {
+        return $this->timelineEvents()->create([
+            'actor_id' => $actorId,
+            'event_type' => $eventType,
+            'status' => $this->status,
+            'metadata' => $metadata
+        ]);
     }
 
     // Accessors
