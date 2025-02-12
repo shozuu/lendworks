@@ -47,6 +47,9 @@ Route::middleware(['auth', 'verified'])->group(function() {
 
     // lender dashboard
     Route::get('/lender-dashboard', [LenderDashboardController::class, 'index'])->name('lender-dashboard');
+
+    // rental transactions
+    Route::get('/rentals/{rental}', [RentalRequestController::class, 'show'])->name('rental.show');
 });
 
 // Admin routes with auth and admin middleware
