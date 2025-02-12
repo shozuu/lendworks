@@ -122,9 +122,14 @@ const isDisabled = computed(() => {
 
 	const textareaContent = props.textareaValue?.trim() || "";
 
-	if (isSelectReasonOther.value) {
+	if (props.showTextarea || isSelectReasonOther.value) {
 		// Enforce minimum and maximum length for custom feedback
 		return textareaContent.length < 10 || textareaContent.length > 1000;
+	}
+
+	// If select is shown but no value is selected
+	if (props.showSelect && !props.selectValue) {
+		return true;
 	}
 
 	return false;
