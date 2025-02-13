@@ -80,6 +80,16 @@ class Listing extends Model
         return $this->hasMany(RentalRequest::class);
     }
 
+    public function currentRental()
+    {
+        return $this->hasOne(RentalRequest::class)
+            ->where('status', 'active')
+            ->orWhere(function ($query) {
+                $query->where('status', 'approved')
+                      ->where('start_date', '>=', now());
+            });
+    }
+
     public function getRejectionDetailsAttribute()
     {
         if ($this->status !== 'rejected') {
