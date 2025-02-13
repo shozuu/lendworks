@@ -18,6 +18,7 @@ class Listing extends Model
         'status',
         'rejection_reason',
         'is_available',
+        'is_rented',
         'category_id',
         'user_id',
         'location_id',
@@ -26,6 +27,7 @@ class Listing extends Model
 
     protected $casts = [
         'is_available' => 'boolean',
+        'is_rented' => 'boolean',
         'status' => 'string'
     ];
 
@@ -83,10 +85,13 @@ class Listing extends Model
     public function currentRental()
     {
         return $this->hasOne(RentalRequest::class)
-            ->where('status', 'active')
-            ->orWhere(function ($query) {
-                $query->where('status', 'approved')
-                      ->where('start_date', '>=', now());
+            ->where(function ($query) {
+                $query->where('status', 'active')
+                      ->orWhere(function ($q) {
+                          $q->where('status', 'approved')
+                            ->where('start_date', '<=', now())
+                            ->where('end_date', '>=', now());
+                      });
             });
     }
 

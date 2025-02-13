@@ -176,7 +176,7 @@ class RentalRequestController extends Controller
                 
                 // 2. Mark listing as rented and unavailable
                 $rentalRequest->listing->update([
-                    'is_rented' => true,
+                    'is_rented' => true, 
                 ]);
                 
                 // 3. Find all overlapping pending requests
@@ -310,7 +310,6 @@ class RentalRequestController extends Controller
                 if ($rentalRequest->status === 'approved') {
                     $rentalRequest->listing->update([
                         'is_rented' => false,
-                        'is_available' => true  // Make available again
                     ]);
                 }
 
