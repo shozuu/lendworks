@@ -8,7 +8,7 @@ import { formatNumber, formatDate } from "@/lib/formatters";
 import { ref, reactive, watch, onMounted } from "vue";
 import { useForm as useInertiaForm } from "@inertiajs/vue3";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { XCircle } from "lucide-vue-next";
+import { XCircle, Clock } from "lucide-vue-next";
 
 const props = defineProps({
 	listing: {
@@ -21,6 +21,10 @@ const props = defineProps({
 	},
 	flashError: {
 		type: String,
+		default: null,
+	},
+	currentRental: {
+		type: Object,
 		default: null,
 	},
 });
@@ -155,6 +159,27 @@ onMounted(() => {
 		<CardContent class="md:p-6 md:pt-0 p-4 pt-0">
 			<Separator class="my-4" />
 
+			<!-- Currently Rented Notice -->
+			<div v-if="listing.is_rented && currentRental" class="mb-6">
+				<Alert class="bg-muted">
+					<AlertDescription>
+						<div class="flex gap-2 items-center">
+							<Clock class="h-4 w-4 shrink-0" />
+							<p class="font-medium">Currently Rented</p>
+						</div>
+						<p class="text-muted-foreground text-sm mt-1">
+							This item is being rented until {{ formatDate(currentRental.end_date) }}.
+						</p>
+						<p class="text-muted-foreground text-sm mt-2">
+							You can still calculate rental costs below, but rental requests are
+							temporarily disabled.
+							<!-- Future feature hint -->
+							<!-- <button class="text-primary hover:underline">Get notified when available</button> -->
+						</p>
+					</AlertDescription>
+				</Alert>
+			</div>
+
 			<!-- Rental error alert -->
 			<Alert v-if="flashError" variant="destructive" class="flex items-center mb-4">
 				<XCircle class="shrink-0 w-4 h-4" />
@@ -200,9 +225,6 @@ onMounted(() => {
 						<Link :href="route('login')" class="text-primary hover:underline">login</Link>
 						to rent this item.
 					</p>
-				</div>
-				<div v-else-if="listing.is_rented" class="text-muted-foreground py-4 text-center">
-					<p>This item is currently rented and unavailable.</p>
 				</div>
 				<template v-else>
 					<div class="space-y-2">
@@ -272,11 +294,19 @@ onMounted(() => {
 
 					<Button
 						class="w-full"
-						:disabled="!selectedDates.start || !selectedDates.end || isSubmitting"
+						:disabled="
+							!selectedDates.start ||
+							!selectedDates.end ||
+							isSubmitting ||
+							listing.is_rented
+						"
 						@click.prevent="handleSubmit"
 					>
 						<template v-if="isSubmitting">
 							<span class="loading-spinner mr-2"></span> Processing...
+						</template>
+						<template v-else-if="listing.is_rented">
+							Available on {{ formatDate(currentRental.end_date) }}
 						</template>
 						<template v-else> Send Rent Request </template>
 					</Button>

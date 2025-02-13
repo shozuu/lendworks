@@ -12,6 +12,7 @@ import { useForm } from "@inertiajs/vue3";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import { ref } from "vue";
 import RentalTimeline from "@/Components/RentalTimeline.vue";
+import { Link } from "@inertiajs/vue3";
 
 const props = defineProps({
 	rental: Object,
@@ -181,18 +182,28 @@ const handleCancel = () => {
 						<div class="space-y-6">
 							<!-- Item Image and Basic Info -->
 							<div class="sm:flex-row flex flex-col gap-4">
-								<img
-									:src="
-										rental.listing.images[0]?.image_path
-											? `/storage/${rental.listing.images[0].image_path}`
-											: '/storage/images/listing/default.png'
-									"
-									class="sm:w-32 sm:h-32 object-cover w-full h-48 rounded-lg"
-									:alt="rental.listing.title"
-								/>
+								<Link
+									:href="route('listing.show', rental.listing.id)"
+									class="sm:w-32 sm:h-32 w-full h-48 flex-shrink-0"
+								>
+									<img
+										:src="
+											rental.listing.images[0]?.image_path
+												? `/storage/${rental.listing.images[0].image_path}`
+												: '/storage/images/listing/default.png'
+										"
+										class="object-cover w-full h-full rounded-lg hover:opacity-90 transition-opacity"
+										:alt="rental.listing.title"
+									/>
+								</Link>
 								<div class="space-y-4">
 									<div>
-										<h3 class="text-lg font-semibold">{{ rental.listing.title }}</h3>
+										<Link
+											:href="route('listing.show', rental.listing.id)"
+											class="hover:text-primary transition-colors"
+										>
+											<h3 class="text-lg font-semibold">{{ rental.listing.title }}</h3>
+										</Link>
 										<p class="text-muted-foreground text-sm">
 											Category: {{ rental.listing.category.name }}
 										</p>
