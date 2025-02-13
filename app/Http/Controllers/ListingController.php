@@ -105,7 +105,8 @@ class ListingController extends Controller
                 'category', 
                 'location', 
                 'latestRejection.rejectionReason',
-                'latestTakedown.takedownReason'
+                'latestTakedown.takedownReason',
+                'currentRental' 
             ])
             ->where('id', $id);
 

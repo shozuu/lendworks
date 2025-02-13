@@ -174,8 +174,10 @@ class RentalRequestController extends Controller
                 $rentalRequest->update(['status' => 'approved']);
                 $rentalRequest->recordTimelineEvent('approved', Auth::id());
                 
-                // 2. Mark listing as rented
-                $rentalRequest->listing->update(['is_rented' => true]);
+                // 2. Mark listing as rented and unavailable
+                $rentalRequest->listing->update([
+                    'is_rented' => true,
+                ]);
                 
                 // 3. Find all overlapping pending requests
                 $overlappingRequests = $rentalRequest->getOverlappingRequests();
@@ -306,7 +308,10 @@ class RentalRequestController extends Controller
 
                 // If request was approved, update listing status
                 if ($rentalRequest->status === 'approved') {
-                    $rentalRequest->listing->update(['is_rented' => false]);
+                    $rentalRequest->listing->update([
+                        'is_rented' => false,
+                        'is_available' => true  // Make available again
+                    ]);
                 }
 
                 // Record timeline event with metadata using the cancellation reason data
