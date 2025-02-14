@@ -16,18 +16,18 @@ class RentalRequestApproved extends Notification
 
     public function via($notifiable)
     {
-        return ['mail', 'database'];
+        return ['database'];
     }
 
-    public function toMail($notifiable)
-    {
-        return (new MailMessage)
-            ->subject('Your rental request has been approved!')
-            ->line('Great news! Your rental request for "' . $this->rentalRequest->listing->title . '" has been approved.')
-            ->line('Please proceed with the payment to confirm your booking.')
-            ->action('View Rental Details', route('my-rentals'))
-            ->line('Thank you for using LendWorks!');
-    }
+    // public function toMail($notifiable)
+    // {
+    //     return (new MailMessage)
+    //         ->subject('Your rental request has been approved!')
+    //         ->line('Great news! Your rental request for "' . $this->rentalRequest->listing->title . '" has been approved.')
+    //         ->line('Please proceed with the payment to confirm your booking.')
+    //         ->action('View Rental Details', route('my-rentals'))
+    //         ->line('Thank you for using LendWorks!');
+    // }
 
     public function toArray($notifiable)
     {
