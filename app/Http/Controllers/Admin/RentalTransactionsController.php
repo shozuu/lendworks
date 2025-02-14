@@ -64,7 +64,8 @@ class RentalTransactionsController extends Controller
             'listing' => fn($q) => $q->with(['images', 'category', 'location', 'user']),
             'renter',
             'latestRejection.rejectionReason',
-            'latestCancellation.cancellationReason'
+            'latestCancellation.cancellationReason',
+            'timelineEvents'
         ]);
 
         return Inertia::render('Admin/RentalTransactionDetails', [
