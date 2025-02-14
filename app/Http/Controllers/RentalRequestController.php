@@ -306,14 +306,12 @@ class RentalRequestController extends Controller
                     'custom_feedback' => $validated['custom_feedback']
                 ]);
 
-                // If request was approved, update listing status
-                if ($rentalRequest->status === 'approved') {
-                    $rentalRequest->listing->update([
-                        'is_rented' => false,
-                    ]);
-                }
+                // Always update listing status when cancelling
+                $rentalRequest->listing->update([
+                    'is_rented' => false,
+                ]);
 
-                // Record timeline event with metadata using the cancellation reason data
+                // Record timeline event
                 $rentalRequest->recordTimelineEvent('cancelled', Auth::id(), [
                     'reason' => $cancellationReason->description,
                     'label' => $cancellationReason->label,

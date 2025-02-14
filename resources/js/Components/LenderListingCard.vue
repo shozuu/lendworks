@@ -84,7 +84,7 @@ const handleReject = () => {
 		:status="data.rental_request.status"
 		:listing-id="data.listing.id"
 		:details="details"
-		 @click="$inertia.visit(route('rental.show', data.rental_request.id))"
+		@click="$inertia.visit(route('rental.show', data.rental_request.id))"
 	>
 		<!-- Actions slot -->
 		<template #actions>
@@ -94,7 +94,7 @@ const handleReject = () => {
 					variant="default"
 					size="sm"
 					:disabled="approveForm.processing"
-					 @click.stop="showAcceptDialog = true"
+					@click.stop="showAcceptDialog = true"
 				>
 					{{ approveForm.processing ? "Approving..." : "Approve" }}
 				</Button>
@@ -104,7 +104,7 @@ const handleReject = () => {
 					variant="destructive"
 					size="sm"
 					:disabled="rejectForm.processing"
-					 @click.stop="showRejectDialog = true"
+					@click.stop="showRejectDialog = true"
 				>
 					Reject
 				</Button>
@@ -115,9 +115,9 @@ const handleReject = () => {
 	<!-- Accept Dialog -->
 	<ConfirmDialog
 		:show="showAcceptDialog"
-		title="Accept Rental Request"
-		description="Are you sure you want to accept this rental request? This will mark your item as rented and reject all other pending requests."
-		confirmLabel="Accept Request"
+		title="Approve Rental Request"
+		description="Are you sure you want to approve this rental request? This will mark your item as rented and reject all other pending requests."
+		confirmLabel="Approve Request"
 		confirmVariant="default"
 		:processing="approveForm.processing"
 		@update:show="showAcceptDialog = $event"

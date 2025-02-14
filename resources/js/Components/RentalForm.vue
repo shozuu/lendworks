@@ -168,7 +168,8 @@ onMounted(() => {
 							<p class="font-medium">Currently Rented</p>
 						</div>
 						<p class="text-muted-foreground text-sm mt-1">
-							This item is being rented until {{ formatDate(currentRental.end_date) }}.
+							This item is being rented until
+							{{ currentRental?.end_date ? formatDate(currentRental.end_date) : "N/A" }}.
 						</p>
 						<p class="text-muted-foreground text-sm mt-2">
 							You can still calculate rental costs below, but rental requests are

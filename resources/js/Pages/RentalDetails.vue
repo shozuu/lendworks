@@ -399,9 +399,9 @@ const handleCancel = () => {
 	<!-- Accept Dialog -->
 	<ConfirmDialog
 		:show="showAcceptDialog"
-		title="Accept Rental Request"
-		description="Are you sure you want to accept this rental request? This will mark your item as rented and reject all other pending requests."
-		confirmLabel="Accept Request"
+		title="Approve Rental Request"
+		description="Are you sure you want to approve this rental request? This will mark your item as rented and reject all other pending requests."
+		confirmLabel="Approve Request"
 		confirmVariant="default"
 		:processing="approveForm.processing"
 		@update:show="showAcceptDialog = $event"
