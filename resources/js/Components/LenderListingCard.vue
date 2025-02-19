@@ -102,6 +102,9 @@ const handleCancel = () => {
 
 // Get available actions from the rental request
 const actions = computed(() => props.data.rental_request.available_actions);
+
+// computed property for payment request
+const paymentRequest = computed(() => props.data.rental_request.payment_request);
 </script>
 
 <template>
@@ -109,6 +112,7 @@ const actions = computed(() => props.data.rental_request.available_actions);
 		:title="data.listing.title"
 		:image="listingImage"
 		:status="data.rental_request.status"
+		 :payment-request="paymentRequest"
 		:listing-id="data.listing.id"
 		:details="details"
 		@click="$inertia.visit(route('rental.show', data.rental_request.id))"

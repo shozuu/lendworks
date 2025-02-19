@@ -26,7 +26,7 @@ const tabs = [
 	{
 		id: "payments",
 		label: "Payments",
-		statuses: ["payment_pending", "payment_rejected", "renter_paid"],
+		statuses: ["payment_pending", "payment_rejected"],
 	},
 	{ id: "active", label: "Active" },
 	{ id: "completed", label: "Completed" },

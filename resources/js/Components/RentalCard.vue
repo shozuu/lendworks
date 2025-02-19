@@ -80,6 +80,7 @@ const actions = computed(() => props.rental.available_actions);
 		:title="rental.listing.title"
 		:image="listingImage"
 		:status="rental.status"
+		:paymentRequest="rental.payment_request"
 		:listing-id="rental.listing.id"
 		:details="details"
 		@click="$inertia.visit(route('rental.show', rental.id))"

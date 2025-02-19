@@ -152,6 +152,7 @@ const actions = computed(() => props.rental.available_actions);
 			</div>
 			<RentalStatusBadge
 				:status="rental.status"
+				:paymentRequest="rental.payment_request"
 				class="sm:text-base self-start text-sm"
 			/>
 		</div>
@@ -184,7 +185,7 @@ const actions = computed(() => props.rental.available_actions);
 							<div class="sm:flex-row flex flex-col gap-4">
 								<Link
 									:href="route('listing.show', rental.listing.id)"
-									class="sm:w-32 sm:h-32 w-full h-48 flex-shrink-0"
+									class="sm:w-32 sm:h-32 flex-shrink-0 w-full h-48"
 								>
 									<img
 										:src="
@@ -192,7 +193,7 @@ const actions = computed(() => props.rental.available_actions);
 												? `/storage/${rental.listing.images[0].image_path}`
 												: '/storage/images/listing/default.png'
 										"
-										class="object-cover w-full h-full rounded-lg hover:opacity-90 transition-opacity"
+										class="hover:opacity-90 object-cover w-full h-full transition-opacity rounded-lg"
 										:alt="rental.listing.title"
 									/>
 								</Link>
@@ -347,6 +348,14 @@ const actions = computed(() => props.rental.available_actions);
 									Reject Request
 								</Button>
 							</template>
+
+							<!-- No Actions Message -->
+							<p
+								v-if="!actions.canPayNow && !actions.canViewPayment && !actions.canCancel && !actions.canApprove"
+								class="text-muted-foreground text-sm text-center"
+							>
+								No actions available at this time.
+							</p>
 						</div>
 					</CardContent>
 				</Card>

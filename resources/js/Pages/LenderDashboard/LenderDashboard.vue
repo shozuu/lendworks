@@ -18,13 +18,15 @@ const props = defineProps({
 	rejectionReasons: Array,
 	cancellationReasons: Array,
 });
-console.log(props.groupedListings);
-const selectedTab = ref("pending_requests");
+
+const selectedTab = ref("pending");
 
 const tabs = [
-	{ id: "pending_requests", label: "Pending Requests" },
+	{ id: "pending", label: "Pending" },
+	{ id: "approved", label: "Approved" },
+	{ id: "payments", label: "Payments" },
 	{ id: "to_handover", label: "To Handover" },
-	{ id: "active_rentals", label: "Active Rentals" },
+	{ id: "active", label: "Active" },
 	{ id: "pending_returns", label: "Pending Returns" },
 	{ id: "completed", label: "Completed" },
 	{ id: "rejected", label: "Rejected" },
@@ -48,7 +50,7 @@ const handleValueChange = (value) => {
 		</div>
 
 		<!-- Stats Cards -->
-		<div class="sm:grid-cols-3 lg:grid-cols-5 grid grid-cols-2 gap-3">
+		<div class="sm:grid-cols-3 lg:grid-cols-6 grid grid-cols-2 gap-3">
 			<StatCard
 				v-for="(count, status) in rentalStats"
 				:key="status"
