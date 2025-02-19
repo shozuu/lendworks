@@ -180,7 +180,7 @@ defineProps({
                     </CardHeader>
                     <CardContent>
                         <div class="text-2xl font-bold">
-                            ${{ Math.round(stats?.averageListingPrice || 0).toLocaleString() }}
+                            ₱{{ Math.round(stats?.averageListingPrice || 0).toLocaleString() }}
                         </div>
                         <p class="text-xs text-muted-foreground">
                             For approved listings
@@ -198,11 +198,11 @@ defineProps({
                         <div class="space-y-2">
                             <div class="flex justify-between">
                                 <span>Highest:</span>
-                                <span class="font-bold">${{ Math.round(stats?.highestListingPrice || 0).toLocaleString() }}</span>
+                                <span class="font-bold">₱{{ Math.round(stats?.highestListingPrice || 0).toLocaleString() }}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span>Lowest:</span>
-                                <span class="font-bold">${{ Math.round(stats?.lowestListingPrice || 0).toLocaleString() }}</span>
+                                <span class="font-bold">₱{{ Math.round(stats?.lowestListingPrice || 0).toLocaleString() }}</span>
                             </div>
                         </div>
                     </CardContent>
@@ -278,19 +278,19 @@ defineProps({
                 <CardContent>
                     <div class="space-y-2">
                         <div class="flex justify-between">
-                            <span>Under $100</span>
+                            <span>Under ₱100</span>
                             <span class="font-bold">{{ stats?.listingPriceDistribution?.under100 }}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span>$100 - $499</span>
+                            <span>₱100 - ₱499</span>
                             <span class="font-bold">{{ stats?.listingPriceDistribution?.under500 }}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span>$500 - $999</span>
+                            <span>₱500 - ₱999</span>
                             <span class="font-bold">{{ stats?.listingPriceDistribution?.under1000 }}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span>$1000+</span>
+                            <span>₱1000+</span>
                             <span class="font-bold">{{ stats?.listingPriceDistribution?.over1000 }}</span>
                         </div>
                     </div>

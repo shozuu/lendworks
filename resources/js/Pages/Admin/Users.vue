@@ -33,6 +33,10 @@ const props = defineProps({
 			verified: "all",
 		}),
 	},
+	userCounts: {
+		type: Object,
+		required: true
+	}
 });
 
 const getStatusBadge = (status) => {
@@ -120,29 +124,59 @@ const handleAction = () => {
 
 				<!-- Status Filter -->
 				<Select v-model="status" defaultValue="all">
-					<SelectTrigger class="w-full sm:w-[140px]">
+					<SelectTrigger class="w-full sm:w-[180px]">
 						<SelectValue placeholder="Filter by status" />
 					</SelectTrigger>
 					<SelectContent>
 						<SelectLabel class="p-1 text-center">Filter Status</SelectLabel>
 						<Separator class="my-2" />
-						<SelectItem value="all">All Status</SelectItem>
-						<SelectItem value="active">Active</SelectItem>
-						<SelectItem value="suspended">Suspended</SelectItem>
+						<SelectItem value="all" class="flex items-center justify-between">
+							<span>All Status</span>
+							<span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+								{{ userCounts.total }}
+							</span>
+						</SelectItem>
+						<SelectItem value="active" class="flex items-center justify-between">
+							<span>Active</span>
+							<span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+								{{ userCounts.active }}
+							</span>
+						</SelectItem>
+						<SelectItem value="suspended" class="flex items-center justify-between">
+							<span>Suspended</span>
+							<span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+								{{ userCounts.suspended }}
+							</span>
+						</SelectItem>
 					</SelectContent>
 				</Select>
 
 				 <!-- Verification Filter -->
                 <Select v-model="verified" defaultValue="all">
-                    <SelectTrigger class="w-full sm:w-[140px]">
+                    <SelectTrigger class="w-full sm:w-[180px]">
                         <SelectValue placeholder="Verification" />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectLabel class="p-1 text-center">Verification Status</SelectLabel>
                         <Separator class="my-2" />
-                        <SelectItem value="all">All Users</SelectItem>
-                        <SelectItem value="verified">Verified</SelectItem>
-                        <SelectItem value="unverified">Unverified</SelectItem>
+                        <SelectItem value="all" class="flex items-center justify-between">
+                            <span>All Users</span>
+                            <span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                                {{ userCounts.total }}
+                            </span>
+                        </SelectItem>
+                        <SelectItem value="verified" class="flex items-center justify-between">
+                            <span>Verified</span>
+                            <span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                                {{ userCounts.verified }}
+                            </span>
+                        </SelectItem>
+                        <SelectItem value="unverified" class="flex items-center justify-between">
+                            <span>Unverified</span>
+                            <span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                                {{ userCounts.unverified }}
+                            </span>
+                        </SelectItem>
                     </SelectContent>
                 </Select>
 
@@ -239,3 +273,14 @@ const handleAction = () => {
 		/>
 	</div>
 </template>
+
+<style scoped>
+/* Add these styles for consistent alignment */
+:deep(.select-content) {
+    min-width: 200px;
+}
+
+:deep(.select-item) {
+    padding-right: 1rem;
+}
+</style>

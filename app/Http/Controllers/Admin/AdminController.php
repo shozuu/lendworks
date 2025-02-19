@@ -40,6 +40,10 @@ class AdminController extends Controller
      *    - Used proper aggregates and grouping
      *    - Implemented eager loading for relationships
      *    - Added efficient filtering for approved listings
+     * 
+     * 4. Added getCategoryFilters method to get categories with counts
+     * 5. Modified listings method to include category filter
+     * 6. Added category filter to query builder
      */
 
     public function dashboard()
@@ -155,6 +159,15 @@ class AdminController extends Controller
     {
         $query = User::withCount('listings');
 
+        // Get user counts for filters
+        $userCounts = [
+            'total' => User::count(),
+            'active' => User::where('status', 'active')->count(),
+            'suspended' => User::where('status', 'suspended')->count(),
+            'verified' => User::whereNotNull('email_verified_at')->count(),
+            'unverified' => User::whereNull('email_verified_at')->count(),
+        ];
+
         // Search
         if ($search = $request->input('search')) {
             $query->where(function($q) use ($search) {
@@ -198,7 +211,8 @@ class AdminController extends Controller
 
         return Inertia::render('Admin/Users', [
             'users' => $users,
-            'filters' => $request->only(['search', 'status', 'sortBy', 'verified'])
+            'filters' => $request->only(['search', 'status', 'sortBy', 'verified']),
+            'userCounts' => $userCounts // Add this line
         ]);
     }
 
@@ -286,6 +300,14 @@ class AdminController extends Controller
             'taken_down' => Listing::where('status', 'taken_down')->count(), 
         ];
 
+        // Get categories with their listing counts
+        $categories = DB::table('categories')
+            ->leftJoin('listings', 'categories.id', '=', 'listings.category_id')
+            ->select('categories.id', 'categories.name', DB::raw('COUNT(listings.id) as count'))
+            ->groupBy('categories.id', 'categories.name')
+            ->orderBy('categories.name')
+            ->get();
+
         // Apply search filter
         if ($search = $request->input('search')) {
             $query->where(function($q) use ($search) {
@@ -301,6 +323,13 @@ class AdminController extends Controller
         if ($status = $request->input('status')) {
             if ($status !== 'all') {
                 $query->where('status', $status);
+            }
+        }
+
+        // Add category filter
+        if ($category = $request->input('category')) {
+            if ($category !== 'all') {
+                $query->where('category_id', $category);
             }
         }
 
@@ -330,8 +359,9 @@ class AdminController extends Controller
         return Inertia::render('Admin/Listings', [
             'listings' => $listings,
             'rejectionReasons' => $hasPendingListings ? $this->getFormattedRejectionReasons() : [],
-            'filters' => $request->only(['search', 'status', 'sortBy']),
-            'listingCounts' => $listingCounts 
+            'filters' => $request->only(['search', 'status', 'sortBy', 'category']), // Added category
+            'listingCounts' => $listingCounts,
+            'categories' => $categories, // Add categories with counts
         ]);
     }
 
