@@ -106,6 +106,24 @@ const handleDelete = () => {
         }
     });
 };
+
+// Maintenance mode dialog state and methods
+const showMaintenanceDialog = ref(false);
+
+const toggleMaintenance = () => {
+    if (!props.systemInfo.maintenance_mode) {
+        // Show confirmation dialog when enabling maintenance mode
+        showMaintenanceDialog.value = true;
+    } else {
+        // Directly disable maintenance mode
+        performAction('maintenance');
+    }
+};
+
+const confirmMaintenance = () => {
+    performAction('maintenance');
+    showMaintenanceDialog.value = false;
+};
 </script>
 
 <template>
@@ -126,10 +144,9 @@ const handleDelete = () => {
                 <!-- Existing System Management Content -->
                 <div class="space-x-2">
                     <Button @click="performAction('clear-cache')">Clear Cache</Button>
-                    <!--<Button @click="performAction('optimize')">Optimize System</Button>-->
                     <Button 
                         :variant="systemInfo.maintenance_mode ? 'default' : 'destructive'"
-                        @click="performAction('maintenance')"
+                        @click="toggleMaintenance"
                     >
                         {{ systemInfo.maintenance_mode ? 'Disable' : 'Enable' }} Maintenance Mode
                     </Button>
@@ -338,4 +355,30 @@ const handleDelete = () => {
             </TabsContent>
         </Tabs>
     </div>
+
+    <!-- Add Maintenance Mode Confirmation Dialog -->
+    <Dialog v-model:open="showMaintenanceDialog">
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Enable Maintenance Mode</DialogTitle>
+                <DialogDescription>
+                    Are you sure you want to enable maintenance mode? This will:
+                    <ul class="list-disc pl-4 mt-2 space-y-1">
+                        <li>Make the site inaccessible to regular users</li>
+                        <li>Show a maintenance page to all visitors</li>
+                        <li>Only administrators can access the site</li>
+                        <li>All ongoing user sessions will be interrupted</li>
+                    </ul>
+                </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+                <Button variant="outline" @click="showMaintenanceDialog = false">
+                    Cancel
+                </Button>
+                <Button variant="destructive" @click="confirmMaintenance">
+                    Enable Maintenance Mode
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
 </template>
