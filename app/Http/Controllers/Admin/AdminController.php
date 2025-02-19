@@ -35,6 +35,13 @@ class AdminController extends Controller
 
     public function users(Request $request)
     {
+        // Get user counts first
+        $userCounts = [
+            'total' => User::count(),
+            'active' => User::where('status', 'active')->count(),
+            'suspended' => User::where('status', 'suspended')->count(),
+        ];
+
         $query = User::withCount('listings');
 
         // Search
@@ -71,7 +78,8 @@ class AdminController extends Controller
 
         return Inertia::render('Admin/Users', [
             'users' => $users,
-            'filters' => $request->only(['search', 'status', 'sortBy'])
+            'filters' => $request->only(['search', 'status', 'sortBy']),
+            'userCounts' => $userCounts
         ]);
     }
 
@@ -388,5 +396,10 @@ class AdminController extends Controller
             report($e);
             return back()->with('error', 'Failed to take down listing. Please try again.');
         }
+    }
+
+    public function rentalTransactions(Request $request)
+    {
+        return Inertia::render('Admin/RentalTransactions', []);
     }
 }
