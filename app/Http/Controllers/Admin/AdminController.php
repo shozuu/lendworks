@@ -7,6 +7,7 @@ use App\Models\Listing;
 use App\Models\RejectionReason;
 use App\Models\TakedownReason;
 use App\Models\User;
+use App\Models\RentalRequest;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
 use App\Notifications\ListingApproved;
@@ -400,6 +401,71 @@ class AdminController extends Controller
 
     public function rentalTransactions(Request $request)
     {
-        return Inertia::render('Admin/RentalTransactions', []);
+        $stats = [
+            'total' => RentalRequest::count(),
+            'pending' => RentalRequest::where('status', 'pending')->count(),
+            'approved' => RentalRequest::where('status', 'approved')->count(),
+            'renter_paid' => RentalRequest::where('status', 'renter_paid')->count(),
+            'active' => RentalRequest::where('status', 'active')->count(),
+            'completed' => RentalRequest::where('status', 'completed')->count(),
+            'rejected' => RentalRequest::where('status', 'rejected')->count(),
+            'cancelled' => RentalRequest::where('status', 'cancelled')->count(),
+        ];
+
+        $query = RentalRequest::with([
+            'listing' => fn($q) => $q->with(['images', 'user']), 
+            'renter',
+            'payment_request',
+            'latestRejection.rejectionReason',
+            'latestCancellation.cancellationReason'
+        ]);
+
+        // Apply search filter
+        if ($search = $request->input('search')) {
+            $query->where(function($q) use ($search) {
+                $q->whereHas('listing', function($q) use ($search) {
+                    $q->where('title', 'like', "%{$search}%");
+                })
+                ->orWhereHas('listing.user', function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%");
+                })
+                ->orWhereHas('renter', function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%");
+                });
+            });
+        }
+
+        // Apply period filter
+        if ($request->period) {
+            $query->where('created_at', '>=', now()->subDays($request->period));
+        }
+
+        // Apply status filter
+        if ($request->status && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        $transactions = $query->latest()->paginate(10)->appends($request->query());
+
+        return Inertia::render('Admin/RentalTransactions', [
+            'transactions' => $transactions,
+            'stats' => $stats,
+            'filters' => $request->only(['search', 'period', 'status'])
+        ]);
+    }
+
+    public function rentalTransactionDetails(RentalRequest $rental)
+    {
+        $rental->load([
+            'listing' => fn($q) => $q->with(['images', 'category', 'location', 'user']),
+            'renter',
+            'latestRejection.rejectionReason',
+            'latestCancellation.cancellationReason',
+            'timelineEvents'
+        ]);
+
+        return Inertia::render('Admin/RentalTransactionDetails', [
+            'rental' => $rental
+        ]);
     }
 }
