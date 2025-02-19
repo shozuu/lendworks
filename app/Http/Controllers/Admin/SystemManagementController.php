@@ -17,6 +17,17 @@
  * - Interacts with cache and database
  */
 
+/**
+ * Change Log:
+ * 1. Combined Platform Management functionality into SystemManagementController
+ * 2. Added category management methods (store, update, delete)
+ * 3. Modified index() to include categories data for the platform tab
+ * 4. Added Str facade for slug generation
+ * 5. Added validation for category operations
+ * 6. Added safeguards against deleting categories with listings
+ * 7. Added Category model relationship handling
+ */
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
@@ -25,6 +36,8 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Artisan;
+use App\Models\Category;
+use Illuminate\Support\Str;
 
 class SystemManagementController extends Controller
 {
@@ -49,8 +62,20 @@ class SystemManagementController extends Controller
             'maintenance_mode' => app()->isDownForMaintenance(),
         ];
 
+        // Add categories data
+        $categories = Category::withCount('listings')
+            ->orderBy('name')
+            ->get()
+            ->map(fn($category) => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'slug' => $category->slug,
+                'listings_count' => $category->listings_count
+            ]);
+
         return Inertia::render('Admin/SystemManagement', [
-            'systemInfo' => $systemInfo
+            'systemInfo' => $systemInfo,
+            'categories' => $categories
         ]);
     }
 
@@ -92,5 +117,44 @@ class SystemManagementController extends Controller
         } catch (\Exception $e) {
             return back()->with('error', 'Failed to optimize system: ' . $e->getMessage());
         }
+    }
+
+    // Add category management methods
+    public function storeCategory(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255', 'unique:categories,name']
+        ]);
+
+        Category::create([
+            'name' => $validated['name'],
+            'slug' => Str::slug($validated['name'])
+        ]);
+
+        return back()->with('success', 'Category created successfully');
+    }
+
+    public function updateCategory(Request $request, Category $category)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255', 'unique:categories,name,' . $category->id]
+        ]);
+
+        $category->update([
+            'name' => $validated['name'],
+            'slug' => Str::slug($validated['name'])
+        ]);
+
+        return back()->with('success', 'Category updated successfully');
+    }
+
+    public function deleteCategory(Category $category)
+    {
+        if ($category->listings()->exists()) {
+            return back()->with('error', 'Cannot delete category that has listings');
+        }
+
+        $category->delete();
+        return back()->with('success', 'Category deleted successfully');
     }
 }

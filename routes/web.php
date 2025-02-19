@@ -2,15 +2,16 @@
 
 /**
  * Routes File Modifications
- * Last Modified: [Current Date]
  * 
  * Changes:
  * 1. Added SystemManagementController import
  * 2. Added new system management routes in admin group
+ * 3. Added new platform management routes in admin group
  */
 
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\SystemManagementController; // New import for system management
+use App\Http\Controllers\Admin\PlatformManagementController; // Add this line
 use App\Http\Controllers\Admin\RentalTransactionsController;
 use App\Http\Controllers\ExploreController;
 use App\Http\Controllers\LenderDashboardController;
@@ -91,6 +92,9 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     Route::post('/system/clear-cache', [SystemManagementController::class, 'clearCache'])->name('system.clear-cache');
     Route::post('/system/maintenance', [SystemManagementController::class, 'toggleMaintenance'])->name('system.maintenance');
     Route::post('/system/optimize', [SystemManagementController::class, 'optimizeSystem'])->name('system.optimize');
+    Route::post('/system/categories', [SystemManagementController::class, 'storeCategory'])->name('system.categories.store');
+    Route::patch('/system/categories/{category}', [SystemManagementController::class, 'updateCategory'])->name('system.categories.update');
+    Route::delete('/system/categories/{category}', [SystemManagementController::class, 'deleteCategory'])->name('system.categories.delete');
 });
 
 Route::get('/', [ListingController::class, 'index'])->name('home');

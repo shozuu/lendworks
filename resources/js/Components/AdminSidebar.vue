@@ -8,6 +8,13 @@ import { Link } from "@inertiajs/vue3";
  * Changes:
  * 1. Added new System navigation item
  * 2. Updated navigation array with system management link
+ * 
+ * Change Log:
+ * 1. Removed separate Platform menu item
+ * 2. Updated System menu item to be the single access point
+ * 3. Simplified navigation structure
+ * 4. Maintained consistent icon usage
+ * 5. Updated route references
  */
 
 const navigation = [
@@ -22,8 +29,8 @@ const navigation = [
     { 
         name: "System", 
         href: route("admin.system"), 
-        icon: "gear",  // Using FontAwesome gear icon
-    },
+        icon: "gear" 
+    }
 ];
 </script>
 
