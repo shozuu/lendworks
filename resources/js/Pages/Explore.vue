@@ -67,77 +67,7 @@ const clearAllFilters = () => {
 	<Separator class="my-4" />
 
     <div class="flex flex-col gap-6 md:flex-row">
-        <!-- Filters sidebar -->
-        <div class="w-full md:w-64 space-y-6">
-            <!-- Custom price range -->
-            <div class="space-y-2">
-                <h3 class="font-medium">Price Range</h3>
-                <div class="flex gap-2 items-center">
-                    <input
-                        type="number"
-                        v-model="filters.minPrice"
-                        placeholder="Min"
-                        class="w-24 px-2 py-1 border rounded"
-                        @change="applyFilter({ minPrice: $event.target.value })"
-                    />
-                    <span>-</span>
-                    <input
-                        type="number"
-                        v-model="filters.maxPrice"
-                        placeholder="Max"
-                        class="w-24 px-2 py-1 border rounded"
-                        @change="applyFilter({ maxPrice: $event.target.value })"
-                    />
-                </div>
-
-                <!-- Predefined price ranges -->
-                <div class="space-y-1">
-                    <button
-                        v-for="range in priceRanges"
-                        :key="range.id"
-                        @click="applyFilter({ priceRange: filters.priceRange === range.id ? null : range.id })"
-                        :class="[
-                            'w-full text-left px-2 py-1 rounded text-sm',
-                            filters.priceRange === range.id
-                                ? 'bg-primary text-white'
-                                : 'hover:bg-muted'
-                        ]"
-                    >
-                        {{ range.label }}
-                    </button>
-                </div>
-            </div>
-
-            <!-- Time frame filter -->
-            <div class="space-y-2">
-                <h3 class="font-medium">Time Frame</h3>
-                <div class="space-y-1">
-                    <button
-                        v-for="time in timeFrames"
-                        :key="time.id"
-                        @click="applyFilter({ timeFrame: filters.timeFrame === time.id ? null : time.id })"
-                        :class="[
-                            'w-full text-left px-2 py-1 rounded text-sm',
-                            filters.timeFrame === time.id
-                                ? 'bg-primary text-white'
-                                : 'hover:bg-muted'
-                        ]"
-                    >
-                        {{ time.label }}
-                    </button>
-                </div>
-            </div>
-
-            <!-- Clear all filters -->
-            <button
-                v-if="filters.minPrice || filters.maxPrice || filters.priceRange || filters.timeFrame"
-                @click="clearAllFilters"
-                class="text-sm text-primary hover:underline"
-            >
-                Clear all filters
-            </button>
-        </div>
-
+        
         <!-- Main content -->
         <div class="flex-1">
             <!-- Category filters -->
@@ -184,6 +114,91 @@ const clearAllFilters = () => {
             <div v-else class="flex justify-center">
                 Oops, there's no listing associated with {{ searchTerm }}. Please make sure your
                 searches are accurate.
+            </div>
+        </div>
+
+		<!-- Filters -->
+		<div class="w-full md:w-72 space-y-8">
+            <div class="p-6 bg-white rounded-lg shadow-sm border">
+                <!-- Custom price range -->
+                <div class="space-y-4">
+                    <!--<h3 class="font-semibold text-lg">Filters</h3>-->
+                    
+                    <div class="space-y-3">
+                        <h4 class="font-medium text-sm text-gray-700">Price Range</h4>
+                        <div class="flex gap-2 items-center">
+                            <div class="relative">
+                                <span class="absolute left-3 top-2 text-gray-500">₱</span>
+                                <input
+                                    type="number"
+                                    v-model="filters.minPrice"
+                                    placeholder="Min"
+                                    class="w-full pl-7 pr-3 py-1.5 border rounded-md text-sm"
+                                    @change="applyFilter({ minPrice: $event.target.value })"
+                                />
+                            </div>
+                            <span class="text-gray-400">-</span>
+                            <div class="relative">
+                                <span class="absolute left-3 top-2 text-gray-500">₱</span>
+                                <input
+                                    type="number"
+                                    v-model="filters.maxPrice"
+                                    placeholder="Max"
+                                    class="w-full pl-7 pr-3 py-1.5 border rounded-md text-sm"
+                                    @change="applyFilter({ maxPrice: $event.target.value })"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- Predefined price ranges -->
+                        <div class="space-y-1.5">
+                            <button
+                                v-for="range in priceRanges"
+                                :key="range.id"
+                                @click="applyFilter({ priceRange: filters.priceRange === range.id ? null : range.id })"
+                                :class="[
+                                    'w-full text-left px-3 py-2 rounded-md text-sm transition-colors',
+                                    filters.priceRange === range.id
+                                        ? 'bg-primary text-white font-medium'
+                                        : 'text-gray-700 hover:bg-gray-100'
+                                ]"
+                            >
+                                {{ range.label }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="border-t my-4"></div>
+
+                    <!-- Time frame filter -->
+                    <div class="space-y-3">
+                        <h4 class="font-medium text-sm text-gray-700">Time Frame</h4>
+                        <div class="space-y-1.5">
+                            <button
+                                v-for="time in timeFrames"
+                                :key="time.id"
+                                @click="applyFilter({ timeFrame: filters.timeFrame === time.id ? null : time.id })"
+                                :class="[
+                                    'w-full text-left px-3 py-2 rounded-md text-sm transition-colors',
+                                    filters.timeFrame === time.id
+                                        ? 'bg-primary text-white font-medium'
+                                        : 'text-gray-700 hover:bg-gray-100'
+                                ]"
+                            >
+                                {{ time.label }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Clear all filters -->
+                    <button
+                        v-if="filters.minPrice || filters.maxPrice || filters.priceRange || filters.timeFrame"
+                        @click="clearAllFilters"
+                        class="w-full mt-4 px-3 py-2 text-sm text-primary hover:bg-gray-50 rounded-md border border-primary/20 transition-colors"
+                    >
+                        Clear all filters
+                    </button>
+                </div>
             </div>
         </div>
     </div>
