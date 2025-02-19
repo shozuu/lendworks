@@ -8,7 +8,9 @@ import {
 	Send,
 	Ban,
 	AlertCircle,
-} from "lucide-vue-next";
+	} from "lucide-vue-next";
+import { ref } from "vue";
+import PaymentDialog from "@/Components/PaymentDialog.vue";
 
 const props = defineProps({
 	events: {
@@ -23,6 +25,10 @@ const props = defineProps({
 		type: Object,
 		required: true,
 	},
+	passPayment: {
+		type: Function,
+		default: null
+	}
 });
 
 const getEventIcon = (eventType) => {
@@ -154,6 +160,35 @@ const formatEventMessage = (event) => {
 			return `Unknown event by ${actorLabel}`;
 	}
 };
+
+const selectedHistoricalPayment = ref(null);
+const showHistoricalPayment = ref(false);
+
+const showPaymentDetails = (event) => {
+    if (event.metadata?.payment_request) {
+        selectedHistoricalPayment.value = props.passPayment 
+            ? props.passPayment(event)
+            : {
+                ...event.metadata.payment_request,
+                rental_request: {
+                    ...props.rental,
+                    total_price: props.rental.total_price,
+                    listing: props.rental.listing,
+                    renter: props.rental.renter
+                }
+            };
+        showHistoricalPayment.value = true;
+    }
+};
+
+// Add handler for dialog close
+const handleDialogClose = () => {
+    // Wait for dialog animation to complete before clearing data
+    setTimeout(() => {
+        selectedHistoricalPayment.value = null;
+    }, 300);
+    showHistoricalPayment.value = false;
+};
 </script>
 
 <template>
@@ -166,11 +201,11 @@ const formatEventMessage = (event) => {
 			></div>
 
 			<!-- Event Item -->
-			<div class="flex gap-4 items-start">
+			<div class="flex items-start gap-4">
 				<!-- Icon -->
 				<component
 					:is="getEventIcon(event.event_type)"
-					class="w-6 h-6 absolute left-0"
+					class="absolute left-0 w-6 h-6"
 					:class="getEventColor(event.event_type)"
 				/>
 
@@ -182,7 +217,7 @@ const formatEventMessage = (event) => {
 					</p>
 
 					<!-- Additional Details -->
-					<div v-if="event.metadata" class="bg-muted mt-2 p-3 rounded-md text-sm">
+					<div v-if="event.metadata" class="bg-muted p-3 mt-2 text-sm rounded-md">
 						<!-- Payment Details -->
 						<template
 							v-if="
@@ -191,17 +226,30 @@ const formatEventMessage = (event) => {
 								)
 							"
 						>
-							<p v-if="event.metadata.reference_number" class="text-xs">
-								<span class="font-medium">Reference Number:</span>
-								{{ event.metadata.reference_number }}
-							</p>
-							<p v-if="event.metadata.verified_by" class="text-xs mt-1">
-								<span class="font-medium">Verified by:</span>
-								{{ event.metadata.verified_by }}
-							</p>
+							<div class="flex flex-col items-start justify-between">
+								<div>
+									<p v-if="event.metadata.reference_number" class="text-xs">
+										<span class="font-medium">Reference Number:</span>
+										{{ event.metadata.reference_number }}
+									</p>
+									<p v-if="event.metadata.verified_by" class="mt-1 text-xs">
+										<span class="font-medium">Verified by:</span>
+										{{ event.metadata.verified_by }}
+									</p>
+								</div>
+								<!-- Add View Payment Details button if we have payment data -->
+								<Button 
+									v-if="event.metadata.payment_request"
+									variant="outline" 
+									size="sm"
+									@click="showPaymentDetails(event)"
+								>
+									View Payment Details
+								</Button>
+							</div>
 							<p
 								v-if="event.metadata.feedback"
-								class="text-muted-foreground text-xs mt-2 italic"
+								class="text-muted-foreground mt-2 text-xs italic"
 							>
 								"{{ event.metadata.feedback }}"
 							</p>
@@ -209,13 +257,13 @@ const formatEventMessage = (event) => {
 
 						<!-- Rejection/Cancellation Details -->
 						<template v-else-if="['rejected', 'cancelled'].includes(event.event_type)">
-							<p class="font-medium text-xs">Reason:</p>
-							<p class="text-muted-foreground text-xs mt-1">
+							<p class="text-xs font-medium">Reason:</p>
+							<p class="text-muted-foreground mt-1 text-xs">
 								{{ event.metadata.reason }}
 							</p>
 							<p
 								v-if="event.metadata.feedback"
-								class="text-muted-foreground text-xs mt-2 italic"
+								class="text-muted-foreground mt-2 text-xs italic"
 							>
 								"{{ event.metadata.feedback }}"
 							</p>
@@ -224,5 +272,14 @@ const formatEventMessage = (event) => {
 				</div>
 			</div>
 		</div>
+
+		<!-- Payment Dialog for Historical Payments -->
+		<PaymentDialog 
+			:show="showHistoricalPayment"
+			:rental="rental"
+			:payment="selectedHistoricalPayment"
+			:historical="true"
+			@update:show="handleDialogClose"
+		/>
 	</div>
 </template>

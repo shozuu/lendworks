@@ -8,15 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import RentalTimeline from "@/Components/RentalTimeline.vue";
 import { Link } from "@inertiajs/vue3";
 import { computed } from "vue";
-import {
-	CircleDollarSign,
-	Calendar,
-	User,
-	MapPin,
-	Package,
-	Clock,
-	AlertCircle,
-} from "lucide-vue-next";
+import {Package, AlertCircle} from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
 
 defineOptions({ layout: AdminLayout });
@@ -34,6 +26,18 @@ const rentalDays = computed(() => {
 	const diffTime = Math.abs(end.getTime() - start.getTime());
 	return Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
 });
+
+// Add a pass-through property for the historical payments in timeline events
+const passHistoricalPayment = (event) => {
+    if (event.metadata?.payment_request) {
+        return {
+            ...event.metadata.payment_request,
+            rental_request: props.rental,  // Pass the complete rental context
+            total_price: props.rental.total_price
+        };
+    }
+    return null;
+};
 </script>
 
 <template>
@@ -57,6 +61,7 @@ const rentalDays = computed(() => {
 			</div>
 			<RentalStatusBadge
 				:status="rental.status"
+				:payment-request="rental.payment_request"
 				class="sm:text-base self-start text-sm"
 			/>
 		</div>
@@ -67,7 +72,12 @@ const rentalDays = computed(() => {
 				<CardTitle>Timeline</CardTitle>
 			</CardHeader>
 			<CardContent class="p-6">
-				<RentalTimeline :events="rental.timeline_events" userRole="admin" />
+				<RentalTimeline 
+					:events="rental.timeline_events" 
+					:rental="rental"
+					:pass-payment="passHistoricalPayment"
+					userRole="admin" 
+				/>
 			</CardContent>
 		</Card>
 
@@ -86,7 +96,7 @@ const rentalDays = computed(() => {
 							<div class="sm:flex-row flex flex-col gap-4">
 								<Link
 									:href="route('admin.listings.show', rental.listing.id)"
-									class="sm:w-32 sm:h-32 w-full h-48 flex-shrink-0"
+									class="sm:w-32 sm:h-32 flex-shrink-0 w-full h-48"
 								>
 									<img
 										:src="
@@ -94,7 +104,7 @@ const rentalDays = computed(() => {
 												? `/storage/${rental.listing.images[0].image_path}`
 												: '/storage/images/listing/default.png'
 										"
-										class="object-cover w-full h-full rounded-lg hover:opacity-90 transition-opacity"
+										class="hover:opacity-90 object-cover w-full h-full transition-opacity rounded-lg"
 										:alt="rental.listing.title"
 									/>
 								</Link>
