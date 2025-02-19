@@ -90,15 +90,20 @@ class AdminController extends Controller
                                                 ->count(),
             ],
 
-            // Add category breakdown
+            // Update category breakdown to include average price
             'categoryBreakdown' => Listing::where('status', 'approved')
-                ->select('category_id', DB::raw('count(*) as count'))
+                ->select(
+                    'category_id',
+                    DB::raw('count(*) as count'),
+                    DB::raw('ROUND(AVG(price), 2) as average_price')
+                )
                 ->groupBy('category_id')
                 ->with('category:id,name')
                 ->get()
                 ->map(fn($item) => [
                     'name' => $item->category->name ?? 'Uncategorized',
                     'count' => $item->count,
+                    'average_price' => $item->average_price ?? 0,
                 ]),
 
             // Add price distribution

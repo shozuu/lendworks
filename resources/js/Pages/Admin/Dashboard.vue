@@ -251,6 +251,7 @@ defineProps({
                             <TableRow>
                                 <TableHead>Category</TableHead>
                                 <TableHead>Count</TableHead>
+                                <TableHead>Average Price</TableHead>
                                 <TableHead>Percentage</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -258,6 +259,7 @@ defineProps({
                             <TableRow v-for="category in stats?.categoryBreakdown" :key="category.name">
                                 <TableCell>{{ category.name }}</TableCell>
                                 <TableCell>{{ category.count }}</TableCell>
+                                <TableCell>₱{{ Math.round(category.average_price).toLocaleString() }}</TableCell>
                                 <TableCell>
                                     {{ Math.round((category.count / stats?.totalListings) * 100) }}%
                                 </TableCell>
