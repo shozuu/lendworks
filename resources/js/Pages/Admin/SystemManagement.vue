@@ -1,6 +1,5 @@
 /**
  * SystemManagement Vue Component
- * Created: [Current Date]
  * 
  * Purpose:
  * Provides interface for admin system management including:
@@ -12,10 +11,7 @@
  * - Maintenance mode controls
  * 
  * Features:
- * - Real-time status indicators
- * - Interactive system controls
- * - Responsive layout
- * - Error handling
+ * - status indicators
  */
 
 <script setup>
