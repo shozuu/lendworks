@@ -231,10 +231,22 @@ class AdminController extends Controller
             'taken_down' => $user->listings->where('status', 'taken_down')->count(),
         ];
 
+        // Get categories with counts for this user's listings
+        $categories = DB::table('categories')
+            ->leftJoin('listings', function($join) use ($user) {
+                $join->on('categories.id', '=', 'listings.category_id')
+                     ->where('listings.user_id', '=', $user->id);
+            })
+            ->select('categories.id', 'categories.name', DB::raw('COUNT(listings.id) as count'))
+            ->groupBy('categories.id', 'categories.name')
+            ->orderBy('categories.name')
+            ->get();
+
         return Inertia::render('Admin/UserDetails', [
             'user' => $user,
             'rejectionReasons' => $this->getFormattedRejectionReasons(),
-            'listingCounts' => $listingCounts 
+            'listingCounts' => $listingCounts,
+            'categories' => $categories // Add this line
         ]);
     }
 

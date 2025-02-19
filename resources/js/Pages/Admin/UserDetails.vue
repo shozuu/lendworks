@@ -38,6 +38,10 @@ const props = defineProps({
 		type: Object,
 		required: true,
 	},
+	categories: {
+		type: Array,
+		required: true
+	}
 });
 
 // Add handlers for approve/reject actions
@@ -82,6 +86,7 @@ const handleActivate = () => {
 const search = ref("");
 const statusFilter = ref("all");
 const sortBy = ref("latest");
+const categoryFilter = ref("all");
 
 // Computed property for filtered and sorted listings
 const filteredListings = computed(() => {
@@ -100,6 +105,13 @@ const filteredListings = computed(() => {
 	// Apply status filter
 	if (statusFilter.value !== "all") {
 		filtered = filtered.filter((listing) => listing.status === statusFilter.value);
+	}
+
+	// Apply category filter
+	if (categoryFilter.value !== "all") {
+		filtered = filtered.filter(listing => 
+			listing.category_id.toString() === categoryFilter.value
+		);
 	}
 
 	// Apply sorting
@@ -204,6 +216,33 @@ const filteredListings = computed(() => {
 						<Input v-model="search" placeholder="Search listings..." class="max-w-xs" />
 					</div>
 					<div class="flex flex-wrap gap-3">
+						<Select v-model="categoryFilter">
+							<SelectTrigger class="w-[180px]">
+								<SelectValue placeholder="Filter by category" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectLabel class="px-2 py-1.5">Filter Category</SelectLabel>
+								<Separator class="my-2" />
+								<SelectItem value="all" class="flex items-center justify-between">
+									<span>All Categories</span>
+									<span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+										{{ listingCounts.total }}
+									</span>
+								</SelectItem>
+								<SelectItem 
+									v-for="cat in categories" 
+									:key="cat.id" 
+									:value="cat.id.toString()"
+									class="flex items-center justify-between"
+								>
+									<span>{{ cat.name }}</span>
+									<span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+										{{ cat.count }}
+									</span>
+								</SelectItem>
+							</SelectContent>
+						</Select>
+
 						<Select v-model="statusFilter">
 							<SelectTrigger class="w-[140px]">
 								<SelectValue placeholder="Filter status" />
