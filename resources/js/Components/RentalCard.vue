@@ -4,6 +4,7 @@ import { formatNumber, formatRentalDate } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import BaseRentalCard from "@/Components/BaseRentalCard.vue";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
+import PaymentDialog from "@/Components/PaymentDialog.vue";
 import { useForm } from "@inertiajs/vue3";
 
 const props = defineProps({
@@ -18,6 +19,7 @@ const props = defineProps({
 });
 
 const showCancelDialog = ref(false);
+const showPaymentDialog = ref(false);
 
 // Update the cancelForm to include reason
 const cancelForm = useForm({
@@ -65,6 +67,12 @@ const details = computed(() => [
 		value: props.rental.listing.user.name,
 	},
 ]);
+
+// computed property to check if rental has payment
+const payment = computed(() => props.rental.payment_request);
+
+// list of actions available for the rental as defined in the model
+const actions = computed(() => props.rental.available_actions);
 </script>
 
 <template>
@@ -72,6 +80,7 @@ const details = computed(() => [
 		:title="rental.listing.title"
 		:image="listingImage"
 		:status="rental.status"
+		:paymentRequest="rental.payment_request"
 		:listing-id="rental.listing.id"
 		:details="details"
 		@click="$inertia.visit(route('rental.show', rental.id))"
@@ -86,9 +95,19 @@ const details = computed(() => [
 		<!-- Actions slot -->
 		<template #actions>
 			<div class="sm:justify-end flex flex-wrap gap-2">
-				<!-- Show Cancel button for pending and approved statuses -->
+				<!-- Payment Actions -->
 				<Button
-					v-if="['pending', 'approved'].includes(rental.status)"
+					v-if="actions.canPayNow"
+					variant="default"
+					size="sm"
+					@click.stop="showPaymentDialog = true"
+				>
+					Pay Now
+				</Button>
+				
+				<!-- Cancel Action -->
+				<Button
+					v-if="actions.canCancel"
 					variant="destructive"
 					size="sm"
 					:disabled="cancelForm.processing"
@@ -123,5 +142,13 @@ const details = computed(() => [
 		@update:textareaValue="cancelForm.custom_feedback = $event"
 		@confirm="handleCancel"
 		@cancel="showCancelDialog = false"
+	/>
+
+	<!-- Payment Dialog -->
+	<PaymentDialog 
+		v-model:show="showPaymentDialog" 
+		:rental="rental" 
+		:payment="payment" 
+		:viewOnly="false"
 	/>
 </template>

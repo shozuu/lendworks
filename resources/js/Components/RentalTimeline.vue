@@ -8,7 +8,9 @@ import {
 	Send,
 	Ban,
 	AlertCircle,
-} from "lucide-vue-next";
+	} from "lucide-vue-next";
+import { ref } from "vue";
+import PaymentDialog from "@/Components/PaymentDialog.vue";
 
 const props = defineProps({
 	events: {
@@ -19,6 +21,14 @@ const props = defineProps({
 		type: String,
 		required: true,
 	},
+	rental: {
+		type: Object,
+		required: true,
+	},
+	passPayment: {
+		type: Function,
+		default: null
+	}
 });
 
 const getEventIcon = (eventType) => {
@@ -31,6 +41,12 @@ const getEventIcon = (eventType) => {
 			return XCircle;
 		case "cancelled":
 			return Ban;
+		case "payment_submitted":
+			return Clock;
+		case "payment_verified":
+			return CheckCircle2;
+		case "payment_rejected":
+			return XCircle;
 		case "handover":
 			return Circle;
 		case "returned":
@@ -47,11 +63,13 @@ const getEventColor = (eventType) => {
 		case "approved":
 			return "text-emerald-500";
 		case "rejected":
-			return "text-destructive";
 		case "cancelled":
+		case "payment_rejected":
 			return "text-destructive";
+		case "payment_submitted":
+			return "text-yellow-500";
+		case "payment_verified":
 		case "handover":
-			return "text-emerald-500";
 		case "returned":
 			return "text-emerald-500";
 		default:
@@ -62,43 +80,114 @@ const getEventColor = (eventType) => {
 const formatEventMessage = (event) => {
 	const actor = event.actor.name;
 	const isAutoRejection = event.metadata?.auto_rejected;
-	const isLatest = event === props.events[0]; // Check if this is the most recent event
+	const isLatest = event === props.events[0];
+	const performedByRenter = event.actor_id === props.rental?.renter_id;
+	const performedByLender = event.actor_id === props.rental?.listing?.user_id;
+	const performedByViewer = event.actor_id === props.rental?.viewer_id;
+
+	const getActorLabel = () => {
+		if (performedByViewer) return "You";
+		if (performedByRenter) return props.userRole === "renter" ? "You" : "The renter";
+		if (performedByLender) return props.userRole === "lender" ? "You" : "The owner";
+		return actor;
+	};
+
+	const actorLabel = getActorLabel();
 
 	switch (event.event_type) {
 		case "created":
 			if (isLatest) {
-				return props.userRole === "renter"
-					? "Waiting for owner's response"
-					: `${actor} requested to rent this item`;
+				return performedByViewer
+					? "You submitted a rental request - awaiting owner's response"
+					: `${actorLabel} submitted a rental request${
+							performedByRenter ? " - awaiting owner's response" : ""
+					  }`;
 			}
-			return `${actor} requested to rent this item`;
+			return `${actorLabel} submitted a rental request`;
 
 		case "approved":
 			if (isLatest) {
-				return props.userRole === "renter"
-					? "Ready for handover"
-					: "Pending handover to renter";
+				return performedByViewer
+					? "You approved the request - waiting for renter's payment"
+					: `${actorLabel} approved the request${
+							performedByLender ? " - waiting for payment" : ""
+					  }`;
 			}
-			return `${actor} approved the rental request`;
+			return `${actorLabel} approved the rental request`;
+
+		case "payment_submitted":
+			if (isLatest) {
+				return performedByViewer
+					? "Your payment has been submitted - awaiting verification"
+					: `${actorLabel} submitted payment${
+							performedByRenter ? " - awaiting verification" : ""
+					  }`;
+			}
+			return `${actorLabel} submitted payment (Reference: ${event.metadata?.reference_number})`;
+
+		case "payment_verified":
+			return "Payment was verified by admin";
+
+		case "payment_rejected":
+			return "Payment was rejected by admin";
 
 		case "rejected":
 			if (isAutoRejection) {
-				return "Request was automatically rejected because the item was rented for overlapping dates";
+				return "Request was automatically rejected due to date conflict";
 			}
-			return `${actor} rejected the rental request`;
+			return performedByViewer
+				? "You rejected the request"
+				: `${actorLabel} rejected the request`;
 
 		case "cancelled":
-			return `${actor} cancelled the rental request`;
+			const cancelledBy = event.metadata?.cancelled_by;
+			if (performedByViewer) {
+				return "You cancelled the request";
+			}
+			return `${actorLabel} cancelled the request`;
 
 		case "handover":
-			return "Item was handed over to the renter";
+			return performedByViewer
+				? "You confirmed receiving the item"
+				: `${actorLabel} confirmed receiving the item`;
 
 		case "returned":
-			return "Item was returned to the owner";
+			return performedByViewer
+				? "You confirmed returning the item"
+				: `${actorLabel} confirmed returning the item`;
 
 		default:
-			return `Unknown event by ${actor}`;
+			return `Unknown event by ${actorLabel}`;
 	}
+};
+
+const selectedHistoricalPayment = ref(null);
+const showHistoricalPayment = ref(false);
+
+const showPaymentDetails = (event) => {
+    if (event.metadata?.payment_request) {
+        selectedHistoricalPayment.value = props.passPayment 
+            ? props.passPayment(event)
+            : {
+                ...event.metadata.payment_request,
+                rental_request: {
+                    ...props.rental,
+                    total_price: props.rental.total_price,
+                    listing: props.rental.listing,
+                    renter: props.rental.renter
+                }
+            };
+        showHistoricalPayment.value = true;
+    }
+};
+
+// Add handler for dialog close
+const handleDialogClose = () => {
+    // Wait for dialog animation to complete before clearing data
+    setTimeout(() => {
+        selectedHistoricalPayment.value = null;
+    }, 300);
+    showHistoricalPayment.value = false;
 };
 </script>
 
@@ -112,11 +201,11 @@ const formatEventMessage = (event) => {
 			></div>
 
 			<!-- Event Item -->
-			<div class="flex gap-4 items-start">
+			<div class="flex items-start gap-4">
 				<!-- Icon -->
 				<component
 					:is="getEventIcon(event.event_type)"
-					class="w-6 h-6 absolute left-0"
+					class="absolute left-0 w-6 h-6"
 					:class="getEventColor(event.event_type)"
 				/>
 
@@ -128,26 +217,67 @@ const formatEventMessage = (event) => {
 					</p>
 
 					<!-- Additional Details -->
-					<div
-						v-if="
-							event.metadata &&
-							(event.event_type === 'rejected' || event.event_type === 'cancelled')
-						"
-						class="bg-muted mt-2 p-3 rounded-md text-sm"
-					>
-						<p class="font-medium text-xs">Reason:</p>
-						<p class="text-muted-foreground text-xs mt-1">
-							{{ event.metadata.reason }}
-						</p>
-						<p
-							v-if="event.metadata.feedback"
-							class="text-muted-foreground text-xs mt-2 italic"
+					<div v-if="event.metadata" class="bg-muted p-3 mt-2 text-sm rounded-md">
+						<!-- Payment Details -->
+						<template
+							v-if="
+								['payment_submitted', 'payment_verified', 'payment_rejected'].includes(
+									event.event_type
+								)
+							"
 						>
-							"{{ event.metadata.feedback }}"
-						</p>
+							<div class="flex flex-col items-start justify-between">
+								<div>
+									<p v-if="event.metadata.reference_number" class="text-xs">
+										<span class="font-medium">Reference Number:</span>
+										{{ event.metadata.reference_number }}
+									</p>
+								</div>
+								
+							</div>
+							<p
+								v-if="event.metadata.feedback"
+								class="text-muted-foreground mt-2 text-xs italic"
+							>
+								"{{ event.metadata.feedback }}"
+							</p>
+							<!-- Add View Payment Details button if we have payment data -->
+							<Button 
+								v-if="event.metadata.payment_request"
+								variant="outline" 
+								size="sm"
+								@click="showPaymentDetails(event)"
+							>
+								View Payment Details
+							</Button>
+						</template>
+
+						<!-- Rejection/Cancellation Details -->
+						<template v-else-if="['rejected', 'cancelled'].includes(event.event_type)">
+							<p class="text-xs font-medium">Reason:</p>
+							<p class="text-muted-foreground mt-1 text-xs">
+								{{ event.metadata.reason }}
+							</p>
+							<p
+								v-if="event.metadata.feedback"
+								class="text-muted-foreground mt-2 text-xs italic"
+							>
+								"{{ event.metadata.feedback }}"
+							</p>
+						</template>
 					</div>
 				</div>
 			</div>
 		</div>
+
+		<!-- Payment Dialog for Historical Payments -->
+		<PaymentDialog 
+			:show="showHistoricalPayment"
+			:rental="rental"
+			:payment="selectedHistoricalPayment"
+			:historical="true"
+			:viewOnly="true"
+			@update:show="handleDialogClose"
+		/>
 	</div>
 </template>

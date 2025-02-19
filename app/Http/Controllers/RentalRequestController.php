@@ -19,6 +19,16 @@ class RentalRequestController extends Controller
 {
     public function show(RentalRequest $rental)
     {
+        $rental->load([
+            'listing.user',
+            'listing.images',
+            'listing.category',
+            'listing.location',
+            'renter',
+            'timelineEvents.actor',
+            'payment_request' 
+        ]);
+
         // Check if the authenticated user is either the renter or the lender
         if (Auth::id() !== $rental->renter_id && Auth::id() !== $rental->listing->user_id) {
             abort(403, 'Unauthorized action.');
@@ -34,13 +44,14 @@ class RentalRequestController extends Controller
             'renter' => fn($q) => $q->withCount('listings'),
             'latestRejection.rejectionReason',
             'latestCancellation.cancellationReason',
+            'payment_request',
             'timelineEvents'
         ]);
 
         // Determine user role
         $userRole = Auth::id() === $rental->renter_id ? 'renter' : 'lender';
         
-        // Format reasons for select options
+        // Format reasons for select options with role-based filtering
         $reasons = [
             'rejectionReasons' => RentalRejectionReason::all()->map(function($reason) {
                 return [
@@ -48,12 +59,14 @@ class RentalRequestController extends Controller
                     'label' => $reason->label,
                 ];
             }),
-            'cancellationReasons' => RentalCancellationReason::all()->map(function($reason) {
-                return [
-                    'value' => $reason->id,
-                    'label' => $reason->label,
-                ];
-            })
+            'cancellationReasons' => RentalCancellationReason::whereIn('role', [$userRole, 'both'])
+                ->get()
+                ->map(function($reason) {
+                    return [
+                        'value' => $reason->id,
+                        'label' => $reason->label,
+                    ];
+                })
         ];
 
         return Inertia::render('RentalDetails', [
@@ -174,8 +187,10 @@ class RentalRequestController extends Controller
                 $rentalRequest->update(['status' => 'approved']);
                 $rentalRequest->recordTimelineEvent('approved', Auth::id());
                 
-                // 2. Mark listing as rented
-                $rentalRequest->listing->update(['is_rented' => true]);
+                // 2. Mark listing as rented and unavailable
+                $rentalRequest->listing->update([
+                    'is_rented' => true, 
+                ]);
                 
                 // 3. Find all overlapping pending requests
                 $overlappingRequests = $rentalRequest->getOverlappingRequests();
@@ -270,13 +285,17 @@ class RentalRequestController extends Controller
 
     public function cancel(Request $request, RentalRequest $rentalRequest)
     {
-        // abort if user is not the renter
-        if ($rentalRequest->renter_id !== Auth::id()) {
+        $user = Auth::user();
+        $isRenter = $user->id === $rentalRequest->renter_id;
+        $isLender = $user->id === $rentalRequest->listing->user_id;
+
+        // Check if user is either the renter or lender
+        if (!$isRenter && !$isLender) {
             abort(403);
         }
 
         // check if request can be cancelled
-        if (!$rentalRequest->canBeCancelled()) {
+        if (!$rentalRequest->canCancel()) { 
             return back()->with('error', 'This rental request cannot be cancelled.');
         }
 
@@ -292,7 +311,7 @@ class RentalRequestController extends Controller
         ]);
 
         try {
-            DB::transaction(function () use ($rentalRequest, $validated) {
+            DB::transaction(function () use ($rentalRequest, $validated, $isRenter, $isLender, $user) {
                 // Get the cancellation reason
                 $cancellationReason = RentalCancellationReason::find($validated['cancellation_reason_id']);
                 
@@ -304,16 +323,19 @@ class RentalRequestController extends Controller
                     'custom_feedback' => $validated['custom_feedback']
                 ]);
 
-                // If request was approved, update listing status
-                if ($rentalRequest->status === 'approved') {
-                    $rentalRequest->listing->update(['is_rented' => false]);
-                }
+                // Always update listing status when cancelling
+                $rentalRequest->listing->update([
+                    'is_rented' => false,
+                ]);
 
-                // Record timeline event with metadata using the cancellation reason data
-                $rentalRequest->recordTimelineEvent('cancelled', Auth::id(), [
+                // Record timeline event with role-specific metadata
+                $rentalRequest->recordTimelineEvent('cancelled', $user->id, [
                     'reason' => $cancellationReason->description,
                     'label' => $cancellationReason->label,
-                    'feedback' => $validated['custom_feedback']
+                    'feedback' => $validated['custom_feedback'],
+                    'cancelled_by' => $isRenter ? 'renter' : 'lender',
+                    'canceller_name' => $user->name,
+                    'role' => $cancellationReason->role
                 ]);
             });
 
@@ -322,6 +344,7 @@ class RentalRequestController extends Controller
 
             return back()->with('success', 'Rental request cancelled successfully.');
         } catch (\Exception $e) {
+            report($e);
             return back()->with('error', 'Failed to cancel rental request.');
         }
     }

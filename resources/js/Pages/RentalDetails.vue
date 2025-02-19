@@ -12,6 +12,8 @@ import { useForm } from "@inertiajs/vue3";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import { ref } from "vue";
 import RentalTimeline from "@/Components/RentalTimeline.vue";
+import { Link } from "@inertiajs/vue3";
+import PaymentDialog from "@/Components/PaymentDialog.vue";
 
 const props = defineProps({
 	rental: Object,
@@ -32,20 +34,6 @@ const roleSpecificName = computed(() => {
 		label: "Renter",
 		name: props.rental.renter.name,
 	};
-});
-
-const canCancel = computed(() => {
-	return (
-		props.userRole === "renter" && ["pending", "approved"].includes(props.rental.status)
-	);
-});
-
-const canApproveOrReject = computed(() => {
-	return (
-		props.userRole === "lender" &&
-		props.rental.status === "pending" &&
-		!props.rental.listing.is_rented
-	);
 });
 
 const rentalDays = computed(() => {
@@ -132,6 +120,15 @@ const handleCancel = () => {
 		},
 	});
 };
+
+// Add computed property for payment
+const payment = computed(() => props.rental.payment_request);
+
+// Add ref for payment dialog
+const showPaymentDialog = ref(false);
+
+// list of actions available for the rental as defined in the model
+const actions = computed(() => props.rental.available_actions);
 </script>
 
 <template>
@@ -155,6 +152,7 @@ const handleCancel = () => {
 			</div>
 			<RentalStatusBadge
 				:status="rental.status"
+				:paymentRequest="rental.payment_request"
 				class="sm:text-base self-start text-sm"
 			/>
 		</div>
@@ -164,7 +162,11 @@ const handleCancel = () => {
 				<CardTitle>Timeline</CardTitle>
 			</CardHeader>
 			<CardContent class="p-6">
-				<RentalTimeline :events="rental.timeline_events" :userRole="userRole" />
+				<RentalTimeline
+					:events="rental.timeline_events"
+					:userRole="userRole"
+					:rental="rental"
+				/>
 			</CardContent>
 		</Card>
 
@@ -181,18 +183,28 @@ const handleCancel = () => {
 						<div class="space-y-6">
 							<!-- Item Image and Basic Info -->
 							<div class="sm:flex-row flex flex-col gap-4">
-								<img
-									:src="
-										rental.listing.images[0]?.image_path
-											? `/storage/${rental.listing.images[0].image_path}`
-											: '/storage/images/listing/default.png'
-									"
-									class="sm:w-32 sm:h-32 object-cover w-full h-48 rounded-lg"
-									:alt="rental.listing.title"
-								/>
+								<Link
+									:href="route('listing.show', rental.listing.id)"
+									class="sm:w-32 sm:h-32 flex-shrink-0 w-full h-48"
+								>
+									<img
+										:src="
+											rental.listing.images[0]?.image_path
+												? `/storage/${rental.listing.images[0].image_path}`
+												: '/storage/images/listing/default.png'
+										"
+										class="hover:opacity-90 object-cover w-full h-full transition-opacity rounded-lg"
+										:alt="rental.listing.title"
+									/>
+								</Link>
 								<div class="space-y-4">
 									<div>
-										<h3 class="text-lg font-semibold">{{ rental.listing.title }}</h3>
+										<Link
+											:href="route('listing.show', rental.listing.id)"
+											class="hover:text-primary transition-colors"
+										>
+											<h3 class="text-lg font-semibold">{{ rental.listing.title }}</h3>
+										</Link>
 										<p class="text-muted-foreground text-sm">
 											Category: {{ rental.listing.category.name }}
 										</p>
@@ -303,9 +315,19 @@ const handleCancel = () => {
 					</CardHeader>
 					<CardContent class="p-6">
 						<div class="space-y-4">
-							<!-- Renter Actions -->
+							<!-- Payment Actions -->
 							<Button
-								v-if="canCancel"
+								v-if="actions.canPayNow"
+								variant="default"
+								class="w-full"
+								@click="showPaymentDialog = true"
+							>
+								Pay Now
+							</Button>
+
+							<!-- Cancel Action -->
+							<Button
+								v-if="actions.canCancel"
 								variant="destructive"
 								class="w-full"
 								@click="showCancelDialog = true"
@@ -314,7 +336,7 @@ const handleCancel = () => {
 							</Button>
 
 							<!-- Lender Actions -->
-							<template v-if="canApproveOrReject">
+							<template v-if="actions.canApprove">
 								<Button class="w-full" @click="showAcceptDialog = true">
 									Approve Request
 								</Button>
@@ -326,6 +348,14 @@ const handleCancel = () => {
 									Reject Request
 								</Button>
 							</template>
+
+							<!-- No Actions Message -->
+							<p
+								v-if="!actions.canPayNow && !actions.canCancel && !actions.canApprove"
+								class="text-muted-foreground text-sm text-center"
+							>
+								No actions available at this time.
+							</p>
 						</div>
 					</CardContent>
 				</Card>
@@ -388,9 +418,9 @@ const handleCancel = () => {
 	<!-- Accept Dialog -->
 	<ConfirmDialog
 		:show="showAcceptDialog"
-		title="Accept Rental Request"
-		description="Are you sure you want to accept this rental request? This will mark your item as rented and reject all other pending requests."
-		confirmLabel="Accept Request"
+		title="Approve Rental Request"
+		description="Are you sure you want to approve this rental request? This will mark your item as rented and reject all other pending requests."
+		confirmLabel="Approve Request"
 		confirmVariant="default"
 		:processing="approveForm.processing"
 		@update:show="showAcceptDialog = $event"
@@ -446,5 +476,13 @@ const handleCancel = () => {
 		@update:textareaValue="cancelForm.custom_feedback = $event"
 		@confirm="handleCancel"
 		@cancel="showCancelDialog = false"
+	/>
+
+	<!-- Payment Dialog -->
+	<PaymentDialog 
+		v-model:show="showPaymentDialog" 
+		:rental="rental" 
+		:payment="payment" 
+		:viewOnly="false"
 	/>
 </template>

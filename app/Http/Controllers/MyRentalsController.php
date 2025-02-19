@@ -20,23 +20,36 @@ class MyRentalsController extends Controller
                 'listing.category', 
                 'listing.location',
                 'latestRejection.rejectionReason',
-                'latestCancellation.cancellationReason'
+                'latestCancellation.cancellationReason',
+                'payment_request'
             ])
             ->latest()
-            ->get()
-            ->groupBy('status');
+            ->get();
+
+        // Group rentals by their display status
+        $groupedRentals = $rentals->groupBy('status_for_display')
+            ->map(function ($group) {
+                return $group->values();
+            })
+            ->toArray();
 
         // Stats for renter's view
         $stats = [
-            'pending' => $rentals->get('pending', collect())->count(),
-            'approved' => $rentals->get('approved', collect())->count(),
-            'active' => $rentals->get('active', collect())->count(),
-            'completed' => $rentals->get('completed', collect())->count(),
-            'rejected' => $rentals->get('rejected', collect())->count(),
-            'cancelled' => $rentals->get('cancelled', collect())->count(),
+            'pending' => $rentals->where('status', 'pending')->count(),
+            'approved' => $rentals->where('status', 'approved')
+                ->filter(function ($rental) {
+                    return !$rental->payment_request;
+                })->count(),
+            'payments' => $rentals->whereIn('status_for_display', ['payment_pending', 'payment_rejected'])->count(), // renter_paid is to handover
+            'active' => $rentals->where('status', 'active')->count(),
+            'completed' => $rentals->where('status', 'completed')->count(),
+            'rejected' => $rentals->where('status', 'rejected')->count(),
+            'cancelled' => $rentals->where('status', 'cancelled')->count(),
         ];
 
+        // Get only cancellation reasons for renters
         $cancellationReasons = RentalCancellationReason::select('id', 'label', 'code', 'description')
+            ->whereIn('role', ['renter', 'both'])
             ->get()
             ->map(fn($reason) => [
                 'value' => (string) $reason->id,
@@ -48,7 +61,7 @@ class MyRentalsController extends Controller
             ->all();
 
         return Inertia::render('MyRentals/MyRentals', [
-            'rentals' => $rentals,
+            'rentals' => $groupedRentals,
             'stats' => $stats,
             'cancellationReasons' => $cancellationReasons
         ]);

@@ -7,6 +7,7 @@ defineProps({
 	image: String,
 	status: String,
 	listingId: Number,
+	paymentRequest: Array,
 	details: {
 		type: Array,
 		default: () => [],
@@ -35,7 +36,7 @@ const emit = defineEmits(["click"]);
 					<!-- Title and Status - removed Link -->
 					<div class="sm:flex-row flex flex-col items-start justify-between gap-1">
 						<h3 class="line-clamp-1 font-semibold">{{ title }}</h3>
-						<RentalStatusBadge :status="status" />
+						<RentalStatusBadge :status="status" :paymentRequest="paymentRequest" />
 					</div>
 
 					<!-- Status Text if provided -->

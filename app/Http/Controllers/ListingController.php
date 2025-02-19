@@ -105,7 +105,17 @@ class ListingController extends Controller
                 'category', 
                 'location', 
                 'latestRejection.rejectionReason',
-                'latestTakedown.takedownReason'
+                'latestTakedown.takedownReason',
+                'currentRental' => function($query) {
+                    $query->where(function ($q) {
+                        $q->where('status', 'active')
+                          ->orWhere(function ($sq) {
+                              $sq->where('status', 'approved')
+                                ->where('start_date', '<=', now())
+                                ->where('end_date', '>=', now());
+                          });
+                    });
+                }
             ])
             ->where('id', $id);
 
