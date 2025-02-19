@@ -46,7 +46,7 @@ class RentalRequest extends Model
     const STATUS_COMPLETED = 'completed';
     const STATUS_REJECTED = 'rejected';
     const STATUS_CANCELLED = 'cancelled';
-    const STATUS_RENTER_PAID = 'renter_paid'; // New status for verified payments
+    const STATUS_RENTER_PAID = 'renter_paid';
 
     // Update the status display logic
     public function getStatusForDisplayAttribute(): string 

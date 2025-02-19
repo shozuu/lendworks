@@ -55,9 +55,6 @@ class PaymentController extends Controller
                 'status' => 'pending'
             ]);
 
-            // Update rental request status
-            $rental->update(['status' => 'payment_submitted']);
-            
             // Record timeline event
             $rental->recordTimelineEvent('payment_submitted', Auth::id(), [
                 'reference_number' => $validated['reference_number'],

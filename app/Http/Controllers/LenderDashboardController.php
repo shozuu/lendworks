@@ -18,6 +18,7 @@ class LenderDashboardController extends Controller
                 'rentalRequests.renter',
                 'rentalRequests.latestRejection.rejectionReason',
                 'rentalRequests.latestCancellation.cancellationReason',
+                'rentalRequests.payment_request',
                 'images',
                 'category',
                 'location'
@@ -25,19 +26,31 @@ class LenderDashboardController extends Controller
             ->get();
 
         $groupedListings = [
-            'pending_requests' => $listings->flatMap(function($listing) {
+            'pending' => $listings->flatMap(function($listing) {
                 return $listing->rentalRequests
                     ->where('status', 'pending')
                     ->sortBy('created_at') // First requested first
                     ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
             })->values(),
-            'to_handover' => $listings->flatMap(function($listing) {
+            'approved' => $listings->flatMap(function($listing) {
                 return $listing->rentalRequests
-                    ->filter(fn($req) => $req->status === 'approved' && !$req->handover_at)
+                    ->filter(fn($req) => $req->status === 'approved' && !$req->payment_request)
                     ->sortBy('created_at') // First approved first
                     ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
             })->values(),
-            'active_rentals' => $listings->flatMap(function($listing) {
+            'payments' => $listings->flatMap(function($listing) {
+                return $listing->rentalRequests
+                    ->filter(fn($req) => $req->status === 'approved' && $req->payment_request)
+                    ->sortBy('created_at') // First payment submitted first
+                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
+            })->values(),
+            'to_handover' => $listings->flatMap(function($listing) {
+                return $listing->rentalRequests
+                    ->filter(fn($req) => $req->status === 'payment_verified' && !$req->handover_at)
+                    ->sortBy('created_at') // First payment verified first
+                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
+            })->values(),
+            'active' => $listings->flatMap(function($listing) {
                 return $listing->rentalRequests
                     ->filter(fn($req) => $req->status === 'active' && !$req->return_at)
                     ->sortBy('created_at') // First activated first
