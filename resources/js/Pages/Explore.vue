@@ -125,7 +125,7 @@ const clearAllFilters = () => {
                     <!--<h3 class="font-semibold text-lg">Filters</h3>-->
                     
                     <div class="space-y-3">
-                        <h4 class="font-medium text-sm text-gray-700">Price Range</h4>
+                        <h4 class="font-medium text-sm text-gray-700">Daily Rate</h4>
                         <div class="flex gap-2 items-center">
                             <div class="relative">
                                 <span class="absolute left-3 top-2 text-gray-500">₱</span>
