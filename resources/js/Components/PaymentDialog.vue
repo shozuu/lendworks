@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatNumber } from "@/lib/formatters";
 import { useForm as useVeeForm } from "vee-validate";
 import { useForm as useInertiaForm } from "@inertiajs/vue3";
+import { computed } from "vue";
 import { toTypedSchema } from "@vee-validate/zod";
 import { vAutoAnimate } from "@formkit/auto-animate/vue";
 import * as z from "zod";
