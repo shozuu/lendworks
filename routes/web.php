@@ -10,6 +10,7 @@ use App\Http\Controllers\MyRentalsController;
 use App\Http\Controllers\MyListingsController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RentalRequestController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -50,6 +51,9 @@ Route::middleware(['auth', 'verified'])->group(function() {
 
     // rental transactions
     Route::get('/rentals/{rental}', [RentalRequestController::class, 'show'])->name('rental.show');
+
+    // payment submission
+    Route::post('/rentals/{rental}/submit-payment', [PaymentController::class, 'store'])->name('rentals.submit-payment');
 });
 
 // Admin routes with auth and admin middleware
@@ -74,6 +78,11 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
         ->name('rental-transactions');
     Route::get('/rental-transactions/{rental}', [RentalTransactionsController::class, 'show'])
         ->name('rental-transactions.show');
+    
+    // Payment routes
+    Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
+    Route::post('/payments/{payment}/verify', [PaymentController::class, 'verify'])->name('payments.verify');
+    Route::post('/payments/{payment}/reject', [PaymentController::class, 'reject'])->name('payments.reject');
 });
 
 Route::get('/', [ListingController::class, 'index'])->name('home');

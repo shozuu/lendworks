@@ -28,7 +28,7 @@ const props = defineProps({
 		default: null,
 	},
 });
-
+console.log(props.currentRental);
 const dailyRate = props.listing.price;
 const itemValue = props.listing.value;
 const rentalDays = ref(7);

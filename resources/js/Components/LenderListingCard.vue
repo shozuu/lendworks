@@ -19,6 +19,10 @@ const props = defineProps({
 		type: Array,
 		required: true,
 	},
+	cancellationReasons: {
+		type: Array,
+		required: true,
+	},
 });
 
 // Image handling
@@ -48,14 +52,22 @@ const details = computed(() => [
 
 const showRejectDialog = ref(false);
 const showAcceptDialog = ref(false);
+const showCancelDialog = ref(false);
 const approveForm = useForm({});
 const rejectForm = useForm({
 	rejection_reason_id: "",
 	custom_feedback: "",
 });
+const cancelForm = useForm({
+	cancellation_reason_id: "",
+	custom_feedback: "",
+});
 
 const isOtherReason = computed(() => {
-	return rejectForm.rejection_reason_id === "other";
+	if (rejectForm.rejection_reason_id) {
+		return rejectForm.rejection_reason_id === "other";
+	}
+	return cancelForm.cancellation_reason_id === "other";
 });
 
 const handleApprove = () => {
@@ -75,6 +87,21 @@ const handleReject = () => {
 		preserveScroll: true,
 	});
 };
+
+const handleCancel = () => {
+	cancelForm.patch(route("rental-request.cancel", props.data.rental_request.id), {
+		onSuccess: () => {
+			showCancelDialog.value = false;
+			// Reset form
+			cancelForm.cancellation_reason_id = "";
+			cancelForm.custom_feedback = "";
+		},
+		preserveScroll: true,
+	});
+};
+
+// Get available actions from the rental request
+const actions = computed(() => props.data.rental_request.available_actions);
 </script>
 
 <template>
@@ -90,7 +117,7 @@ const handleReject = () => {
 		<template #actions>
 			<div class="sm:justify-end flex flex-wrap gap-2">
 				<Button
-					v-if="data.rental_request.status === 'pending'"
+					v-if="actions.canApprove"
 					variant="default"
 					size="sm"
 					:disabled="approveForm.processing"
@@ -100,13 +127,23 @@ const handleReject = () => {
 				</Button>
 
 				<Button
-					v-if="data.rental_request.status === 'pending'"
+					v-if="actions.canReject"
 					variant="destructive"
 					size="sm"
 					:disabled="rejectForm.processing"
 					@click.stop="showRejectDialog = true"
 				>
 					Reject
+				</Button>
+
+				<Button
+					v-if="actions.canCancel"
+					variant="destructive"
+					size="sm"
+					:disabled="cancelForm.processing"
+					@click.stop="showCancelDialog = true"
+				>
+					Cancel Request
 				</Button>
 			</div>
 		</template>
@@ -129,7 +166,6 @@ const handleReject = () => {
 	<ConfirmDialog
 		:show="showRejectDialog"
 		title="Reject Rental Request"
-		z
 		description="Please select a reason for rejecting this rental request."
 		confirmLabel="Reject Request"
 		confirmVariant="destructive"
@@ -149,5 +185,30 @@ const handleReject = () => {
 		@update:textareaValue="rejectForm.custom_feedback = $event"
 		@confirm="handleReject"
 		@cancel="showAcceptDialog = false"
+	/>
+
+	<!-- Cancel Dialog -->
+	<ConfirmDialog
+		:show="showCancelDialog"
+		title="Cancel Rental Request"
+		description="Please select a reason for cancelling this rental request."
+		confirmLabel="Cancel Request"
+		confirmVariant="destructive"
+		:processing="cancelForm.processing"
+		:disabled="
+			!cancelForm.cancellation_reason_id || (isOtherReason && !cancelForm.custom_feedback)
+		"
+		showSelect
+		:selectOptions="cancellationReasons"
+		:selectValue="cancelForm.cancellation_reason_id"
+		:showTextarea="isOtherReason"
+		:textareaValue="cancelForm.custom_feedback"
+		:textareaRequired="isOtherReason"
+		textareaPlaceholder="Please provide specific details about why you are cancelling this rental request..."
+		@update:show="showCancelDialog = $event"
+		@update:selectValue="cancelForm.cancellation_reason_id = $event"
+		@update:textareaValue="cancelForm.custom_feedback = $event"
+		@confirm="handleCancel"
+		@cancel="showCancelDialog = false"
 	/>
 </template>

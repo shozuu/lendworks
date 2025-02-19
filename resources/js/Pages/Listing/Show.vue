@@ -241,7 +241,7 @@ const handleDelete = () => {
 
 			<!-- location -->
 			<div class="space-y-1">
-				<h2 class="text-lg font-semibold tracking-tight">Listing Location</h2>
+				<h2 class="text-lg font-semibold tracking-tight">Meetup Location</h2>
 
 				<div class="text-muted-foreground space-y-1">
 					<p class="font-medium">{{ listing.location.name }}</p>

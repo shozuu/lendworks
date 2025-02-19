@@ -19,6 +19,10 @@ const props = defineProps({
 		type: String,
 		required: true,
 	},
+	rental: {
+		type: Object,
+		required: true,
+	},
 });
 
 const getEventIcon = (eventType) => {
@@ -31,6 +35,12 @@ const getEventIcon = (eventType) => {
 			return XCircle;
 		case "cancelled":
 			return Ban;
+		case "payment_submitted":
+			return Clock;
+		case "payment_verified":
+			return CheckCircle2;
+		case "payment_rejected":
+			return XCircle;
 		case "handover":
 			return Circle;
 		case "returned":
@@ -47,11 +57,13 @@ const getEventColor = (eventType) => {
 		case "approved":
 			return "text-emerald-500";
 		case "rejected":
-			return "text-destructive";
 		case "cancelled":
+		case "payment_rejected":
 			return "text-destructive";
+		case "payment_submitted":
+			return "text-yellow-500";
+		case "payment_verified":
 		case "handover":
-			return "text-emerald-500";
 		case "returned":
 			return "text-emerald-500";
 		default:
@@ -62,42 +74,84 @@ const getEventColor = (eventType) => {
 const formatEventMessage = (event) => {
 	const actor = event.actor.name;
 	const isAutoRejection = event.metadata?.auto_rejected;
-	const isLatest = event === props.events[0]; // Check if this is the most recent event
+	const isLatest = event === props.events[0];
+	const performedByRenter = event.actor_id === props.rental?.renter_id;
+	const performedByLender = event.actor_id === props.rental?.listing?.user_id;
+	const performedByViewer = event.actor_id === props.rental?.viewer_id;
+
+	const getActorLabel = () => {
+		if (performedByViewer) return "You";
+		if (performedByRenter) return props.userRole === "renter" ? "You" : "The renter";
+		if (performedByLender) return props.userRole === "lender" ? "You" : "The owner";
+		return actor;
+	};
+
+	const actorLabel = getActorLabel();
 
 	switch (event.event_type) {
 		case "created":
 			if (isLatest) {
-				return props.userRole === "renter"
-					? "Waiting for owner's response"
-					: `${actor} requested to rent this item`;
+				return performedByViewer
+					? "You submitted a rental request - awaiting owner's response"
+					: `${actorLabel} submitted a rental request${
+							performedByRenter ? " - awaiting owner's response" : ""
+					  }`;
 			}
-			return `${actor} requested to rent this item`;
+			return `${actorLabel} submitted a rental request`;
 
 		case "approved":
 			if (isLatest) {
-				return props.userRole === "renter"
-					? "Ready for handover"
-					: "Pending handover to renter";
+				return performedByViewer
+					? "You approved the request - waiting for renter's payment"
+					: `${actorLabel} approved the request${
+							performedByLender ? " - waiting for payment" : ""
+					  }`;
 			}
-			return `${actor} approved the rental request`;
+			return `${actorLabel} approved the rental request`;
+
+		case "payment_submitted":
+			if (isLatest) {
+				return performedByViewer
+					? "Your payment has been submitted - awaiting verification"
+					: `${actorLabel} submitted payment${
+							performedByRenter ? " - awaiting verification" : ""
+					  }`;
+			}
+			return `${actorLabel} submitted payment (Reference: ${event.metadata?.reference_number})`;
+
+		case "payment_verified":
+			return "Payment was verified by admin";
+
+		case "payment_rejected":
+			return "Payment was rejected by admin";
 
 		case "rejected":
 			if (isAutoRejection) {
-				return "Request was automatically rejected because the item was rented for overlapping dates";
+				return "Request was automatically rejected due to date conflict";
 			}
-			return `${actor} rejected the rental request`;
+			return performedByViewer
+				? "You rejected the request"
+				: `${actorLabel} rejected the request`;
 
 		case "cancelled":
-			return `${actor} cancelled the rental request`;
+			const cancelledBy = event.metadata?.cancelled_by;
+			if (performedByViewer) {
+				return "You cancelled the request";
+			}
+			return `${actorLabel} cancelled the request`;
 
 		case "handover":
-			return "Item was handed over to the renter";
+			return performedByViewer
+				? "You confirmed receiving the item"
+				: `${actorLabel} confirmed receiving the item`;
 
 		case "returned":
-			return "Item was returned to the owner";
+			return performedByViewer
+				? "You confirmed returning the item"
+				: `${actorLabel} confirmed returning the item`;
 
 		default:
-			return `Unknown event by ${actor}`;
+			return `Unknown event by ${actorLabel}`;
 	}
 };
 </script>
@@ -128,23 +182,44 @@ const formatEventMessage = (event) => {
 					</p>
 
 					<!-- Additional Details -->
-					<div
-						v-if="
-							event.metadata &&
-							(event.event_type === 'rejected' || event.event_type === 'cancelled')
-						"
-						class="bg-muted mt-2 p-3 rounded-md text-sm"
-					>
-						<p class="font-medium text-xs">Reason:</p>
-						<p class="text-muted-foreground text-xs mt-1">
-							{{ event.metadata.reason }}
-						</p>
-						<p
-							v-if="event.metadata.feedback"
-							class="text-muted-foreground text-xs mt-2 italic"
+					<div v-if="event.metadata" class="bg-muted mt-2 p-3 rounded-md text-sm">
+						<!-- Payment Details -->
+						<template
+							v-if="
+								['payment_submitted', 'payment_verified', 'payment_rejected'].includes(
+									event.event_type
+								)
+							"
 						>
-							"{{ event.metadata.feedback }}"
-						</p>
+							<p v-if="event.metadata.reference_number" class="text-xs">
+								<span class="font-medium">Reference Number:</span>
+								{{ event.metadata.reference_number }}
+							</p>
+							<p v-if="event.metadata.verified_by" class="text-xs mt-1">
+								<span class="font-medium">Verified by:</span>
+								{{ event.metadata.verified_by }}
+							</p>
+							<p
+								v-if="event.metadata.feedback"
+								class="text-muted-foreground text-xs mt-2 italic"
+							>
+								"{{ event.metadata.feedback }}"
+							</p>
+						</template>
+
+						<!-- Rejection/Cancellation Details -->
+						<template v-else-if="['rejected', 'cancelled'].includes(event.event_type)">
+							<p class="font-medium text-xs">Reason:</p>
+							<p class="text-muted-foreground text-xs mt-1">
+								{{ event.metadata.reason }}
+							</p>
+							<p
+								v-if="event.metadata.feedback"
+								class="text-muted-foreground text-xs mt-2 italic"
+							>
+								"{{ event.metadata.feedback }}"
+							</p>
+						</template>
 					</div>
 				</div>
 			</div>

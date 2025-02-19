@@ -13,6 +13,7 @@ import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import { ref } from "vue";
 import RentalTimeline from "@/Components/RentalTimeline.vue";
 import { Link } from "@inertiajs/vue3";
+import PaymentDialog from "@/Components/PaymentDialog.vue";
 
 const props = defineProps({
 	rental: Object,
@@ -33,20 +34,6 @@ const roleSpecificName = computed(() => {
 		label: "Renter",
 		name: props.rental.renter.name,
 	};
-});
-
-const canCancel = computed(() => {
-	return (
-		props.userRole === "renter" && ["pending", "approved"].includes(props.rental.status)
-	);
-});
-
-const canApproveOrReject = computed(() => {
-	return (
-		props.userRole === "lender" &&
-		props.rental.status === "pending" &&
-		!props.rental.listing.is_rented
-	);
 });
 
 const rentalDays = computed(() => {
@@ -133,6 +120,15 @@ const handleCancel = () => {
 		},
 	});
 };
+
+// Add computed property for payment
+const payment = computed(() => props.rental.payment_request);
+
+// Add ref for payment dialog
+const showPaymentDialog = ref(false);
+
+// list of actions available for the rental as defined in the model
+const actions = computed(() => props.rental.available_actions);
 </script>
 
 <template>
@@ -165,7 +161,11 @@ const handleCancel = () => {
 				<CardTitle>Timeline</CardTitle>
 			</CardHeader>
 			<CardContent class="p-6">
-				<RentalTimeline :events="rental.timeline_events" :userRole="userRole" />
+				<RentalTimeline
+					:events="rental.timeline_events"
+					:userRole="userRole"
+					:rental="rental"
+				/>
 			</CardContent>
 		</Card>
 
@@ -314,9 +314,19 @@ const handleCancel = () => {
 					</CardHeader>
 					<CardContent class="p-6">
 						<div class="space-y-4">
-							<!-- Renter Actions -->
+							<!-- Payment Actions -->
 							<Button
-								v-if="canCancel"
+								v-if="actions.canPayNow || actions.canViewPayment"
+								variant="default"
+								class="w-full"
+								@click="showPaymentDialog = true"
+							>
+								{{ payment ? "View Payment" : "Pay Now" }}
+							</Button>
+
+							<!-- Cancel Action -->
+							<Button
+								v-if="actions.canCancel"
 								variant="destructive"
 								class="w-full"
 								@click="showCancelDialog = true"
@@ -325,7 +335,7 @@ const handleCancel = () => {
 							</Button>
 
 							<!-- Lender Actions -->
-							<template v-if="canApproveOrReject">
+							<template v-if="actions.canApprove">
 								<Button class="w-full" @click="showAcceptDialog = true">
 									Approve Request
 								</Button>
@@ -458,4 +468,7 @@ const handleCancel = () => {
 		@confirm="handleCancel"
 		@cancel="showCancelDialog = false"
 	/>
+
+	<!-- Payment Dialog -->
+	<PaymentDialog v-model:show="showPaymentDialog" :rental="rental" :payment="payment" />
 </template>

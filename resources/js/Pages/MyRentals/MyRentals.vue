@@ -9,7 +9,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { formatLabel } from "@/lib/formatters";
 
 const props = defineProps({
@@ -17,17 +17,40 @@ const props = defineProps({
 	stats: Object,
 	cancellationReasons: Array,
 });
-
+console.log(props.rentals);
 const selectedTab = ref("pending");
 
 const tabs = [
 	{ id: "pending", label: "Pending" },
 	{ id: "approved", label: "Approved" },
+	{
+		id: "payments",
+		label: "Payments",
+		statuses: ["payment_pending", "payment_rejected", "renter_paid"],
+	},
 	{ id: "active", label: "Active" },
 	{ id: "completed", label: "Completed" },
 	{ id: "rejected", label: "Rejected" },
 	{ id: "cancelled", label: "Cancelled" },
 ];
+
+// Computed property to handle payment-related rentals
+const groupedRentals = computed(() => {
+	const result = { ...props.rentals };
+	// Create payments group
+	result.payments = [];
+
+	// Get all payment-related rentals
+	tabs
+		.find((t) => t.id === "payments")
+		?.statuses.forEach((status) => {
+			if (props.rentals[status]) {
+				result.payments.push(...props.rentals[status]);
+			}
+		});
+
+	return result;
+});
 
 const handleValueChange = (value) => {
 	selectedTab.value = value;
@@ -65,9 +88,9 @@ const handleValueChange = (value) => {
 				</TabsList>
 
 				<TabsContent v-for="tab in tabs" :key="tab.id" :value="tab.id">
-					<div v-if="rentals[tab.id]?.length" class="space-y-4">
+					<div v-if="groupedRentals[tab.id]?.length" class="space-y-4">
 						<RentalCard
-							v-for="rental in rentals[tab.id]"
+							v-for="rental in groupedRentals[tab.id]"
 							:key="rental.id"
 							:rental="rental"
 							:cancellationReasons="cancellationReasons"
@@ -95,9 +118,9 @@ const handleValueChange = (value) => {
 
 			<!-- Content for mobile -->
 			<div class="mt-4">
-				<div v-if="rentals[selectedTab]?.length" class="space-y-4">
+				<div v-if="groupedRentals[selectedTab]?.length" class="space-y-4">
 					<RentalCard
-						v-for="rental in rentals[selectedTab]"
+						v-for="rental in groupedRentals[selectedTab]"
 						:key="rental.id"
 						:rental="rental"
 						:cancellationReasons="cancellationReasons"

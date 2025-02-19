@@ -16,6 +16,7 @@ const props = defineProps({
 	groupedListings: Object,
 	rentalStats: Object,
 	rejectionReasons: Array,
+	cancellationReasons: Array,
 });
 console.log(props.groupedListings);
 const selectedTab = ref("pending_requests");
@@ -73,6 +74,7 @@ const handleValueChange = (value) => {
 							:data="item"
 							:selected-status="tab.id"
 							:rejection-reasons="rejectionReasons"
+							:cancellation-reasons="cancellationReasons"
 						/>
 					</div>
 					<div v-else class="text-muted-foreground py-10 text-center">
@@ -104,6 +106,7 @@ const handleValueChange = (value) => {
 						:data="item"
 						:selected-status="selectedTab"
 						:rejection-reasons="rejectionReasons"
+						:cancellation-reasons="cancellationReasons"
 					/>
 				</div>
 				<div v-else class="text-muted-foreground py-10 text-center">

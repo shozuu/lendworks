@@ -41,6 +41,11 @@ const statusInfo = computed(() => {
 				label: "Cancelled",
 				variant: "muted",
 			};
+		case "payment_submitted":
+			return {
+				label: "Payment Submitted",
+				variant: "warning",
+			};
 		default:
 			return {
 				label: props.status,
