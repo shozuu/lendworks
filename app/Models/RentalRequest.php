@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class RentalRequest extends Model
 {
@@ -34,13 +35,35 @@ class RentalRequest extends Model
         'return_at' => 'datetime'
     ];
 
-    // Define status constants
+    protected $appends = [
+        'available_actions'
+    ];
+
+    // Define core rental status constants
     const STATUS_PENDING = 'pending';
     const STATUS_APPROVED = 'approved';
-    const STATUS_REJECTED = 'rejected';
-    const STATUS_CANCELLED = 'cancelled';
     const STATUS_ACTIVE = 'active';
     const STATUS_COMPLETED = 'completed';
+    const STATUS_REJECTED = 'rejected';
+    const STATUS_CANCELLED = 'cancelled';
+    const STATUS_RENTER_PAID = 'renter_paid'; // New status for verified payments
+
+    // Update the status display logic
+    public function getStatusForDisplayAttribute(): string 
+    {
+        // Show payment status if approved and has payment
+        if ($this->status === self::STATUS_APPROVED && $this->payment_request) {
+            switch ($this->payment_request->status) {
+                case 'pending':
+                    return 'payment_pending';
+                case 'rejected':
+                    return 'payment_rejected';
+                case 'verified':
+                    return self::STATUS_RENTER_PAID;
+            }
+        }
+        return $this->status;
+    }
 
     // Relationships
     public function listing(): BelongsTo
@@ -98,6 +121,11 @@ class RentalRequest extends Model
         ]);
     }
 
+    public function payment_request()
+    {
+        return $this->hasOne(PaymentRequest::class)->latest();
+    }
+
     // Accessors
     public function getHasStartedAttribute(): bool
     {
@@ -115,6 +143,21 @@ class RentalRequest extends Model
             return false;
         }
         return now()->greaterThan($this->end_date);
+    }
+
+    public function getAvailableActionsAttribute(): array 
+    {
+        // Get the authenticated user
+        $user = Auth::user();
+        $isRenter = $user && $user->id === $this->renter_id;
+        
+        return [
+            'canApprove' => !$isRenter && $this->canApprove(),
+            'canReject' => !$isRenter && $this->canReject(),
+            'canCancel' => $this->canCancel(),
+            'canPayNow' => $isRenter && $this->canPayNow(),
+            'canViewPayment' => $isRenter && $this->canViewPayment(),
+        ];
     }
 
     // Scopes
@@ -155,26 +198,63 @@ class RentalRequest extends Model
         return $this->status === $status;
     }
 
-    public function canBeApproved(): bool
+    public function canApprove(): bool
     {
         return $this->isStatus(self::STATUS_PENDING) && 
                !$this->listing->is_rented;
     }
 
-    public function canBeRejected(): bool
+    public function canReject(): bool
     {
         return $this->isStatus(self::STATUS_PENDING);
     }
 
-    public function canBeCancelled(): bool
+    public function canCancel(): bool
     {
-        return in_array($this->status, [self::STATUS_PENDING, self::STATUS_APPROVED]);
+        // Get the authenticated user
+        $user = Auth::user();
+        
+        // If user is the renter
+        if ($user->id === $this->renter_id) {
+            if ($this->status === self::STATUS_PENDING) {
+                return true;
+            }
+
+            if ($this->status === self::STATUS_APPROVED) {
+                if ($this->payment_request?->status === 'rejected') {
+                    return true;
+                }
+                else if ($this->payment_request?->status === 'pending' || $this->payment_request?->status === 'verified') {
+                    return false;
+                }
+
+                return true;
+            }
+            
+            return false;
+        }
+        
+        // If user is the lender
+        if ($user->id === $this->listing->user_id) {
+            // Can only cancel if status is approved and no payment has been made yet
+            if ($this->status === self::STATUS_APPROVED && !$this->payment_request) {
+                return true;
+            }
+            
+            return false;
+        }
+        
+        return false;
     }
 
-    public function canBeCompleted(): bool
+    public function canPayNow(): bool 
     {
-        return $this->isStatus(self::STATUS_ACTIVE) && 
-               $this->return_at !== null;
+        return $this->status === self::STATUS_APPROVED && !$this->payment_request;
+    }
+
+    public function canViewPayment(): bool 
+    {
+        return $this->payment_request !== null;
     }
 
     public function getOverlappingRequests()

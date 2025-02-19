@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Listing;
+use App\Models\RentalCancellationReason;
 use App\Models\RentalRejectionReason;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -81,10 +82,23 @@ class LenderDashboardController extends Controller
             ->values()
             ->all();
 
+        $cancellationReasons = RentalCancellationReason::select('id', 'label', 'code', 'description')
+            ->whereIn('role', ['lender', 'both'])
+            ->get()
+            ->map(fn($reason) => [
+                'value' => (string) $reason->id,
+                'label' => $reason->label,
+                'code' => $reason->code,
+                'description' => $reason->description
+            ])
+            ->values()
+            ->all();
+
         return Inertia::render('LenderDashboard/LenderDashboard', [
             'groupedListings' => $groupedListings,
             'rentalStats' => $rentalStats,
-            'rejectionReasons' => $rejectionReasons
+            'rejectionReasons' => $rejectionReasons,
+            'cancellationReasons' => $cancellationReasons
         ]);
     }
 }
