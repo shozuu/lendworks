@@ -74,10 +74,8 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     Route::patch('/listings/{listing}/takedown', [AdminController::class, 'takedownListing'])->name('listings.takedown');
 
     // Rental transactions routes
-    Route::get('/rental-transactions', [RentalTransactionsController::class, 'index'])
-        ->name('rental-transactions');
-    Route::get('/rental-transactions/{rental}', [RentalTransactionsController::class, 'show'])
-        ->name('rental-transactions.show');
+    Route::get('/rental-transactions', [AdminController::class, 'rentalTransactions'])->name('rental-transactions');
+    Route::get('/rental-transactions/{rental}', [AdminController::class, 'rentalTransactionDetails'])->name('rental-transactions.show');
     
     // Payment routes
     Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
