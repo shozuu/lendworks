@@ -35,6 +35,10 @@ const props = defineProps({
 	historical: {
 		type: Boolean,
 		default: false
+	},
+	viewOnly: {
+		type: Boolean,
+		default: false
 	}
 });
 
@@ -138,22 +142,24 @@ const transactionRoute = computed(() => {
 		<DialogContent class="sm:max-w-md flex flex-col max-h-[90vh]">
 			<DialogHeader>
 				<DialogTitle>
-					{{ historical ? 'Historical Payment Details' : 'Payment Details' }}
+					 {{ viewOnly ? 'Payment Details' : historical ? 'Historical Payment Details' : 'Payment Details' }}
 				</DialogTitle>
 				<DialogDescription>
 					{{
-						historical 
-							? 'View payment details as they were at this point in time'
-							: payment
-								? "Review your payment details below"
-								: "Choose your preferred payment method below"
+						viewOnly 
+							? "Review payment details below"
+							: historical 
+								? 'View payment details as they were at this point in time'
+								: payment
+									? "Review your payment details below"
+									: "Choose your preferred payment method below"
 					}}
 				</DialogDescription>
 			</DialogHeader>
 
 			<ScrollArea class="flex-1 pr-2 overflow-y-auto">
-				<!-- Show existing payment if it exists -->
-				<div v-if="payment" class="space-y-6">
+				<!-- Show existing payment if it exists and we're in view/historical mode -->
+				<div v-if="payment && (viewOnly || historical)" class="space-y-6">
 					 <!-- Rental Context Section - Add this section -->
                     <div class="bg-muted p-4 space-y-3 rounded-lg">
                         <div class="flex items-start gap-4">
@@ -167,11 +173,11 @@ const transactionRoute = computed(() => {
                             />
                             <div class="flex-1 min-w-0">
                                 <h4 class="font-medium truncate">
-                                    {{ rental.listing.title }}
+                                    {{ rental?.listing?.title }}
                                 </h4>
                                 <div class="text-muted-foreground space-y-1 text-sm">
-                                    <p><span class="font-medium">Lender:</span> {{ rental.listing.user.name }}</p>
-                                    <p><span class="font-medium">Renter:</span> {{ rental.renter.name }}</p>
+                                    <p><span class="font-medium">Lender:</span> {{ rental?.listing?.user?.name }}</p>
+                                    <p><span class="font-medium">Renter:</span> {{ rental?.renter?.name }}</p>
                                 </div>
                             </div>
                         </div>
@@ -248,8 +254,8 @@ const transactionRoute = computed(() => {
 					</div>
 				</div>
 
-				<!-- Payment submission form if no payment exists -->
-				<div v-else class="space-y-6">
+				 <!-- Show payment form if no payment exists or we're not in view/historical mode -->
+				<div v-else-if="!viewOnly && (!payment || !historical)" class="space-y-6">
 					<!-- Payment Amount -->
 					<div class="bg-muted p-4 rounded-lg">
 						<div class="flex items-center justify-between font-medium">

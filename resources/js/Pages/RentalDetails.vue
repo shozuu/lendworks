@@ -317,12 +317,12 @@ const actions = computed(() => props.rental.available_actions);
 						<div class="space-y-4">
 							<!-- Payment Actions -->
 							<Button
-								v-if="actions.canPayNow || actions.canViewPayment"
+								v-if="actions.canPayNow"
 								variant="default"
 								class="w-full"
 								@click="showPaymentDialog = true"
 							>
-								{{ payment ? "View Payment" : "Pay Now" }}
+								Pay Now
 							</Button>
 
 							<!-- Cancel Action -->
@@ -351,7 +351,7 @@ const actions = computed(() => props.rental.available_actions);
 
 							<!-- No Actions Message -->
 							<p
-								v-if="!actions.canPayNow && !actions.canViewPayment && !actions.canCancel && !actions.canApprove"
+								v-if="!actions.canPayNow && !actions.canCancel && !actions.canApprove"
 								class="text-muted-foreground text-sm text-center"
 							>
 								No actions available at this time.
@@ -479,5 +479,10 @@ const actions = computed(() => props.rental.available_actions);
 	/>
 
 	<!-- Payment Dialog -->
-	<PaymentDialog v-model:show="showPaymentDialog" :rental="rental" :payment="payment" />
+	<PaymentDialog 
+		v-model:show="showPaymentDialog" 
+		:rental="rental" 
+		:payment="payment" 
+		:viewOnly="false"
+	/>
 </template>

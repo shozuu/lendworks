@@ -1,6 +1,6 @@
 <script setup>
 import AdminLayout from "@/Layouts/AdminLayout.vue";
-import { Head, router } from "@inertiajs/vue3";
+import { Head, router, Link } from "@inertiajs/vue3";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { formatDate } from "@/lib/formatters";
@@ -110,31 +110,42 @@ const handleReject = () => {
 
         <!-- Payments List -->
         <div v-if="payments.data.length" class="space-y-4">
-            <Card v-for="payment in payments.data" :key="payment.id" class="p-6">
-                <div class="flex items-start justify-between gap-4">
-                    <div class="space-y-1">
-                        <h3 class="font-medium">Reference #{{ payment.reference_number }}</h3>
-                        <div class="text-muted-foreground text-sm">
-                            <p>Submitted: {{ formatDate(payment.created_at) }}</p>
-                            <p>Rental Request: #{{ payment.rental_request_id }}</p>
-                            <p>Renter: {{ payment.rental_request.renter.name }}</p>
-                            <p>Amount: ₱{{ payment.rental_request.total_price }}</p>
+            <Link 
+                v-for="payment in payments.data" 
+                :key="payment.id"
+                :href="route('admin.rental-transactions.show', payment.rental_request_id)"
+                class="block"
+            >
+                <Card class="hover:bg-muted p-6 transition-colors">
+                    <!-- Existing card content -->
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="space-y-1">
+                            <h3 class="font-medium">Reference #{{ payment.reference_number }}</h3>
+                            <div class="text-muted-foreground text-sm">
+                                <p>Submitted: {{ formatDate(payment.created_at) }}</p>
+                                <p>Rental Request: #{{ payment.rental_request_id }}</p>
+                                <p>Renter: {{ payment.rental_request.renter.name }}</p>
+                                <p>Amount: ₱{{ payment.rental_request.total_price }}</p>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col items-end gap-2">
+                            <Badge :variant="payment.status === 'pending' ? 'warning' : payment.status === 'verified' ? 'success' : 'destructive'">
+                                {{ payment.status.charAt(0).toUpperCase() + payment.status.slice(1) }}
+                            </Badge>
+
+                            <div v-if="payment.status === 'pending'" class="flex gap-2">
+                                <Button 
+                                    variant="outline" 
+                                    @click.prevent="selectedPayment = payment"
+                                >
+                                    View Details
+                                </Button>
+                            </div>
                         </div>
                     </div>
-
-                    <div class="flex flex-col items-end gap-2">
-                        <Badge :variant="payment.status === 'pending' ? 'warning' : payment.status === 'verified' ? 'success' : 'destructive'">
-                            {{ payment.status.charAt(0).toUpperCase() + payment.status.slice(1) }}
-                        </Badge>
-
-                        <div v-if="payment.status === 'pending'" class="flex gap-2">
-                            <Button variant="outline" @click="selectedPayment = payment">
-                                View Details
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </Card>
+                </Card>
+            </Link>
             <PaginationLinks :paginator="payments" />
         </div>
         <div v-else class="text-muted-foreground py-10 text-center">
@@ -198,7 +209,7 @@ const handleReject = () => {
 
                     <!-- Action Buttons -->
                     <div class="flex justify-end gap-2 pt-4">
-                        <Button variant="destructive" @click="openRejectionDialog">
+                        <Button variant="destructive" @click="openRejectDialog(selectedPayment)">
                             Reject
                         </Button>
                         <Button @click="openVerifyDialog(selectedPayment)">

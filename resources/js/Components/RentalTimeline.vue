@@ -232,20 +232,8 @@ const handleDialogClose = () => {
 										<span class="font-medium">Reference Number:</span>
 										{{ event.metadata.reference_number }}
 									</p>
-									<p v-if="event.metadata.verified_by" class="mt-1 text-xs">
-										<span class="font-medium">Verified by:</span>
-										{{ event.metadata.verified_by }}
-									</p>
 								</div>
-								<!-- Add View Payment Details button if we have payment data -->
-								<Button 
-									v-if="event.metadata.payment_request"
-									variant="outline" 
-									size="sm"
-									@click="showPaymentDetails(event)"
-								>
-									View Payment Details
-								</Button>
+								
 							</div>
 							<p
 								v-if="event.metadata.feedback"
@@ -253,6 +241,15 @@ const handleDialogClose = () => {
 							>
 								"{{ event.metadata.feedback }}"
 							</p>
+							<!-- Add View Payment Details button if we have payment data -->
+							<Button 
+								v-if="event.metadata.payment_request"
+								variant="outline" 
+								size="sm"
+								@click="showPaymentDetails(event)"
+							>
+								View Payment Details
+							</Button>
 						</template>
 
 						<!-- Rejection/Cancellation Details -->
@@ -279,6 +276,7 @@ const handleDialogClose = () => {
 			:rental="rental"
 			:payment="selectedHistoricalPayment"
 			:historical="true"
+			:viewOnly="true"
 			@update:show="handleDialogClose"
 		/>
 	</div>

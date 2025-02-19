@@ -97,14 +97,14 @@ const actions = computed(() => props.rental.available_actions);
 			<div class="sm:justify-end flex flex-wrap gap-2">
 				<!-- Payment Actions -->
 				<Button
-					v-if="actions.canPayNow || actions.canViewPayment"
+					v-if="actions.canPayNow"
 					variant="default"
 					size="sm"
 					@click.stop="showPaymentDialog = true"
 				>
-					{{ payment ? "View Payment" : "Pay Now" }}
+					Pay Now
 				</Button>
-
+				
 				<!-- Cancel Action -->
 				<Button
 					v-if="actions.canCancel"
@@ -145,5 +145,10 @@ const actions = computed(() => props.rental.available_actions);
 	/>
 
 	<!-- Payment Dialog -->
-	<PaymentDialog v-model:show="showPaymentDialog" :rental="rental" :payment="payment" />
+	<PaymentDialog 
+		v-model:show="showPaymentDialog" 
+		:rental="rental" 
+		:payment="payment" 
+		:viewOnly="false"
+	/>
 </template>

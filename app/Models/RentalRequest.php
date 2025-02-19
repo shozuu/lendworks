@@ -156,7 +156,6 @@ class RentalRequest extends Model
             'canReject' => !$isRenter && $this->canReject(),
             'canCancel' => $this->canCancel(),
             'canPayNow' => $isRenter && $this->canPayNow(),
-            'canViewPayment' => $isRenter && $this->canViewPayment(),
         ];
     }
 
@@ -249,7 +248,8 @@ class RentalRequest extends Model
 
     public function canPayNow(): bool 
     {
-        return $this->status === self::STATUS_APPROVED && !$this->payment_request;
+        return $this->status === self::STATUS_APPROVED && 
+            (!$this->payment_request || $this->payment_request->status === 'rejected');
     }
 
     public function canViewPayment(): bool 
