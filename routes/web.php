@@ -78,9 +78,9 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     Route::get('/rental-transactions/{rental}', [AdminController::class, 'rentalTransactionDetails'])->name('rental-transactions.show');
     
     // Payment routes
-    Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
-    Route::post('/payments/{payment}/verify', [PaymentController::class, 'verify'])->name('payments.verify');
-    Route::post('/payments/{payment}/reject', [PaymentController::class, 'reject'])->name('payments.reject');
+    Route::get('/payments', [AdminController::class, 'payments'])->name('payments');
+    Route::post('/payments/{payment}/verify', [AdminController::class, 'verifyPayment'])->name('payments.verify');
+    Route::post('/payments/{payment}/reject', [AdminController::class, 'rejectPayment'])->name('payments.reject');
 });
 
 Route::get('/', [ListingController::class, 'index'])->name('home');
