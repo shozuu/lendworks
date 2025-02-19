@@ -146,8 +146,8 @@ const handleReject = () => {
             <DialogContent class="sm:max-w-xl">
                 <DialogHeader>
                     <DialogTitle>Payment Request Details</DialogTitle>
-                    <DialogDescription>
-                        Reference #{{ selectedPayment?.reference_number }}
+                    <DialogDescription v-if="selectedPayment">
+                        Reference #{{ selectedPayment.reference_number }}
                         <p><span class="font-medium">Submitted:</span> {{ formatDate(selectedPayment.created_at) }}</p>
                     </DialogDescription>
                 </DialogHeader>
