@@ -1,6 +1,15 @@
 <script setup>
 import { Link } from "@inertiajs/vue3";
 
+/**
+ * AdminSidebar Component Modifications
+ * Last Modified: [Current Date]
+ * 
+ * Changes:
+ * 1. Added new System navigation item
+ * 2. Updated navigation array with system management link
+ */
+
 const navigation = [
     { name: "Dashboard", href: route("admin.dashboard"), icon: "pie-chart" },
     { name: "Users", href: route("admin.users"), icon: "users" },
@@ -9,6 +18,11 @@ const navigation = [
         name: "Rental Transactions", 
         href: route("admin.rental-transactions"), 
         icon: "exchange" 
+    },
+    { 
+        name: "System", 
+        href: route("admin.system"), 
+        icon: "gear",  // Using FontAwesome gear icon
     },
 ];
 </script>

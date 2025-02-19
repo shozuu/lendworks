@@ -19,13 +19,131 @@ use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
 {
+    /**
+     * Change Log - AdminController.php
+     * 
+     * Changes Made:
+     * 1. Enhanced dashboard() method with additional statistics:
+     *    - Added recentActivity metrics for today's activities
+     *    - Added categoryBreakdown for listing categories distribution
+     *    - Added listingPriceDistribution for price range analysis
+     *    - Added topLocations to show most active cities
+     *    - Added mostActiveUsers to track top contributors
+     *    - Added userGrowth metrics for different time periods
+     * 
+     * 2. Improved error handling:
+     *    - Added null checks with fallback values
+     *    - Added error handling for potentially missing relationships
+     *    - Added proper data formatting for frontend consumption
+     * 
+     * 3. Optimized database queries:
+     *    - Used proper aggregates and grouping
+     *    - Implemented eager loading for relationships
+     *    - Added efficient filtering for approved listings
+     */
+
     public function dashboard()
     {
+        // Base stats calculation
+        $activeListingsCount = Listing::where('status', 'approved')
+                                     ->where('is_available', true)
+                                     ->count();
+        
+        $totalRejectedListings = Listing::where('status', 'rejected')->count();
+        $totalTakenDownListings = Listing::where('status', 'taken_down')->count();
+
         $stats = [
             'totalUsers' => User::count(),
             'totalListings' => Listing::count(),
             'pendingApprovals' => Listing::where('status', 'pending')->count(),
             'activeUsers' => User::where('status', 'active')->count(),
+            'verifiedUsers' => User::where('email_verified_at', '!=' , null)->count(),
+            'newUsersThisMonth' => User::whereMonth('created_at', now()->month)->count(),
+            'activeListings' => Listing::where('status', 'approved')
+                                     ->where('is_available', true)
+                                     ->count(),
+            'suspendedUsers' => User::where('status', 'suspended')->count(),
+            'listingStats' => [
+                'approved' => $activeListingsCount,
+                'rejected' => $totalRejectedListings,
+                'takenDown' => $totalTakenDownListings,
+            ],
+            'averageListingPrice' => Listing::where('status', 'approved')
+                                          ->average('price') ?? 0,
+            'highestListingPrice' => Listing::where('status', 'approved')
+                                          ->max('price') ?? 0,
+            'lowestListingPrice' => Listing::where('status', 'approved')
+                                         ->where('price', '>', 0)
+                                         ->min('price') ?? 0,
+            'unverifiedUsers' => User::whereNull('email_verified_at')->count(),
+
+            // Add recent activity stats
+            'recentActivity' => [
+                'newUsersToday' => User::whereDate('created_at', today())->count(),
+                'newListingsToday' => Listing::whereDate('created_at', today())->count(),
+                'pendingApprovalsToday' => Listing::where('status', 'pending')
+                                                ->whereDate('created_at', today())
+                                                ->count(),
+            ],
+
+            // Add category breakdown
+            'categoryBreakdown' => Listing::where('status', 'approved')
+                ->select('category_id', DB::raw('count(*) as count'))
+                ->groupBy('category_id')
+                ->with('category:id,name')
+                ->get()
+                ->map(fn($item) => [
+                    'name' => $item->category->name ?? 'Uncategorized',
+                    'count' => $item->count,
+                ]),
+
+            // Add price distribution
+            'listingPriceDistribution' => [
+                'under100' => Listing::where('status', 'approved')
+                                    ->where('price', '<', 100)->count(),
+                'under500' => Listing::where('status', 'approved')
+                                    ->whereBetween('price', [100, 499])->count(),
+                'under1000' => Listing::where('status', 'approved')
+                                     ->whereBetween('price', [500, 999])->count(),
+                'over1000' => Listing::where('status', 'approved')
+                                    ->where('price', '>=', 1000)->count(),
+            ],
+
+            // Add top locations
+            'topLocations' => Listing::where('status', 'approved')
+                ->select('location_id', DB::raw('count(*) as count'))
+                ->groupBy('location_id')
+                ->with('location:id,city')
+                ->orderByDesc('count')
+                ->limit(5)
+                ->get()
+                ->map(fn($item) => [
+                    'city' => $item->location->city ?? 'Unknown',
+                    'count' => $item->count,
+                ]),
+
+            // Add most active users
+            'mostActiveUsers' => User::withCount(['listings' => function($query) {
+                    $query->where('status', 'approved');
+                }])
+                ->orderByDesc('listings_count')
+                ->limit(5)
+                ->get(['id', 'name', 'email'])
+                ->map(fn($user) => [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'listings_count' => $user->listings_count,
+                ]),
+
+            // Growth stats
+            'userGrowth' => [
+                'lastWeek' => User::whereBetween('created_at', 
+                    [now()->subWeek(), now()])->count(),
+                'lastMonth' => User::whereBetween('created_at', 
+                    [now()->subMonth(), now()])->count(),
+                'last3Months' => User::whereBetween('created_at', 
+                    [now()->subMonths(3), now()])->count(),
+            ],
         ];
 
         return Inertia::render('Admin/Dashboard', [
@@ -52,6 +170,15 @@ class AdminController extends Controller
             }
         }
 
+        // Verification filter
+        if ($verified = $request->input('verified')) {
+            if ($verified === 'verified') {
+                $query->whereNotNull('email_verified_at');
+            } elseif ($verified === 'unverified') {
+                $query->whereNull('email_verified_at');
+            }
+        }
+
         // Sort
         switch ($request->input('sortBy', 'latest')) {
             case 'oldest':
@@ -71,7 +198,7 @@ class AdminController extends Controller
 
         return Inertia::render('Admin/Users', [
             'users' => $users,
-            'filters' => $request->only(['search', 'status', 'sortBy'])
+            'filters' => $request->only(['search', 'status', 'sortBy', 'verified'])
         ]);
     }
 

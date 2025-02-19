@@ -30,6 +30,7 @@ const props = defineProps({
 			search: "",
 			status: "all",
 			sortBy: "latest",
+			verified: "all",
 		}),
 	},
 });
@@ -45,6 +46,7 @@ const getStatusBadge = (status) => {
 const search = ref(props.filters?.search ?? "");
 const status = ref(props.filters?.status ?? "all");
 const sortBy = ref(props.filters?.sortBy ?? "latest");
+const verified = ref(props.filters?.verified ?? "all");
 const showDialog = ref(false);
 const selectedUser = ref(null);
 const action = ref(null);
@@ -78,6 +80,10 @@ watch(status, (newVal) => {
 // Update watch handler for sort
 watch(sortBy, (newVal) => {
 	updateFilters({ sortBy: newVal }); // Changed from 'sort' to 'sortBy'
+});
+
+watch(verified, (newVal) => {
+	updateFilters({ verified: newVal });
 });
 
 const confirmAction = (user, actionType) => {
@@ -126,6 +132,20 @@ const handleAction = () => {
 					</SelectContent>
 				</Select>
 
+				 <!-- Verification Filter -->
+                <Select v-model="verified" defaultValue="all">
+                    <SelectTrigger class="w-full sm:w-[140px]">
+                        <SelectValue placeholder="Verification" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectLabel class="p-1 text-center">Verification Status</SelectLabel>
+                        <Separator class="my-2" />
+                        <SelectItem value="all">All Users</SelectItem>
+                        <SelectItem value="verified">Verified</SelectItem>
+                        <SelectItem value="unverified">Unverified</SelectItem>
+                    </SelectContent>
+                </Select>
+
 				<!-- Sort -->
 				<Select v-model="sortBy" defaultValue="latest">
 					<!-- Added defaultValue -->
@@ -164,6 +184,9 @@ const handleAction = () => {
 								<Badge :variant="getStatusBadge(user.status).variant">
 									{{ getStatusBadge(user.status).label }}
 								</Badge>
+								<Badge :variant="user.email_verified_at ? 'success' : 'secondary'">
+                                    {{ user.email_verified_at ? 'Verified' : 'Unverified' }}
+                                </Badge>
 							</div>
 							<div class="space-y-1 text-xs sm:text-sm text-muted-foreground">
 								<p class="truncate">{{ user.email }}</p>

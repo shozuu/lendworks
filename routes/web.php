@@ -1,6 +1,16 @@
 <?php
 
+/**
+ * Routes File Modifications
+ * Last Modified: [Current Date]
+ * 
+ * Changes:
+ * 1. Added SystemManagementController import
+ * 2. Added new system management routes in admin group
+ */
+
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\SystemManagementController; // New import for system management
 use App\Http\Controllers\Admin\RentalTransactionsController;
 use App\Http\Controllers\ExploreController;
 use App\Http\Controllers\LenderDashboardController;
@@ -71,6 +81,16 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
         ->name('rental-transactions');
     Route::get('/rental-transactions/{rental}', [RentalTransactionsController::class, 'show'])
         ->name('rental-transactions.show');
+
+    /**
+     * System Management Routes
+     * These routes handle system-level operations and monitoring
+     * All routes require admin authentication
+     */
+    Route::get('/system', [SystemManagementController::class, 'index'])->name('system');
+    Route::post('/system/clear-cache', [SystemManagementController::class, 'clearCache'])->name('system.clear-cache');
+    Route::post('/system/maintenance', [SystemManagementController::class, 'toggleMaintenance'])->name('system.maintenance');
+    Route::post('/system/optimize', [SystemManagementController::class, 'optimizeSystem'])->name('system.optimize');
 });
 
 Route::get('/', [ListingController::class, 'index'])->name('home');
