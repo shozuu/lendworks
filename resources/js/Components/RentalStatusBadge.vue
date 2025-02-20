@@ -40,7 +40,7 @@ const statusInfo = computed(() => {
 				label: "Approved",
 				variant: "info",
 			};
-		case "renter_paid":
+		case "to_handover":
 			return {
 				label: "Payment Verified",
 				variant: "success",

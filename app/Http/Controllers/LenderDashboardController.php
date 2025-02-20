@@ -25,6 +25,7 @@ class LenderDashboardController extends Controller
             ])
             ->get();
 
+        // Group listings by rental request status
         $groupedListings = [
             'pending' => $listings->flatMap(function($listing) {
                 return $listing->rentalRequests
@@ -38,16 +39,20 @@ class LenderDashboardController extends Controller
                     ->sortBy('created_at') // First approved first
                     ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
             })->values(),
-            'payments' => $listings->flatMap(function($listing) {
-                return $listing->rentalRequests
-                    ->filter(fn($req) => $req->status === 'approved' && $req->payment_request)
-                    ->sortBy('created_at') // First payment submitted first
-                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
-            })->values(),
             'to_handover' => $listings->flatMap(function($listing) {
                 return $listing->rentalRequests
-                    ->filter(fn($req) => $req->status === 'payment_verified' && !$req->handover_at)
+                    ->where('status', 'to_handover')
                     ->sortBy('created_at') // First payment verified first
+                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
+            })->values(),
+            'payments' => $listings->flatMap(function($listing) {
+                return $listing->rentalRequests
+                    ->filter(fn($req) => 
+                        $req->status === 'approved' && 
+                        $req->payment_request && 
+                        in_array($req->status_for_display, ['payment_pending', 'payment_rejected'])
+                    )
+                    ->sortBy('created_at') // First payment submitted first
                     ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
             })->values(),
             'active' => $listings->flatMap(function($listing) {
@@ -82,7 +87,25 @@ class LenderDashboardController extends Controller
             })->values(),
         ];
 
-        $rentalStats = collect($groupedListings)->map->count();
+        $rentalStats = [
+            'pending' => $listings->flatMap->rentalRequests->where('status', 'pending')->count(),
+            'approved' => $listings->flatMap->rentalRequests
+                ->filter(fn($req) => $req->status === 'approved' && !$req->payment_request)
+                ->count(),
+            'payments' => $listings->flatMap->rentalRequests
+                ->whereIn('status_for_display', ['payment_pending', 'payment_rejected'])
+                ->count(),
+            'to_handover' => $listings->flatMap->rentalRequests->where('status', 'to_handover')->count(),
+            'active' => $listings->flatMap->rentalRequests
+                ->filter(fn($req) => $req->status === 'active' && !$req->return_at)
+                ->count(),
+            'pending_returns' => $listings->flatMap->rentalRequests
+                ->filter(fn($req) => $req->status === 'active' && $req->return_at)
+                ->count(),
+            'completed' => $listings->flatMap->rentalRequests->where('status', 'completed')->count(),
+            'rejected' => $listings->flatMap->rentalRequests->where('status', 'rejected')->count(),
+            'cancelled' => $listings->flatMap->rentalRequests->where('status', 'cancelled')->count(),
+        ];
 
         $rejectionReasons = RentalRejectionReason::select('id', 'label', 'code', 'description')
             ->get()

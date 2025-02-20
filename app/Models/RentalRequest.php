@@ -46,7 +46,7 @@ class RentalRequest extends Model
     const STATUS_COMPLETED = 'completed';
     const STATUS_REJECTED = 'rejected';
     const STATUS_CANCELLED = 'cancelled';
-    const STATUS_RENTER_PAID = 'renter_paid';
+    const STATUS_TO_HANDOVER = 'to_handover';
 
     // Update the status display logic
     public function getStatusForDisplayAttribute(): string 
@@ -59,7 +59,7 @@ class RentalRequest extends Model
                 case 'rejected':
                     return 'payment_rejected';
                 case 'verified':
-                    return self::STATUS_RENTER_PAID;
+                    return self::STATUS_TO_HANDOVER;
             }
         }
         return $this->status;

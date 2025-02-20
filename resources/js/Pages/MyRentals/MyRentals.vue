@@ -28,6 +28,7 @@ const tabs = [
 		label: "Payments",
 		statuses: ["payment_pending", "payment_rejected"],
 	},
+	{ id: "to_handover", label: "To Receive" }, 
 	{ id: "active", label: "Active" },
 	{ id: "completed", label: "Completed" },
 	{ id: "rejected", label: "Rejected" },

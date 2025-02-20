@@ -408,7 +408,7 @@ class AdminController extends Controller
             'total' => RentalRequest::count(),
             'pending' => RentalRequest::where('status', 'pending')->count(),
             'approved' => RentalRequest::where('status', 'approved')->count(),
-            'renter_paid' => RentalRequest::where('status', 'renter_paid')->count(),
+            'to_handover' => RentalRequest::where('status', 'to_handover')->count(),
             'active' => RentalRequest::where('status', 'active')->count(),
             'completed' => RentalRequest::where('status', 'completed')->count(),
             'rejected' => RentalRequest::where('status', 'rejected')->count(),
@@ -505,7 +505,7 @@ class AdminController extends Controller
             $payment->update(['status' => 'verified']);
 
             // Update rental request status
-            $payment->rentalRequest->update(['status' => 'renter_paid']);
+            $payment->rentalRequest->update(['status' => 'to_handover']);
 
             // Add timeline event with payment request data
             $payment->rentalRequest->recordTimelineEvent('payment_verified', Auth::id(), [

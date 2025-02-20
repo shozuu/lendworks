@@ -33,14 +33,15 @@ class MyRentalsController extends Controller
             })
             ->toArray();
 
-        // Stats for renter's view
+        // Stats for renter's view - ensure stats match the actual groups
         $stats = [
             'pending' => $rentals->where('status', 'pending')->count(),
             'approved' => $rentals->where('status', 'approved')
                 ->filter(function ($rental) {
                     return !$rental->payment_request;
                 })->count(),
-            'payments' => $rentals->whereIn('status_for_display', ['payment_pending', 'payment_rejected'])->count(), // renter_paid is to handover
+            'payments' => $rentals->whereIn('status_for_display', ['payment_pending', 'payment_rejected'])->count(),
+            'to_receive' => $rentals->where('status', 'to_handover')->count(),
             'active' => $rentals->where('status', 'active')->count(),
             'completed' => $rentals->where('status', 'completed')->count(),
             'rejected' => $rentals->where('status', 'rejected')->count(),

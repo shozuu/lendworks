@@ -22,7 +22,7 @@ return new class extends Migration
             $table->enum('status', [
                 'pending',      // Initial state when request is made
                 'approved',     // Owner approved, awaiting/processing payment
-                'renter_paid', // Payment verified by admin
+                'to_handover', // Payment verified by admin
                 'active',      // Item has been handed over
                 'completed',   // Item has been returned and confirmed
                 'rejected',    // Owner rejected the request
