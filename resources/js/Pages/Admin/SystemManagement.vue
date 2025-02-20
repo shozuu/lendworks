@@ -256,7 +256,7 @@ const confirmMaintenance = () => {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Name</TableHead>
-                                    <TableHead>Slug</TableHead>
+                                    <!--<TableHead>Slug</TableHead>-->
                                     <TableHead>Total Listings</TableHead>
                                     <TableHead class="text-right">Actions</TableHead>
                                 </TableRow>
@@ -264,7 +264,7 @@ const confirmMaintenance = () => {
                             <TableBody>
                                 <TableRow v-for="category in categories" :key="category.id">
                                     <TableCell>{{ category.name }}</TableCell>
-                                    <TableCell>{{ category.slug }}</TableCell>
+                                    <!--<TableCell>{{ category.slug }}</TableCell>-->
                                     <TableCell>{{ category.listings_count }}</TableCell>
                                     <TableCell class="text-right space-x-2">
                                         <Button 
