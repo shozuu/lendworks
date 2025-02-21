@@ -40,6 +40,11 @@ const statusInfo = computed(() => {
 				label: "Approved",
 				variant: "info",
 			};
+		case "pending_proof":
+			return {
+				label: "Awaiting Confirmation",
+				variant: "warning",
+			};
 		case "to_handover":
 			return {
 				label: "Payment Verified",

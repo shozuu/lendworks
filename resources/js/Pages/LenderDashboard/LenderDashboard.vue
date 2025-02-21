@@ -39,7 +39,16 @@ const handleValueChange = (value) => {
 
 // Computed property to handle payment-related rentals
 const groupedListings = computed(() => {
-    return props.groupedListings; 
+	const result = { ...props.groupedListings };
+
+	// If there are to_handover items, combine them with pending_proof
+	if (result.to_handover || result.pending_proof) {
+		result.to_handover = [...(result.to_handover || []), ...(result.pending_proof || [])];
+		// Remove the pending_proof array
+		delete result.pending_proof;
+	}
+
+	return result;
 });
 </script>
 

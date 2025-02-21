@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import BaseRentalCard from "@/Components/BaseRentalCard.vue";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import PaymentDialog from "@/Components/PaymentDialog.vue";
+import HandoverDialog from "@/Components/HandoverDialog.vue";
 import { useForm } from "@inertiajs/vue3";
 
 const props = defineProps({
@@ -20,6 +21,7 @@ const props = defineProps({
 
 const showCancelDialog = ref(false);
 const showPaymentDialog = ref(false);
+const showHandoverDialog = ref(false);
 
 // Update the cancelForm to include reason
 const cancelForm = useForm({
@@ -105,6 +107,16 @@ const actions = computed(() => props.rental.available_actions);
 					Pay Now
 				</Button>
 				
+				<!-- Handover Actions -->
+				<Button
+					v-if="actions.canReceive"
+					variant="default"
+					size="sm"
+					@click.stop="showHandoverDialog = true"
+				>
+					Confirm Receipt
+				</Button>
+
 				<!-- Cancel Action -->
 				<Button
 					v-if="actions.canCancel"
@@ -150,5 +162,12 @@ const actions = computed(() => props.rental.available_actions);
 		:rental="rental" 
 		:payment="payment" 
 		:viewOnly="false"
+	/>
+
+	<!-- Handover Dialog -->
+	<HandoverDialog
+		v-model:show="showHandoverDialog"
+		:rental="rental"
+		:type="actions.canHandover ? 'handover' : 'receive'"
 	/>
 </template>

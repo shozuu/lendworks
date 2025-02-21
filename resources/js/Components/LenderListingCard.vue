@@ -5,6 +5,7 @@ import BaseRentalCard from "@/Components/BaseRentalCard.vue";
 import { Button } from "@/components/ui/button";
 import { useForm } from "@inertiajs/vue3";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
+import HandoverDialog from "@/Components/HandoverDialog.vue";
 
 const props = defineProps({
 	data: {
@@ -53,6 +54,7 @@ const details = computed(() => [
 const showRejectDialog = ref(false);
 const showAcceptDialog = ref(false);
 const showCancelDialog = ref(false);
+const showHandoverDialog = ref(false);
 const approveForm = useForm({});
 const rejectForm = useForm({
 	rejection_reason_id: "",
@@ -112,7 +114,7 @@ const paymentRequest = computed(() => props.data.rental_request.payment_request)
 		:title="data.listing.title"
 		:image="listingImage"
 		:status="data.rental_request.status"
-		 :payment-request="paymentRequest"
+		:payment-request="paymentRequest"
 		:listing-id="data.listing.id"
 		:details="details"
 		@click="$inertia.visit(route('rental.show', data.rental_request.id))"
@@ -148,6 +150,15 @@ const paymentRequest = computed(() => props.data.rental_request.payment_request)
 					@click.stop="showCancelDialog = true"
 				>
 					Cancel Request
+				</Button>
+
+				<Button
+					v-if="actions.canHandover"
+					variant="default"
+					size="sm"
+					@click.stop="showHandoverDialog = true"
+				>
+					Hand Over Item
 				</Button>
 			</div>
 		</template>
@@ -214,5 +225,12 @@ const paymentRequest = computed(() => props.data.rental_request.payment_request)
 		@update:textareaValue="cancelForm.custom_feedback = $event"
 		@confirm="handleCancel"
 		@cancel="showCancelDialog = false"
+	/>
+
+	<!-- Handover Dialog -->
+	<HandoverDialog
+		v-model:show="showHandoverDialog"
+		:rental="data.rental_request"
+		type="handover"
 	/>
 </template>

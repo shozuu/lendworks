@@ -13,22 +13,18 @@ import { ref, computed } from "vue";
 import { formatLabel } from "@/lib/formatters";
 
 const props = defineProps({
-	rentals: Object,
-	stats: Object,
+	groupedRentals: Object,
+	rentalStats: Object,
 	cancellationReasons: Array,
 });
-console.log(props.rentals);
+console.log(props.groupedRentals);
 const selectedTab = ref("pending");
 
 const tabs = [
 	{ id: "pending", label: "Pending" },
 	{ id: "approved", label: "Approved" },
-	{
-		id: "payments",
-		label: "Payments",
-		statuses: ["payment_pending", "payment_rejected"],
-	},
-	{ id: "to_handover", label: "To Receive" }, 
+	{ id: "payments", label: "Payments" },
+	{ id: "to_receive", label: "To Receive" },
 	{ id: "active", label: "Active" },
 	{ id: "completed", label: "Completed" },
 	{ id: "rejected", label: "Rejected" },
@@ -37,18 +33,25 @@ const tabs = [
 
 // Computed property to handle payment-related rentals
 const groupedRentals = computed(() => {
-	const result = { ...props.rentals };
-	// Create payments group
-	result.payments = [];
+	const result = { ...props.groupedRentals };
 
-	// Get all payment-related rentals
-	tabs
-		.find((t) => t.id === "payments")
-		?.statuses.forEach((status) => {
-			if (props.rentals[status]) {
-				result.payments.push(...props.rentals[status]);
+	// Create payments group if it doesn't exist
+	if (!result.payments) {
+		result.payments = [];
+		// Get all payment-related rentals
+		["payment_pending", "payment_rejected"].forEach((status) => {
+			if (props.groupedRentals[status]) {
+				result.payments.push(...props.groupedRentals[status]);
 			}
 		});
+	}
+
+	// Handle to_receive group (renamed from to_handover)
+	if (result.to_handover || result.pending_proof) {
+		result.to_receive = [...(result.to_handover || []), ...(result.pending_proof || [])];
+		delete result.to_handover;
+		delete result.pending_proof;
+	}
 
 	return result;
 });
@@ -72,7 +75,7 @@ const handleValueChange = (value) => {
 		<!-- status summary cards -->
 		<div class="md:grid-cols-3 lg:grid-cols-6 grid grid-cols-2 gap-3">
 			<StatCard
-				v-for="(count, status) in stats"
+				v-for="(count, status) in rentalStats"
 				:key="status"
 				:label="formatLabel(status)"
 				:value="count"
