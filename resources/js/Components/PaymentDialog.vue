@@ -27,19 +27,16 @@ import {
 } from "@/components/ui/form";
 import ImageUpload from "@/Components/ImageUpload.vue";
 import RentalStatusBadge from "@/Components/RentalStatusBadge.vue";
+import { ChevronRight } from "lucide-vue-next";
 
 const props = defineProps({
 	show: Boolean,
 	rental: Object,
 	payment: Object,
-	historical: {
-		type: Boolean,
-		default: false
-	},
 	viewOnly: {
 		type: Boolean,
-		default: false
-	}
+		default: false,
+	},
 });
 
 const emit = defineEmits(["update:show"]);
@@ -113,27 +110,27 @@ const getPaymentProofUrl = (path) => {
 
 // Add computed property for submission date
 const formatDate = (dateString) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    });
+	if (!dateString) return "";
+	return new Date(dateString).toLocaleDateString("en-US", {
+		year: "numeric",
+		month: "long",
+		day: "numeric",
+		hour: "2-digit",
+		minute: "2-digit",
+	});
 };
 
 // Add computed for admin route check
 const isAdminRoute = computed(() => {
-    return window.location.pathname.startsWith('/admin');
+	return window.location.pathname.startsWith("/admin");
 });
 
 // Add computed for rental transaction route
 const transactionRoute = computed(() => {
-    if (!props.rental) return null;
-    return isAdminRoute.value
-        ? route('admin.rental-transactions.show', props.rental.id)
-        : route('rental.show', props.rental.id);
+	if (!props.rental) return null;
+	return isAdminRoute.value
+		? route("admin.rental-transactions.show", props.rental.id)
+		: route("rental.show", props.rental.id);
 });
 </script>
 
@@ -142,54 +139,57 @@ const transactionRoute = computed(() => {
 		<DialogContent class="sm:max-w-md flex flex-col max-h-[90vh]">
 			<DialogHeader>
 				<DialogTitle>
-					 {{ viewOnly ? 'Payment Details' : historical ? 'Historical Payment Details' : 'Payment Details' }}
+					{{ viewOnly ? "Historical Payment Details" : "Submit Payment" }}
 				</DialogTitle>
 				<DialogDescription>
 					{{
-						viewOnly 
-							? "Review payment details below"
-							: historical 
-								? 'View payment details as they were at this point in time'
-								: payment
-									? "Review your payment details below"
-									: "Choose your preferred payment method below"
+						viewOnly
+							? "View payment details as they were at this point in time"
+							: "Choose your preferred payment method below"
 					}}
 				</DialogDescription>
 			</DialogHeader>
 
 			<ScrollArea class="flex-1 pr-2 overflow-y-auto">
-				<!-- Show existing payment if it exists and we're in view/historical mode -->
-				<div v-if="payment && (viewOnly || historical)" class="space-y-6">
-					 <!-- Rental Context Section - Add this section -->
-                    <div class="bg-muted p-4 space-y-3 rounded-lg">
-                        <div class="flex items-start gap-4">
-                            <!-- Listing Image -->
-                            <img 
-                                :src="rental.listing.images[0]?.image_path 
-                                    ? `/storage/${rental.listing.images[0].image_path}`
-                                    : '/storage/images/listing/default.png'"
-                                class="object-cover w-20 h-20 rounded-md"
-                                :alt="rental.listing.title"
-                            />
-                            <div class="flex-1 min-w-0">
-                                <h4 class="font-medium truncate">
-                                    {{ rental?.listing?.title }}
-                                </h4>
-                                <div class="text-muted-foreground space-y-1 text-sm">
-                                    <p><span class="font-medium">Lender:</span> {{ rental?.listing?.user?.name }}</p>
-                                    <p><span class="font-medium">Renter:</span> {{ rental?.renter?.name }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        <Link 
-                            v-if="transactionRoute"
-                            :href="transactionRoute"
-                            class="text-primary hover:underline inline-flex items-center gap-1 text-sm"
-                        >
-                            View Rental Transaction Details
-                            <ChevronRight class="w-4 h-4" />
-                        </Link>
-                    </div>
+				<!-- Show existing payment if it exists and we're in view-only mode -->
+				<div v-if="payment && viewOnly" class="space-y-6">
+					<!-- listing card -->
+					<div class="bg-muted p-4 space-y-3 rounded-lg">
+						<div class="flex items-start gap-4">
+							<!-- Listing Image -->
+							<img
+								:src="
+									rental.listing.images[0]?.image_path
+										? `/storage/${rental.listing.images[0].image_path}`
+										: '/storage/images/listing/default.png'
+								"
+								class="object-cover w-20 h-20 rounded-md"
+								:alt="rental.listing.title"
+							/>
+							<div class="flex-1 min-w-0">
+								<h4 class="font-medium truncate">
+									{{ rental?.listing?.title }}
+								</h4>
+								<div class="text-muted-foreground space-y-1 text-sm">
+									<p>
+										<span class="font-medium">Lender:</span>
+										{{ rental?.listing?.user?.name }}
+									</p>
+									<p>
+										<span class="font-medium">Renter:</span> {{ rental?.renter?.name }}
+									</p>
+								</div>
+							</div>
+						</div>
+						<Link
+							v-if="transactionRoute"
+							:href="transactionRoute"
+							class="text-primary hover:underline inline-flex items-center gap-1 text-sm"
+						>
+							View Rental Transaction Details
+							<ChevronRight class="w-4 h-4" />
+						</Link>
+					</div>
 
 					<!-- Payment Summary with Status Badge -->
 					<div class="bg-muted p-4 space-y-4 rounded-lg">
@@ -207,10 +207,6 @@ const transactionRoute = computed(() => {
 							<div class="flex justify-between">
 								<span>Submitted:</span>
 								<span>{{ formatDate(payment.created_at) }}</span>
-							</div>
-							<div v-if="payment.verified_at" class="flex justify-between">
-								<span>Verified:</span>
-								<span>{{ formatDate(payment.verified_at) }}</span>
 							</div>
 						</div>
 					</div>
@@ -254,8 +250,8 @@ const transactionRoute = computed(() => {
 					</div>
 				</div>
 
-				 <!-- Show payment form if no payment exists or we're not in view/historical mode -->
-				<div v-else-if="!viewOnly && (!payment || !historical)" class="space-y-6">
+				<!-- Show payment form if no payment exists or we're not in view/historical mode -->
+				<div v-else-if="!viewOnly" class="space-y-6">
 					<!-- Payment Amount -->
 					<div class="bg-muted p-4 rounded-lg">
 						<div class="flex items-center justify-between font-medium">
@@ -329,13 +325,6 @@ const transactionRoute = computed(() => {
 					</div>
 				</div>
 			</ScrollArea>
-
-			<!-- Add a note for historical views -->
-			<Alert v-if="historical && payment" variant="info" class="mt-4">
-				<AlertDescription class="text-sm">
-					This is a historical view of the payment as it was at the time of {{ formatDate(payment.created_at) }}.
-				</AlertDescription>
-			</Alert>
 		</DialogContent>
 	</Dialog>
 </template>

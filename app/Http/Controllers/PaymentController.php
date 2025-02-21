@@ -15,6 +15,7 @@ class PaymentController extends Controller
     public function index()
     {
         $payments = PaymentRequest::with(['rentalRequest.listing', 'rentalRequest.renter'])
+            ->select(['id', 'rental_request_id', 'reference_number', 'payment_proof_path', 'status', 'admin_feedback', 'verified_by', 'verified_at', 'created_at'])
             ->latest()
             ->paginate(10);
 
