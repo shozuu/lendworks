@@ -155,7 +155,10 @@ const handleCategoryChange = (categoryId) => {
                 <div class="flex-1 mt-6 space-y-6 overflow-y-auto">
                     <!-- Price Range Section -->
                     <div class="space-y-3">
-                        <h4 class="font-medium text-sm text-gray-700 dark:text-gray-300">Daily Rate</h4>
+                        <div>
+                            <h4 class="font-medium text-sm text-gray-700 dark:text-gray-300">Daily Rate</h4>
+                            <p class="text-xs text-muted-foreground mt-1">Enter custom range or select a predefined range below</p>
+                        </div>
                         <!-- Add min/max price inputs -->
                         <div class="flex gap-2 items-center mb-3">
                             <div class="relative">
@@ -199,7 +202,10 @@ const handleCategoryChange = (categoryId) => {
 
                     <!-- Time Frame Section -->
                     <div class="space-y-3">
-                        <h4 class="font-medium text-sm text-gray-700 dark:text-gray-300">Time Frame</h4>
+                        <div>
+                            <h4 class="font-medium text-sm text-gray-700 dark:text-gray-300">Time Frame</h4>
+                            <p class="text-xs text-muted-foreground mt-1">Filter tools by when they were listed</p>
+                        </div>
                         <div class="space-y-1.5">
                             <button
                                 v-for="time in timeFrames"
@@ -275,7 +281,10 @@ const handleCategoryChange = (categoryId) => {
                     <!--<h3 class="font-semibold text-lg">Filters</h3>-->
                     
                     <div class="space-y-3">
-                        <h4 class="font-medium text-sm text-gray-700 dark:text-gray-300">Daily Rate</h4>
+                        <div>
+                            <h4 class="font-medium text-sm text-gray-700 dark:text-gray-300">Daily Rate</h4>
+                            <p class="text-xs text-muted-foreground mt-1">Enter custom range or select a predefined range below</p>
+                        </div>
                         <div class="flex gap-2 items-center">
                             <div class="relative">
                                 <span class="absolute left-3 top-2 text-gray-500 dark:text-gray-400">₱</span>
@@ -322,7 +331,10 @@ const handleCategoryChange = (categoryId) => {
 
                     <!-- Time frame filter -->
                     <div class="space-y-3">
-                        <h4 class="font-medium text-sm text-gray-700 dark:text-gray-300">Time Frame</h4>
+                        <div>
+                            <h4 class="font-medium text-sm text-gray-700 dark:text-gray-300">Time Frame</h4>
+                            <p class="text-xs text-muted-foreground mt-1">Filter tools by when they were listed</p>
+                        </div>
                         <div class="space-y-1.5">
                             <button
                                 v-for="time in timeFrames"
