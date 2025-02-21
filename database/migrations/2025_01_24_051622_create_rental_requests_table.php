@@ -20,13 +20,14 @@ return new class extends Migration
             $table->integer('deposit_fee');
             $table->integer('total_price'); 
             $table->enum('status', [
-                'pending',      // Initial state when request is made
-                'approved',     // Owner approved, awaiting/processing payment
-                'to_handover', // Payment verified by admin
-                'active',      // Item has been handed over
-                'completed',   // Item has been returned and confirmed
-                'rejected',    // Owner rejected the request
-                'cancelled'    // Renter cancelled the request
+                'pending',        // Initial state when request is made
+                'approved',       // Owner approved, awaiting/processing payment
+                'to_handover',    // Payment verified by admin
+                'pending_proof',  // Waiting for handover/receive proofs
+                'active',        // Item has been handed over and received
+                'completed',     // Item has been returned and confirmed
+                'rejected',      // Owner rejected the request
+                'cancelled'      // Renter cancelled the request
             ])->default('pending');
             $table->timestamp('handover_at')->nullable();
             $table->timestamp('return_at')->nullable();

@@ -11,6 +11,7 @@ use App\Http\Controllers\MyListingsController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RentalRequestController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\HandoverController;
 use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -54,6 +55,11 @@ Route::middleware(['auth', 'verified'])->group(function() {
 
     // payment submission
     Route::post('/rentals/{rental}/submit-payment', [PaymentController::class, 'store'])->name('rentals.submit-payment');
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::post('/rentals/{rental}/handover', [HandoverController::class, 'submitHandover'])->name('rentals.submit-handover');
+    Route::post('/rentals/{rental}/receive', [HandoverController::class, 'submitReceive'])->name('rentals.submit-receive');
 });
 
 // Admin routes with auth and admin middleware
