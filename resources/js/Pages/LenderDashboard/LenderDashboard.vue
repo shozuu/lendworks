@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import StatCard from "@/Components/StatCard.vue";
 import LenderListingCard from "@/Components/LenderListingCard.vue";
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { formatLabel } from "@/lib/formatters";
 
 const props = defineProps({
@@ -18,7 +18,7 @@ const props = defineProps({
 	rejectionReasons: Array,
 	cancellationReasons: Array,
 });
-
+console.log(props.groupedListings);
 const selectedTab = ref("pending");
 
 const tabs = [
@@ -36,6 +36,20 @@ const tabs = [
 const handleValueChange = (value) => {
 	selectedTab.value = value;
 };
+
+// Computed property to handle payment-related rentals
+const groupedListings = computed(() => {
+	const result = { ...props.groupedListings };
+
+	// If there are to_handover items, combine them with pending_proof
+	if (result.to_handover || result.pending_proof) {
+		result.to_handover = [...(result.to_handover || []), ...(result.pending_proof || [])];
+		// Remove the pending_proof array
+		delete result.pending_proof;
+	}
+
+	return result;
+});
 </script>
 
 <template>

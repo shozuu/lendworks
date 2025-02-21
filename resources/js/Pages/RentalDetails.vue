@@ -14,6 +14,7 @@ import { ref } from "vue";
 import RentalTimeline from "@/Components/RentalTimeline.vue";
 import { Link } from "@inertiajs/vue3";
 import PaymentDialog from "@/Components/PaymentDialog.vue";
+import HandoverDialog from "@/Components/HandoverDialog.vue";
 
 const props = defineProps({
 	rental: Object,
@@ -58,6 +59,7 @@ const discountPercentage = computed(() =>
 const showCancelDialog = ref(false);
 const showRejectDialog = ref(false);
 const showAcceptDialog = ref(false);
+const showHandoverDialog = ref(false);
 
 // Forms
 const approveForm = useForm({});
@@ -325,6 +327,25 @@ const actions = computed(() => props.rental.available_actions);
 								Pay Now
 							</Button>
 
+							<!-- Handover Actions -->
+							<Button
+								v-if="actions.canHandover"
+								variant="default"
+								class="w-full"
+								@click="showHandoverDialog = true"
+							>
+								Hand Over Item
+							</Button>
+
+							<Button
+								v-if="actions.canReceive"
+								variant="default"
+								class="w-full"
+								@click="showHandoverDialog = true"
+							>
+								Confirm Receipt
+							</Button>
+
 							<!-- Cancel Action -->
 							<Button
 								v-if="actions.canCancel"
@@ -351,7 +372,13 @@ const actions = computed(() => props.rental.available_actions);
 
 							<!-- No Actions Message -->
 							<p
-								v-if="!actions.canPayNow && !actions.canCancel && !actions.canApprove"
+								v-if="
+									!actions.canPayNow &&
+									!actions.canCancel &&
+									!actions.canApprove &&
+									!actions.canHandover &&
+									!actions.canReceive
+								"
 								class="text-muted-foreground text-sm text-center"
 							>
 								No actions available at this time.
@@ -479,10 +506,17 @@ const actions = computed(() => props.rental.available_actions);
 	/>
 
 	<!-- Payment Dialog -->
-	<PaymentDialog 
-		v-model:show="showPaymentDialog" 
-		:rental="rental" 
-		:payment="payment" 
+	<PaymentDialog
+		v-model:show="showPaymentDialog"
+		:rental="rental"
+		:payment="payment"
 		:viewOnly="false"
+	/>
+
+	<!-- Handover Dialog -->
+	<HandoverDialog
+		v-model:show="showHandoverDialog"
+		:rental="rental"
+		:type="actions.canHandover ? 'handover' : 'receive'"
 	/>
 </template>

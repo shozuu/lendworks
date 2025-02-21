@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Listing;
-use App\Models\RentalCancellationReason;
+use Illuminate\Http\Request;
+use App\Models\RentalRequest;
 use App\Models\RentalRejectionReason;
+use App\Models\RentalCancellationReason;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -12,106 +13,58 @@ class LenderDashboardController extends Controller
 {
     public function index()
     {
-        $listings = Listing::where('user_id', Auth::id())
-            ->with([
-                'rentalRequests',
-                'rentalRequests.renter',
-                'rentalRequests.latestRejection.rejectionReason',
-                'rentalRequests.latestCancellation.cancellationReason',
-                'rentalRequests.payment_request',
-                'images',
-                'category',
-                'location'
-            ])
-            ->get();
+        $lender = Auth::user();
+        
+        // Get rentals where user is the lender
+        $rentals = RentalRequest::whereHas('listing', function ($query) use ($lender) {
+            $query->where('user_id', $lender->id);
+        })->with(['listing.images', 'renter', 'payment_request'])->get();
 
-        $groupedListings = [
-            'pending' => $listings->flatMap(function($listing) {
-                return $listing->rentalRequests
-                    ->where('status', 'pending')
-                    ->sortBy('created_at') // First requested first
-                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
-            })->values(),
-            'approved' => $listings->flatMap(function($listing) {
-                return $listing->rentalRequests
-                    ->filter(fn($req) => $req->status === 'approved' && !$req->payment_request)
-                    ->sortBy('created_at') // First approved first
-                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
-            })->values(),
-            'payments' => $listings->flatMap(function($listing) {
-                return $listing->rentalRequests
-                    ->filter(fn($req) => $req->status === 'approved' && $req->payment_request)
-                    ->sortBy('created_at') // First payment submitted first
-                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
-            })->values(),
-            'to_handover' => $listings->flatMap(function($listing) {
-                return $listing->rentalRequests
-                    ->filter(fn($req) => $req->status === 'payment_verified' && !$req->handover_at)
-                    ->sortBy('created_at') // First payment verified first
-                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
-            })->values(),
-            'active' => $listings->flatMap(function($listing) {
-                return $listing->rentalRequests
-                    ->filter(fn($req) => $req->status === 'active' && !$req->return_at)
-                    ->sortBy('created_at') // First activated first
-                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
-            })->values(),
-            'pending_returns' => $listings->flatMap(function($listing) {
-                return $listing->rentalRequests
-                    ->filter(fn($req) => $req->status === 'active' && $req->return_at)
-                    ->sortBy('created_at') // First return request first
-                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
-            })->values(),
-            'completed' => $listings->flatMap(function($listing) {
-                return $listing->rentalRequests
-                    ->where('status', 'completed')
-                    ->sortByDesc('updated_at') // Most recently completed first
-                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
-            })->values(),
-            'rejected' => $listings->flatMap(function($listing) {
-                return $listing->rentalRequests
-                    ->where('status', 'rejected')
-                    ->sortByDesc('updated_at') // Most recently rejected first
-                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
-            })->values(),
-            'cancelled' => $listings->flatMap(function($listing) {
-                return $listing->rentalRequests
-                    ->where('status', 'cancelled')
-                    ->sortByDesc('updated_at') // Most recently cancelled first
-                    ->map(fn($request) => ['listing' => $listing, 'rental_request' => $request]);
-            })->values(),
+        // Group rentals by status
+        $groupedListings = $rentals->groupBy(function ($rental) {
+            // Special handling for payments tab
+            if ($rental->status === 'approved' && $rental->payment_request) {
+                return 'payments';
+            }
+
+            // Special handling for to_handover tab
+            if (in_array($rental->status, ['to_handover', 'pending_proof'])) {
+                return 'to_handover';
+            }
+            
+            return $rental->status;
+        })->map(function ($group) {
+            return $group->map(function ($rental) {
+                return [
+                    'listing' => $rental->listing,
+                    'rental_request' => $rental
+                ];
+            });
+        });
+
+  
+        $rentalStats = [
+            'pending' => $rentals->where('status', 'pending')->count(),
+            'approved' => $rentals->where('status', 'approved')
+                ->filter(function ($rental) {
+                    return !$rental->payment_request;
+                })->count(),
+            'payments' => $rentals->where('status', 'approved')
+                ->filter(function ($rental) {
+                    return $rental->payment_request !== null;
+                })->count(),
+            'to_handover' => $rentals->whereIn('status', ['to_handover', 'pending_proof'])->count(),
+            'active' => $rentals->where('status', 'active')->count(),
+            'completed' => $rentals->where('status', 'completed')->count(),
+            'rejected' => $rentals->where('status', 'rejected')->count(),
+            'cancelled' => $rentals->where('status', 'cancelled')->count(),
         ];
-
-        $rentalStats = collect($groupedListings)->map->count();
-
-        $rejectionReasons = RentalRejectionReason::select('id', 'label', 'code', 'description')
-            ->get()
-            ->map(fn($reason) => [
-                'value' => (string) $reason->id,
-                'label' => $reason->label,
-                'code' => $reason->code,
-                'description' => $reason->description
-            ])
-            ->values()
-            ->all();
-
-        $cancellationReasons = RentalCancellationReason::select('id', 'label', 'code', 'description')
-            ->whereIn('role', ['lender', 'both'])
-            ->get()
-            ->map(fn($reason) => [
-                'value' => (string) $reason->id,
-                'label' => $reason->label,
-                'code' => $reason->code,
-                'description' => $reason->description
-            ])
-            ->values()
-            ->all();
 
         return Inertia::render('LenderDashboard/LenderDashboard', [
             'groupedListings' => $groupedListings,
             'rentalStats' => $rentalStats,
-            'rejectionReasons' => $rejectionReasons,
-            'cancellationReasons' => $cancellationReasons
+            'rejectionReasons' => RentalRejectionReason::all(),
+            'cancellationReasons' => RentalCancellationReason::whereIn('role', ['lender', 'both'])->get(),
         ]);
     }
 }

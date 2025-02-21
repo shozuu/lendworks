@@ -47,6 +47,7 @@ class RentalRequest extends Model
     const STATUS_REJECTED = 'rejected';
     const STATUS_CANCELLED = 'cancelled';
     const STATUS_RENTER_PAID = 'renter_paid';
+    const STATUS_PENDING_PROOF = 'pending_proof';
 
     // Update the status display logic
     public function getStatusForDisplayAttribute(): string 
@@ -126,6 +127,11 @@ class RentalRequest extends Model
         return $this->hasOne(PaymentRequest::class)->latest();
     }
 
+    public function handoverProofs()
+    {
+        return $this->hasMany(HandoverProof::class);
+    }
+
     // Accessors
     public function getHasStartedAttribute(): bool
     {
@@ -145,18 +151,44 @@ class RentalRequest extends Model
         return now()->greaterThan($this->end_date);
     }
 
+    public function getHasHandoverProofAttribute(): bool
+    {
+        return $this->handoverProofs()->where('type', 'handover')->exists();
+    }
+
+    public function getHasReceiveProofAttribute(): bool
+    {
+        return $this->handoverProofs()->where('type', 'receive')->exists();
+    }
+
     public function getAvailableActionsAttribute(): array 
     {
-        // Get the authenticated user
         $user = Auth::user();
         $isRenter = $user && $user->id === $this->renter_id;
-        
-        return [
+        $isLender = $user && $user->id === $this->listing->user_id;
+
+        $actions = [
             'canApprove' => !$isRenter && $this->canApprove(),
             'canReject' => !$isRenter && $this->canReject(),
             'canCancel' => $this->canCancel(),
             'canPayNow' => $isRenter && $this->canPayNow(),
+            'canHandover' => false,
+            'canReceive' => false,
         ];
+
+        if (!$user) return $actions;
+
+        // Lender can handover when status is to_handover
+        $actions['canHandover'] = 
+            $this->status === 'to_handover' && 
+            $this->listing->user_id === $user->id;
+
+        // Renter can receive when status is pending_proof
+        $actions['canReceive'] = 
+            $this->status === 'pending_proof' && 
+            $this->renter_id === $user->id;
+
+        return $actions;
     }
 
     // Scopes
@@ -236,7 +268,7 @@ class RentalRequest extends Model
         // If user is the lender
         if ($user->id === $this->listing->user_id) {
             // Can only cancel if status is approved and no payment has been made yet
-            if ($this->status === self::STATUS_APPROVED && !$this->payment_request) {
+            if ($this->status === self::STATUS_APPROVED && !$this->payment_request || $this->payment_request->status === 'rejected') {
                 return true;
             }
             

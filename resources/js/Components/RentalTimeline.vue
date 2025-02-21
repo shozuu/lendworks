@@ -3,14 +3,16 @@ import { formatDateTime } from "@/lib/formatters";
 import {
 	CheckCircle2,
 	XCircle,
-	Circle,
 	Clock,
 	Send,
 	Ban,
 	AlertCircle,
-	} from "lucide-vue-next";
+	PackageCheck,
+} from "lucide-vue-next";
 import { ref } from "vue";
 import PaymentDialog from "@/Components/PaymentDialog.vue";
+import HandoverProofDialog from "@/Components/HandoverProofDialog.vue";
+import { Button } from "@/components/ui/button";
 
 const props = defineProps({
 	events: {
@@ -27,8 +29,8 @@ const props = defineProps({
 	},
 	passPayment: {
 		type: Function,
-		default: null
-	}
+		default: null,
+	},
 });
 
 const getEventIcon = (eventType) => {
@@ -48,9 +50,12 @@ const getEventIcon = (eventType) => {
 		case "payment_rejected":
 			return XCircle;
 		case "handover":
-			return Circle;
+		case "handover_confirmed":
+			return PackageCheck;
 		case "returned":
 			return CheckCircle2;
+		case "receive":
+			return PackageCheck;
 		default:
 			return AlertCircle;
 	}
@@ -70,7 +75,9 @@ const getEventColor = (eventType) => {
 			return "text-yellow-500";
 		case "payment_verified":
 		case "handover":
+		case "handover_confirmed":
 		case "returned":
+		case "receive":
 			return "text-emerald-500";
 		default:
 			return "text-muted-foreground";
@@ -98,19 +105,24 @@ const formatEventMessage = (event) => {
 		case "created":
 			if (isLatest) {
 				return performedByViewer
-					? "You submitted a rental request - awaiting owner's response"
+					? "You submitted a rental request - awaiting owner's approval"
 					: `${actorLabel} submitted a rental request${
-							performedByRenter ? " - awaiting owner's response" : ""
+							performedByRenter ? " - awaiting owner's approval" : ""
 					  }`;
 			}
 			return `${actorLabel} submitted a rental request`;
 
 		case "approved":
 			if (isLatest) {
+				if (props.rental.payment_request) {
+					return performedByViewer
+						? "You approved the request - payment verification in progress"
+						: `${actorLabel} approved the request - payment verification in progress`;
+				}
 				return performedByViewer
-					? "You approved the request - waiting for renter's payment"
+					? "You approved the request - awaiting payment"
 					: `${actorLabel} approved the request${
-							performedByLender ? " - waiting for payment" : ""
+							performedByLender ? " - awaiting payment" : ""
 					  }`;
 			}
 			return `${actorLabel} approved the rental request`;
@@ -118,7 +130,7 @@ const formatEventMessage = (event) => {
 		case "payment_submitted":
 			if (isLatest) {
 				return performedByViewer
-					? "Your payment has been submitted - awaiting verification"
+					? "You submitted the payment - awaiting verification"
 					: `${actorLabel} submitted payment${
 							performedByRenter ? " - awaiting verification" : ""
 					  }`;
@@ -126,10 +138,46 @@ const formatEventMessage = (event) => {
 			return `${actorLabel} submitted payment (Reference: ${event.metadata?.reference_number})`;
 
 		case "payment_verified":
-			return "Payment was verified by admin";
+			if (isLatest) {
+				if (performedByRenter || props.userRole === "renter") {
+					return "Payment verified - waiting to receive item";
+				}
+				return "Payment verified - proceed with item handover";
+			}
+			return "Payment was verified";
 
 		case "payment_rejected":
-			return "Payment was rejected by admin";
+			if (isLatest) {
+				return "Payment was rejected - new payment required";
+			}
+			return "Payment was rejected";
+
+		case "handover":
+			if (isLatest) {
+				if (performedByLender || props.userRole === "lender") {
+					return "Item handed over - awaiting renter's confirmation";
+				}
+				return "Item received - awaiting owner's confirmation";
+			}
+			return performedByViewer
+				? `You ${performedByRenter ? "received" : "handed over"} the item`
+				: `${actorLabel} ${performedByRenter ? "received" : "handed over"} the item`;
+
+		case "handover_confirmed":
+			if (isLatest) {
+				return "Rental is now active - item handover completed";
+			}
+			return performedByViewer
+				? "You confirmed the handover"
+				: `${actorLabel} confirmed the handover`;
+
+		case "returned":
+			if (isLatest) {
+				return "Rental completed - item returned successfully";
+			}
+			return performedByViewer
+				? "You confirmed returning the item"
+				: `${actorLabel} confirmed returning the item`;
 
 		case "rejected":
 			if (isAutoRejection) {
@@ -140,21 +188,17 @@ const formatEventMessage = (event) => {
 				: `${actorLabel} rejected the request`;
 
 		case "cancelled":
-			const cancelledBy = event.metadata?.cancelled_by;
-			if (performedByViewer) {
-				return "You cancelled the request";
+			return performedByViewer
+				? "You cancelled the request"
+				: `${actorLabel} cancelled the request`;
+
+		case "receive":
+			if (isLatest) {
+				return "Item handover completed - rental period has started";
 			}
-			return `${actorLabel} cancelled the request`;
-
-		case "handover":
 			return performedByViewer
-				? "You confirmed receiving the item"
+				? `You confirmed receiving the item`
 				: `${actorLabel} confirmed receiving the item`;
-
-		case "returned":
-			return performedByViewer
-				? "You confirmed returning the item"
-				: `${actorLabel} confirmed returning the item`;
 
 		default:
 			return `Unknown event by ${actorLabel}`;
@@ -165,29 +209,54 @@ const selectedHistoricalPayment = ref(null);
 const showHistoricalPayment = ref(false);
 
 const showPaymentDetails = (event) => {
-    if (event.metadata?.payment_request) {
-        selectedHistoricalPayment.value = props.passPayment 
-            ? props.passPayment(event)
-            : {
-                ...event.metadata.payment_request,
-                rental_request: {
-                    ...props.rental,
-                    total_price: props.rental.total_price,
-                    listing: props.rental.listing,
-                    renter: props.rental.renter
-                }
-            };
-        showHistoricalPayment.value = true;
-    }
+	if (event.metadata?.payment_request) {
+		selectedHistoricalPayment.value = props.passPayment
+			? props.passPayment(event)
+			: {
+					...event.metadata.payment_request,
+					rental_request: {
+						...props.rental,
+						total_price: props.rental.total_price,
+						listing: props.rental.listing,
+						renter: props.rental.renter,
+					},
+			  };
+		showHistoricalPayment.value = true;
+	}
 };
 
 // Add handler for dialog close
 const handleDialogClose = () => {
-    // Wait for dialog animation to complete before clearing data
-    setTimeout(() => {
-        selectedHistoricalPayment.value = null;
-    }, 300);
-    showHistoricalPayment.value = false;
+	// Wait for dialog animation to complete before clearing data
+	setTimeout(() => {
+		selectedHistoricalPayment.value = null;
+	}, 300);
+	showHistoricalPayment.value = false;
+};
+
+// Add new refs for handover proof dialog
+const showHandoverProof = ref(false);
+const selectedHandoverProof = ref(null);
+
+// Add handler for showing handover proof
+const showHandoverDetails = (event) => {
+	if (event.metadata?.proof_path) {
+		selectedHandoverProof.value = {
+			path: event.metadata.proof_path,
+			type: event.event_type,
+			performer: event.actor,
+			timestamp: event.created_at,
+		};
+		showHandoverProof.value = true;
+	}
+};
+
+// Add handler for dialog close
+const handleHandoverProofClose = () => {
+	showHandoverProof.value = false;
+	setTimeout(() => {
+		selectedHandoverProof.value = null;
+	}, 300);
 };
 </script>
 
@@ -233,7 +302,6 @@ const handleDialogClose = () => {
 										{{ event.metadata.reference_number }}
 									</p>
 								</div>
-								
 							</div>
 							<p
 								v-if="event.metadata.feedback"
@@ -242,10 +310,11 @@ const handleDialogClose = () => {
 								"{{ event.metadata.feedback }}"
 							</p>
 							<!-- Add View Payment Details button if we have payment data -->
-							<Button 
+							<Button
 								v-if="event.metadata.payment_request"
-								variant="outline" 
+								variant="outline"
 								size="sm"
+								class="mt-2"
 								@click="showPaymentDetails(event)"
 							>
 								View Payment Details
@@ -265,19 +334,37 @@ const handleDialogClose = () => {
 								"{{ event.metadata.feedback }}"
 							</p>
 						</template>
+
+						<!-- Handover Details -->
+						<template v-if="['handover', 'receive'].includes(event.event_type)">
+							<div class="flex flex-col gap-2">
+								<Button variant="outline" size="sm" @click="showHandoverDetails(event)">
+									View {{ event.event_type === "receive" ? "Receive" : "Handover" }} Proof
+								</Button>
+							</div>
+						</template>
 					</div>
 				</div>
 			</div>
 		</div>
 
 		<!-- Payment Dialog for Historical Payments -->
-		<PaymentDialog 
+		<PaymentDialog
 			:show="showHistoricalPayment"
 			:rental="rental"
 			:payment="selectedHistoricalPayment"
-			:historical="true"
 			:viewOnly="true"
 			@update:show="handleDialogClose"
+		/>
+
+		<!-- Handover Proof Dialog -->
+		<HandoverProofDialog
+			:show="showHandoverProof"
+			:imagePath="selectedHandoverProof?.path"
+			:type="selectedHandoverProof?.type"
+			:performer="selectedHandoverProof?.performer"
+			:timestamp="selectedHandoverProof?.timestamp"
+			:onClose="handleHandoverProofClose"
 		/>
 	</div>
 </template>

@@ -39,7 +39,7 @@ const statusOptions = [
     { value: 'all', label: 'All Status' },
     { value: 'pending', label: 'Pending Request' },
     { value: 'approved', label: 'Owner Approved' },
-    { value: 'renter_paid', label: 'Ready for Handover' },
+    { value: 'to_handover', label: 'Ready for Handover' },
     { value: 'active', label: 'Active Rental' },
     { value: 'completed', label: 'Completed' },
     { value: 'rejected', label: 'Rejected' },
@@ -50,7 +50,7 @@ const getStatusBadge = (status) => {
     const badges = {
         pending: { variant: "warning", label: "Pending Request" },
         approved: { variant: "success", label: "Owner Approved" },
-        renter_paid: { variant: "info", label: "Ready for Handover" },
+        to_handover: { variant: "info", label: "Ready for Handover" },
         active: { variant: "success", label: "Active Rental" },
         completed: { variant: "default", label: "Completed" },
         rejected: { variant: "destructive", label: "Rejected" },
