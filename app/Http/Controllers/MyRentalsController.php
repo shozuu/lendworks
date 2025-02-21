@@ -10,61 +10,51 @@ use Inertia\Inertia;
 
 class MyRentalsController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
+        $renter = Auth::user();
+        
         // Get rentals where user is the renter
-        $rentals = RentalRequest::where('renter_id', Auth::id())
-            ->with([
-                'listing.user', 
-                'listing.images',
-                'listing.category', 
-                'listing.location',
-                'latestRejection.rejectionReason',
-                'latestCancellation.cancellationReason',
-                'payment_request'
-            ])
-            ->latest()
+        $rentals = RentalRequest::where('renter_id', $renter->id)
+            ->with(['listing.images', 'listing.user', 'payment_request'])
             ->get();
 
-        // Group rentals by their display status
-        $groupedRentals = $rentals->groupBy('status_for_display')
-            ->map(function ($group) {
-                return $group->values();
-            })
-            ->toArray();
+        // Group rentals by status
+        $groupedRentals = $rentals->groupBy(function ($rental) {
+            // Special handling for payments tab
+            if ($rental->status === 'approved' && $rental->payment_request) {
+                return 'payments';
+            }
 
-        // Stats for renter's view - ensure stats match the actual groups
-        $stats = [
+            // Special handling for to_handover tab
+            if (in_array($rental->status, ['to_handover', 'pending_proof'])) {
+                return 'to_handover';
+            }
+            
+            return $rental->status;
+        });
+
+        $rentalStats = [
             'pending' => $rentals->where('status', 'pending')->count(),
             'approved' => $rentals->where('status', 'approved')
                 ->filter(function ($rental) {
                     return !$rental->payment_request;
                 })->count(),
-            'payments' => $rentals->whereIn('status_for_display', ['payment_pending', 'payment_rejected'])->count(),
-            'to_receive' => $rentals->where('status', 'to_handover')->count(),
+            'payments' => $rentals->where('status', 'approved')
+                ->filter(function ($rental) {
+                    return $rental->payment_request !== null;
+                })->count(),
+            'to_receive' => $rentals->whereIn('status', ['to_handover', 'pending_proof'])->count(),
             'active' => $rentals->where('status', 'active')->count(),
             'completed' => $rentals->where('status', 'completed')->count(),
             'rejected' => $rentals->where('status', 'rejected')->count(),
             'cancelled' => $rentals->where('status', 'cancelled')->count(),
         ];
 
-        // Get only cancellation reasons for renters
-        $cancellationReasons = RentalCancellationReason::select('id', 'label', 'code', 'description')
-            ->whereIn('role', ['renter', 'both'])
-            ->get()
-            ->map(fn($reason) => [
-                'value' => (string) $reason->id,
-                'label' => $reason->label,
-                'code' => $reason->code,
-                'description' => $reason->description
-            ])
-            ->values()
-            ->all();
-
         return Inertia::render('MyRentals/MyRentals', [
-            'rentals' => $groupedRentals,
-            'stats' => $stats,
-            'cancellationReasons' => $cancellationReasons
+            'groupedRentals' => $groupedRentals,
+            'rentalStats' => $rentalStats,
+            'cancellationReasons' => RentalCancellationReason::whereIn('role', ['renter', 'both'])->get(),
         ]);
     }
 }
