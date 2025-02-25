@@ -252,14 +252,11 @@ class RentalRequest extends Model
             }
 
             if ($this->status === self::STATUS_APPROVED) {
-                if ($this->payment_request?->status === 'rejected') {
-                    return true;
+                // Check if there's a payment request and its status
+                if ($this->payment_request) {
+                    return $this->payment_request->status === 'rejected';
                 }
-                else if ($this->payment_request?->status === 'pending' || $this->payment_request?->status === 'verified') {
-                    return false;
-                }
-
-                return true;
+                return true; // Can cancel if no payment request exists
             }
             
             return false;
@@ -267,9 +264,11 @@ class RentalRequest extends Model
         
         // If user is the lender
         if ($user->id === $this->listing->user_id) {
-            // Can only cancel if status is approved and no payment has been made yet
-            if ($this->status === self::STATUS_APPROVED && !$this->payment_request || $this->payment_request->status === 'rejected') {
-                return true;
+            // Can only cancel if status is approved and either:
+            // 1. No payment request exists, or
+            // 2. Payment request exists and is rejected
+            if ($this->status === self::STATUS_APPROVED) {
+                return !$this->payment_request || $this->payment_request->status === 'rejected';
             }
             
             return false;

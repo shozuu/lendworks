@@ -60,11 +60,34 @@ class LenderDashboardController extends Controller
             'cancelled' => $rentals->where('status', 'cancelled')->count(),
         ];
 
+        $rejectionReasons = RentalRejectionReason::select('id', 'label', 'code', 'description')
+            ->get()
+            ->map(fn($reason) => [
+                'value' => (string) $reason->id,
+                'label' => $reason->label,
+                'code' => $reason->code,
+                'description' => $reason->description
+            ])
+            ->values()
+            ->all();
+
+        $cancellationReasons = RentalCancellationReason::select('id', 'label', 'code', 'description')
+            ->whereIn('role', ['lender', 'both'])
+            ->get()
+            ->map(fn($reason) => [
+                'value' => (string) $reason->id,
+                'label' => $reason->label,
+                'code' => $reason->code,
+                'description' => $reason->description
+            ])
+            ->values()
+            ->all();
+
         return Inertia::render('LenderDashboard/LenderDashboard', [
             'groupedListings' => $groupedListings,
             'rentalStats' => $rentalStats,
-            'rejectionReasons' => RentalRejectionReason::all(),
-            'cancellationReasons' => RentalCancellationReason::whereIn('role', ['lender', 'both'])->get(),
+            'rejectionReasons' => $rejectionReasons,
+            'cancellationReasons' => $cancellationReasons
         ]);
     }
 }

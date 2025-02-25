@@ -106,7 +106,7 @@ const actions = computed(() => props.rental.available_actions);
 				>
 					Pay Now
 				</Button>
-				
+
 				<!-- Handover Actions -->
 				<Button
 					v-if="actions.canReceive"
@@ -157,10 +157,10 @@ const actions = computed(() => props.rental.available_actions);
 	/>
 
 	<!-- Payment Dialog -->
-	<PaymentDialog 
-		v-model:show="showPaymentDialog" 
-		:rental="rental" 
-		:payment="payment" 
+	<PaymentDialog
+		v-model:show="showPaymentDialog"
+		:rental="rental"
+		:payment="payment"
 		:viewOnly="false"
 	/>
 
