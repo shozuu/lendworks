@@ -51,10 +51,22 @@ class MyRentalsController extends Controller
             'cancelled' => $rentals->where('status', 'cancelled')->count(),
         ];
 
+        $cancellationReasons = RentalCancellationReason::select('id', 'label', 'code', 'description')
+            ->whereIn('role', ['renter', 'both'])
+            ->get()
+            ->map(fn($reason) => [
+                'value' => (string) $reason->id,
+                'label' => $reason->label,
+                'code' => $reason->code,
+                'description' => $reason->description
+            ])
+            ->values()
+            ->all();
+
         return Inertia::render('MyRentals/MyRentals', [
             'groupedRentals' => $groupedRentals,
             'rentalStats' => $rentalStats,
-            'cancellationReasons' => RentalCancellationReason::whereIn('role', ['renter', 'both'])->get(),
+            'cancellationReasons' => $cancellationReasons,
         ]);
     }
 }
