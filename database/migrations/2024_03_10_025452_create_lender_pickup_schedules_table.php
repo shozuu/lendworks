@@ -18,11 +18,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // Modify existing pickup_schedules table
-        Schema::table('pickup_schedules', function (Blueprint $table) {
-            $table->foreignId('lender_pickup_schedule_id')->nullable()->constrained()->onDelete('cascade');
-            // Keep existing columns
-        });
+
     }
 
     public function down(): void

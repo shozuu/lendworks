@@ -10,7 +10,9 @@ class PickupSchedule extends Model
         'rental_request_id',
         'lender_pickup_schedule_id',
         'pickup_datetime',
-        'is_selected'
+        'is_selected',
+        'start_time',  // Add this
+        'end_time'     // Add this
     ];
 
     protected $casts = [

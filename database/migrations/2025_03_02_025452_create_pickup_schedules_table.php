@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('pickup_schedules', function (Blueprint $table) {
             $table->id();
             $table->foreignId('rental_request_id')->constrained()->onDelete('cascade');
+            $table->foreignId('lender_pickup_schedule_id')->nullable()->constrained()->onDelete('cascade');
             $table->datetime('pickup_datetime');  // Changed from schedule_datetime
             $table->boolean('is_selected')->default(false);
             $table->timestamps();

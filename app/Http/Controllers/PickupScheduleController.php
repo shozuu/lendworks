@@ -73,13 +73,15 @@ class PickupScheduleController extends Controller
                 $nextDate->format('Y-m-d') . ' ' . $lender_schedule->start_time
             );
 
-            // Create or update pickup schedule
+            // Create or update pickup schedule with correct reference
             $pickup_schedule = $rental->pickup_schedules()->updateOrCreate(
                 ['rental_request_id' => $rental->id],
                 [
-                    'lender_schedule_id' => $lender_schedule->id,
+                    'lender_pickup_schedule_id' => $lender_schedule->id, // Fix: Use correct field name
                     'pickup_datetime' => $pickupDatetime,
-                    'is_selected' => true
+                    'is_selected' => true,
+                    'start_time' => $lender_schedule->start_time,
+                    'end_time' => $lender_schedule->end_time
                 ]
             );
 
