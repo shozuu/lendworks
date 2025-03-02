@@ -15,9 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('rental_request_id')->constrained()->onDelete('cascade');
             $table->foreignId('lender_pickup_schedule_id')->nullable()->constrained()->onDelete('cascade');
-            $table->time('start_time')->nullable()->after('pickup_datetime');
-            $table->time('end_time')->nullable()->after('start_time');
             $table->datetime('pickup_datetime');  // Changed from schedule_datetime
+            $table->time('start_time')->nullable();
+            $table->time('end_time')->nullable();
             $table->boolean('is_selected')->default(false);
             $table->timestamps();
         });
