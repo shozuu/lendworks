@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useForm } from "@inertiajs/vue3";
 import { formatDateTime } from "@/lib/formatters";
+import { format, isValid, isBefore, startOfDay } from "date-fns";
 
 const props = defineProps({
   rental: Object,
@@ -24,6 +25,11 @@ const year = ref("");
 const hour = ref("");
 const minute = ref("");
 const isPM = ref(false);
+
+const errors = ref({
+  date: '',
+  time: ''
+});
 
 // Generate options for dropdowns
 const months = Array.from({ length: 12 }, (_, i) => ({
@@ -67,7 +73,69 @@ const selectForm = useForm({});
 const isLender = computed(() => props.userRole === "lender");
 const isRenter = computed(() => props.userRole === "renter");
 
+const availableDays = computed(() => {
+  if (!month.value || !year.value) return [];
+  
+  const daysInMonth = new Date(
+    parseInt(year.value),
+    parseInt(month.value),
+    0
+  ).getDate();
+
+  return Array.from({ length: daysInMonth }, (_, i) => ({
+    value: (i + 1).toString().padStart(2, "0"),
+    label: (i + 1).toString(),
+  }));
+});
+
+watch([month, year], () => {
+  if (day.value) {
+    const maxDays = availableDays.value.length;
+    if (parseInt(day.value) > maxDays) {
+      day.value = "";
+    }
+  }
+});
+
+// Add a watch effect for all inputs
+watch([month, day, year, hour, minute, isPM], () => {
+  if (month.value || day.value || year.value || hour.value || minute.value) {
+    validateDateTime();
+  }
+}, { deep: true });
+
+const validateDateTime = () => {
+  errors.value = { date: '', time: '' };
+
+  // Skip validation if any required field is empty
+  if (!month.value || !day.value || !year.value || !hour.value || !minute.value) {
+    return false;
+  }
+
+  const selectedDate = new Date(
+    parseInt(year.value),
+    parseInt(month.value) - 1,
+    parseInt(day.value)
+  );
+
+  if (!isValid(selectedDate)) {
+    errors.value.date = 'Invalid date selected';
+    return false;
+  }
+
+  if (isBefore(startOfDay(selectedDate), startOfDay(new Date()))) {
+    errors.value.date = 'Cannot select a past date';
+    return false;
+  }
+
+  return true;
+};
+
 const handleAddSchedule = () => {
+  if (!validateDateTime()) {
+    return;
+  }
+
   // Convert to ISO datetime
   const dateStr = `${year.value}-${month.value}-${day.value}`;
   let timeStr = `${hour.value}:${minute.value}`;
@@ -115,8 +183,12 @@ const handleSelectSchedule = (id) => {
   });
 };
 
+// Update isValidDateTime computed to use validateDateTime
 const isValidDateTime = computed(() => {
-  return month.value && day.value && year.value && hour.value && minute.value;
+  if (!month.value || !day.value || !year.value || !hour.value || !minute.value) {
+    return false;
+  }
+  return validateDateTime();
 });
 </script>
 
@@ -149,7 +221,11 @@ const isValidDateTime = computed(() => {
                   <SelectValue placeholder="Day" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem v-for="d in days" :key="d.value" :value="d.value">
+                  <SelectItem 
+                    v-for="d in availableDays" 
+                    :key="d.value" 
+                    :value="d.value"
+                  >
                     {{ d.label }}
                   </SelectItem>
                 </SelectContent>
@@ -166,6 +242,9 @@ const isValidDateTime = computed(() => {
                 </SelectContent>
               </Select>
             </div>
+            <p v-if="errors.date" class="text-destructive text-sm mt-1">
+              {{ errors.date }}
+            </p>
           </div>
 
           <!-- Time Inputs -->
@@ -210,6 +289,9 @@ const isValidDateTime = computed(() => {
                 </SelectContent>
               </Select>
             </div>
+            <p v-if="errors.time" class="text-destructive text-sm mt-1">
+              {{ errors.time }}
+            </p>
           </div>
 
           <Button
