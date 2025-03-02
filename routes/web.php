@@ -12,6 +12,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RentalRequestController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\HandoverController;
+use App\Http\Controllers\PickupScheduleController;
 use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -60,6 +61,14 @@ Route::middleware(['auth', 'verified'])->group(function() {
 Route::middleware(['auth'])->group(function () {
     Route::post('/rentals/{rental}/handover', [HandoverController::class, 'submitHandover'])->name('rentals.submit-handover');
     Route::post('/rentals/{rental}/receive', [HandoverController::class, 'submitReceive'])->name('rentals.submit-receive');
+    
+    // Pickup Schedule routes
+    Route::post('/rentals/{rental}/schedules', [PickupScheduleController::class, 'store'])
+        ->name('pickup-schedules.store');
+    Route::delete('/rentals/{rental}/schedules/{schedule}', [PickupScheduleController::class, 'destroy'])
+        ->name('pickup-schedules.destroy');
+    Route::patch('/rentals/{rental}/schedules/{schedule}/select', [PickupScheduleController::class, 'select'])
+        ->name('pickup-schedules.select');
 });
 
 // Admin routes with auth and admin middleware

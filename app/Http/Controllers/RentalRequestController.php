@@ -26,7 +26,8 @@ class RentalRequestController extends Controller
             'listing.location',
             'renter',
             'timelineEvents.actor',
-            'payment_request' 
+            'payment_request',
+            'pickup_schedules'  // Add this line
         ]);
 
         // Check if the authenticated user is either the renter or the lender

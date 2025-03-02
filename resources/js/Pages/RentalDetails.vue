@@ -15,6 +15,7 @@ import RentalTimeline from "@/Components/RentalTimeline.vue";
 import { Link } from "@inertiajs/vue3";
 import PaymentDialog from "@/Components/PaymentDialog.vue";
 import HandoverDialog from "@/Components/HandoverDialog.vue";
+import PickupScheduler from "@/Components/PickupScheduler.vue";
 
 const props = defineProps({
 	rental: Object,
@@ -131,6 +132,14 @@ const showPaymentDialog = ref(false);
 
 // list of actions available for the rental as defined in the model
 const actions = computed(() => props.rental.available_actions);
+
+// Fix the canShowHandover computed property
+const canShowHandover = computed(() => {
+    if (actions.value.canHandover) {
+        return props.rental.pickup_schedules?.some(schedule => schedule.is_selected);
+    }
+    return actions.value.canReceive;
+});
 </script>
 
 <template>
@@ -306,6 +315,15 @@ const actions = computed(() => props.rental.available_actions);
 						</div>
 					</CardContent>
 				</Card>
+
+				<!--Pickup schedule input-->
+				<Card class="space-y-8">
+					<PickupScheduler 
+					v-if="rental.status === 'to_handover'"
+					:rental="rental"
+					:userRole="userRole"
+					/>
+				</Card>
 			</div>
 
 			<!-- Right Column -->
@@ -333,6 +351,7 @@ const actions = computed(() => props.rental.available_actions);
 								variant="default"
 								class="w-full"
 								@click="showHandoverDialog = true"
+								:disabled="!canShowHandover"
 							>
 								Hand Over Item
 							</Button>
