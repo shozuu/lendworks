@@ -14,11 +14,19 @@ const props = defineProps({
 
 const selectForm = useForm({});
 
-const handleSelectDate = (scheduleId) => {
+const handleSelectDate = (schedule) => {
   selectForm.patch(route("pickup-schedules.select", { 
     rental: props.rental.id,
-    lender_schedule: scheduleId  // Update this line to match route parameter name
+    lender_schedule: schedule.id
   }), {
+    data: {
+      metadata: {
+        day_of_week: schedule.day_of_week,
+        date: format(schedule.scheduleDate, 'MMMM d, yyyy'),
+        start_time: schedule.start_time,
+        end_time: schedule.end_time
+      }
+    },
     preserveScroll: true,
   });
 };
@@ -165,7 +173,7 @@ const selectedScheduleDetails = computed(() => {
             </div>
             <Button
               size="sm"
-              @click="handleSelectDate(schedule.id)"
+              @click="handleSelectDate(schedule)"
               :disabled="selectForm.processing"
             >
               Select

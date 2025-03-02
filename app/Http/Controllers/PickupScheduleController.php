@@ -85,14 +85,16 @@ class PickupScheduleController extends Controller
                 ]
             );
 
-            // Add timeline event
+            // Add timeline event with detailed metadata
             $rental->timeline_events()->create([
                 'actor_id' => Auth::id(),
                 'event_type' => 'pickup_schedule_selected',
                 'status' => $rental->status,
                 'metadata' => [
-                    'schedule_day' => $lender_schedule->day_of_week,
-                    'schedule_time' => $lender_schedule->formatted_time_slot,
+                    'day_of_week' => $lender_schedule->day_of_week,
+                    'date' => $pickupDatetime->format('F d, Y'),
+                    'start_time' => $lender_schedule->start_time,
+                    'end_time' => $lender_schedule->end_time,
                     'pickup_datetime' => $pickupDatetime->format('Y-m-d H:i:s')
                 ]
             ]);

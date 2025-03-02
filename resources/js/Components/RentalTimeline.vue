@@ -206,11 +206,30 @@ const formatEventMessage = (event) => {
 				: `${actorLabel} confirmed receiving the item`;
 
 		case "pickup_schedule_selected":
+			if (isLatest) {
+				const metadata = event.metadata || {};
+				return performedByViewer
+					? `You selected a pickup schedule for ${metadata.day_of_week}, ${metadata.date} from ${formatTime(metadata.start_time)} to ${formatTime(metadata.end_time)}`
+					: `${actorLabel} selected a pickup schedule for ${metadata.day_of_week}, ${metadata.date} from ${formatTime(metadata.start_time)} to ${formatTime(metadata.end_time)}`;
+			}
 			return `${actorLabel} selected a pickup schedule`;
 
 		default:
 			return `Unknown event by ${actorLabel}`;
 	}
+};
+
+// Add helper function to format time
+const formatTime = (timeString) => {
+	if (!timeString) return '';
+	const [hours, minutes] = timeString.split(':');
+	const date = new Date();
+	date.setHours(parseInt(hours), parseInt(minutes));
+	return date.toLocaleTimeString('en-US', { 
+		hour: 'numeric',
+		minute: '2-digit',
+		hour12: true 
+	});
 };
 
 const selectedHistoricalPayment = ref(null);
@@ -349,6 +368,24 @@ const handleHandoverProofClose = () => {
 								<Button variant="outline" size="sm" @click="showHandoverDetails(event)">
 									View {{ event.event_type === "receive" ? "Receive" : "Handover" }} Proof
 								</Button>
+							</div>
+						</template>
+
+						<!-- Add Pickup Schedule Details -->
+						<template v-if="event.event_type === 'pickup_schedule_selected'">
+							<div class="space-y-2 text-xs">
+								<div class="flex items-baseline gap-1">
+									<span class="font-medium">Pickup Schedule:</span>
+									<span class="text-muted-foreground">
+										{{ event.metadata.day_of_week }}, {{ event.metadata.date }}
+									</span>
+								</div>
+								<div class="flex items-baseline gap-1">
+									<span class="font-medium">Time:</span>
+									<span class="text-muted-foreground">
+										{{ formatTime(event.metadata.start_time) }} to {{ formatTime(event.metadata.end_time) }}
+									</span>
+								</div>
 							</div>
 						</template>
 					</div>
