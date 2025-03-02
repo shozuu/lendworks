@@ -107,6 +107,14 @@ const actions = computed(() => props.data.rental_request.available_actions);
 
 // computed property for payment request
 const paymentRequest = computed(() => props.data.rental_request.payment_request);
+
+// Add computed property to check if handover is allowed
+const canShowHandover = computed(() => {
+    if (actions.value.canHandover) {
+        return props.data.rental_request.pickup_schedules?.some(schedule => schedule.is_selected);
+    }
+    return false;
+});
 </script>
 
 <template>
@@ -156,6 +164,7 @@ const paymentRequest = computed(() => props.data.rental_request.payment_request)
 					v-if="actions.canHandover"
 					variant="default"
 					size="sm"
+					:disabled="!canShowHandover"
 					@click.stop="showHandoverDialog = true"
 				>
 					Hand Over Item
