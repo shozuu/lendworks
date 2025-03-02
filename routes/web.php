@@ -13,6 +13,7 @@ use App\Http\Controllers\RentalRequestController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\HandoverController;
 use App\Http\Controllers\PickupScheduleController;
+use App\Http\Controllers\LenderPickupScheduleController;
 use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -65,10 +66,18 @@ Route::middleware(['auth'])->group(function () {
     // Pickup Schedule routes
     Route::post('/rentals/{rental}/schedules', [PickupScheduleController::class, 'store'])
         ->name('pickup-schedules.store');
+    Route::patch('/rentals/{rental}/schedules/{lender_schedule}/select', [PickupScheduleController::class, 'select'])
+        ->name('pickup-schedules.select');
     Route::delete('/rentals/{rental}/schedules/{schedule}', [PickupScheduleController::class, 'destroy'])
         ->name('pickup-schedules.destroy');
-    Route::patch('/rentals/{rental}/schedules/{schedule}/select', [PickupScheduleController::class, 'select'])
-        ->name('pickup-schedules.select');
+
+    // Lender pickup schedules
+    Route::post('lender/pickup-schedules', [LenderPickupScheduleController::class, 'store'])
+        ->name('lender.pickup-schedules.store');
+    Route::delete('lender/pickup-schedules/{schedule}', [LenderPickupScheduleController::class, 'destroy'])
+        ->name('lender.pickup-schedules.destroy');
+    Route::patch('/lender/pickup-schedules/{schedule}', [LenderPickupScheduleController::class, 'update'])
+        ->name('lender.pickup-schedules.update');
 });
 
 // Admin routes with auth and admin middleware

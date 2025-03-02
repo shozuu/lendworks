@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
+use App\Models\LenderPickupSchedule;
 
 class RentalRequestController extends Controller
 {
@@ -70,9 +71,15 @@ class RentalRequestController extends Controller
                 })
         ];
 
+        // Add lender schedules for the rental
+        $lenderSchedules = LenderPickupSchedule::where('user_id', $rental->listing->user_id)
+            ->where('is_active', true)
+            ->get();
+
         return Inertia::render('RentalDetails', [
             'rental' => $rental,
             'userRole' => $userRole,
+            'lenderSchedules' => $lenderSchedules,
             ...$reasons
         ]);        
     }

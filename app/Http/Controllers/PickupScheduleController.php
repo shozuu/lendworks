@@ -4,32 +4,35 @@ namespace App\Http\Controllers;
 
 use App\Models\RentalRequest;
 use App\Models\PickupSchedule;
+use App\Models\LenderPickupSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class PickupScheduleController extends Controller
 {
     public function store(Request $request, RentalRequest $rental)
     {
-        // Authorize that only lender can add schedules
-        if ($rental->listing->user_id !== Auth::id()) {
+        $validated = $request->validate([
+            'lender_pickup_schedule_id' => 'required|exists:lender_pickup_schedules,id',
+            'pickup_date' => 'required|date|after_or_equal:today',
+        ]);
+
+        // Ensure the schedule belongs to the lender
+        $lenderSchedule = LenderPickupSchedule::findOrFail($validated['lender_pickup_schedule_id']);
+        if ($lenderSchedule->user_id !== $rental->listing->user_id) {
             abort(403);
         }
 
-        $validated = $request->validate([
-            'pickup_datetime' => 'required|date',  // Changed to match frontend
+        // Create the pickup schedule
+        $schedule = PickupSchedule::create([
+            'rental_request_id' => $rental->id,
+            'lender_pickup_schedule_id' => $validated['lender_pickup_schedule_id'],
+            'pickup_datetime' => $validated['pickup_date'],
         ]);
 
-        $rental->pickup_schedules()->create([
-            'pickup_datetime' => $validated['pickup_datetime'],
-            'is_selected' => false
-        ]);
-
-        // Reload the rental with pickup_schedules relationship
-        $rental->load('pickup_schedules');
-
-        return back()->with('success', 'Schedule added successfully');
+        return back()->with('success', 'Pickup schedule added.');
     }
 
     public function destroy(RentalRequest $rental, PickupSchedule $schedule)
@@ -51,27 +54,48 @@ class PickupScheduleController extends Controller
         return back()->with('success', 'Schedule deleted successfully');
     }
 
-    public function select(RentalRequest $rental, PickupSchedule $schedule)
+    public function select(RentalRequest $rental, LenderPickupSchedule $lender_schedule)
     {
-        // Authorize that only renter can select schedules
+        // Validate that the rental belongs to the authenticated user
         if ($rental->renter_id !== Auth::id()) {
             abort(403);
         }
 
-        // Start a database transaction
-        \DB::transaction(function () use ($rental, $schedule) {
-            // Delete all other schedules
-            $rental->pickup_schedules()
-                ->where('id', '!=', $schedule->id)
-                ->delete();
+        DB::transaction(function () use ($rental, $lender_schedule) {
+            // Calculate the next occurrence of the schedule's day
+            $nextDate = Carbon::now();
+            while ($nextDate->format('l') !== $lender_schedule->day_of_week) {
+                $nextDate->addDay();
+            }
 
-            // Mark the selected schedule
-            $schedule->update(['is_selected' => true]);
+            // Combine date with schedule time
+            $pickupDatetime = Carbon::parse(
+                $nextDate->format('Y-m-d') . ' ' . $lender_schedule->start_time
+            );
+
+            // Create or update pickup schedule
+            $pickup_schedule = $rental->pickup_schedules()->updateOrCreate(
+                ['rental_request_id' => $rental->id],
+                [
+                    'lender_schedule_id' => $lender_schedule->id,
+                    'pickup_datetime' => $pickupDatetime,
+                    'is_selected' => true
+                ]
+            );
+
+            // Add timeline event
+            $rental->timeline_events()->create([
+                'actor_id' => Auth::id(),
+                'event_type' => 'pickup_schedule_selected',
+                'status' => $rental->status,
+                'metadata' => [
+                    'schedule_day' => $lender_schedule->day_of_week,
+                    'schedule_time' => $lender_schedule->formatted_time_slot,
+                    'pickup_datetime' => $pickupDatetime->format('Y-m-d H:i:s')
+                ]
+            ]);
         });
 
-        // Reload the rental with pickup_schedules relationship
-        $rental->load('pickup_schedules');
-
-        return back()->with('success', 'Schedule selected successfully');
+        return back()->with('success', 'Pickup schedule selected successfully.');
     }
 }

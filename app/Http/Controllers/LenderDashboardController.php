@@ -8,6 +8,7 @@ use App\Models\RentalRejectionReason;
 use App\Models\RentalCancellationReason;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use App\Models\LenderPickupSchedule;
 
 class LenderDashboardController extends Controller
 {
@@ -83,11 +84,19 @@ class LenderDashboardController extends Controller
             ->values()
             ->all();
 
+        // Get pickup schedules
+        $pickupSchedules = LenderPickupSchedule::where('user_id', $lender->id)
+            ->where('is_active', true)
+            ->orderBy('day_of_week')
+            ->orderBy('start_time')
+            ->get();
+
         return Inertia::render('LenderDashboard/LenderDashboard', [
             'groupedListings' => $groupedListings,
             'rentalStats' => $rentalStats,
             'rejectionReasons' => $rejectionReasons,
-            'cancellationReasons' => $cancellationReasons
+            'cancellationReasons' => $cancellationReasons,
+            'pickupSchedules' => $pickupSchedules,
         ]);
     }
 }

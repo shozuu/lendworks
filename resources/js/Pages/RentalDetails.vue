@@ -15,13 +15,14 @@ import RentalTimeline from "@/Components/RentalTimeline.vue";
 import { Link } from "@inertiajs/vue3";
 import PaymentDialog from "@/Components/PaymentDialog.vue";
 import HandoverDialog from "@/Components/HandoverDialog.vue";
-import PickupScheduler from "@/Components/PickupScheduler.vue";
+import PickupDateSelector from "@/Components/PickupDateSelector.vue";
 
 const props = defineProps({
 	rental: Object,
 	userRole: String,
 	rejectionReasons: Array,
 	cancellationReasons: Array,
+	lenderSchedules: Array,
 });
 
 // Computed properties for role-specific content
@@ -317,11 +318,11 @@ const canShowHandover = computed(() => {
 				</Card>
 
 				<!--Pickup schedule input-->
-				<Card class="space-y-8">
-					<PickupScheduler 
-					v-if="rental.status === 'to_handover'"
+				<Card class="space-y-8" v-if="rental.status === 'to_handover'">
+					<PickupDateSelector 
 					:rental="rental"
 					:userRole="userRole"
+					:lenderSchedules="lenderSchedules"
 					/>
 				</Card>
 			</div>

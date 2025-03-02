@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import StatCard from "@/Components/StatCard.vue";
 import LenderListingCard from "@/Components/LenderListingCard.vue";
+import PickupScheduleManager from "@/Components/PickupScheduleManager.vue";
 import { ref, computed } from "vue";
 import { formatLabel } from "@/lib/formatters";
 
@@ -17,6 +18,7 @@ const props = defineProps({
 	rentalStats: Object,
 	rejectionReasons: Array,
 	cancellationReasons: Array,
+	pickupSchedules: Array,
 });
 console.log(props.groupedListings);
 const selectedTab = ref("pending");
@@ -72,6 +74,9 @@ const groupedListings = computed(() => {
 				:value="count"
 			/>
 		</div>
+
+		 <!-- Add Pickup Schedule Manager -->
+		<PickupScheduleManager :schedules="pickupSchedules" />
 
 		<!-- Tabs for lg+ screens -->
 		<div class="lg:block hidden">

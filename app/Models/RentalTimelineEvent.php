@@ -18,7 +18,7 @@ class RentalTimelineEvent extends Model
         'metadata' => 'array'
     ];
 
-    public function rentalRequest()
+    public function rental_request()
     {
         return $this->belongsTo(RentalRequest::class);
     }

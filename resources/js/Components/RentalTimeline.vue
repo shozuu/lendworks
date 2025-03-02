@@ -8,6 +8,7 @@ import {
 	Ban,
 	AlertCircle,
 	PackageCheck,
+	Calendar,
 } from "lucide-vue-next";
 import { ref } from "vue";
 import PaymentDialog from "@/Components/PaymentDialog.vue";
@@ -56,6 +57,8 @@ const getEventIcon = (eventType) => {
 			return CheckCircle2;
 		case "receive":
 			return PackageCheck;
+		case "pickup_schedule_selected":
+			return Calendar;
 		default:
 			return AlertCircle;
 	}
@@ -79,6 +82,8 @@ const getEventColor = (eventType) => {
 		case "returned":
 		case "receive":
 			return "text-emerald-500";
+		case "pickup_schedule_selected":
+			return "text-blue-500";
 		default:
 			return "text-muted-foreground";
 	}
@@ -199,6 +204,9 @@ const formatEventMessage = (event) => {
 			return performedByViewer
 				? `You confirmed receiving the item`
 				: `${actorLabel} confirmed receiving the item`;
+
+		case "pickup_schedule_selected":
+			return `${actorLabel} selected a pickup schedule`;
 
 		default:
 			return `Unknown event by ${actorLabel}`;

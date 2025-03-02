@@ -137,6 +137,14 @@ class RentalRequest extends Model
         return $this->hasMany(PickupSchedule::class);
     }
 
+    /**
+     * Get the timeline events for the rental request.
+     */
+    public function timeline_events()
+    {
+        return $this->hasMany(RentalTimelineEvent::class, 'rental_request_id');
+    }
+
     // Accessors
     public function getHasStartedAttribute(): bool
     {

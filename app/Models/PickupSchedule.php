@@ -8,6 +8,7 @@ class PickupSchedule extends Model
 {
     protected $fillable = [
         'rental_request_id',
+        'lender_pickup_schedule_id',
         'pickup_datetime',
         'is_selected'
     ];
@@ -20,5 +21,10 @@ class PickupSchedule extends Model
     public function rental_request()
     {
         return $this->belongsTo(RentalRequest::class);
+    }
+
+    public function lender_pickup_schedule()
+    {
+        return $this->belongsTo(LenderPickupSchedule::class);
     }
 }
