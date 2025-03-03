@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useForm } from "@inertiajs/vue3";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import HandoverDialog from "@/Components/HandoverDialog.vue";
+import RentalDurationTracker from "@/Components/RentalDurationTracker.vue";
 
 const props = defineProps({
 	data: {
@@ -127,6 +128,15 @@ const canShowHandover = computed(() => {
 		:details="details"
 		@click="$inertia.visit(route('rental.show', data.rental_request.id))"
 	>
+			<!-- Additional details slot -->
+		<template #additional-details>
+			<RentalDurationTracker 
+				v-if="data.rental_request.status === 'active'" 
+				:rental="data.rental_request"
+				class="mt-4"
+			/>
+		</template>
+
 		<!-- Actions slot -->
 		<template #actions>
 			<div class="sm:justify-end flex flex-wrap gap-2">

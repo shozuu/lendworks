@@ -6,6 +6,7 @@ import BaseRentalCard from "@/Components/BaseRentalCard.vue";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import PaymentDialog from "@/Components/PaymentDialog.vue";
 import HandoverDialog from "@/Components/HandoverDialog.vue";
+import RentalDurationTracker from "@/Components/RentalDurationTracker.vue";
 import { useForm } from "@inertiajs/vue3";
 
 const props = defineProps({
@@ -87,11 +88,13 @@ const actions = computed(() => props.rental.available_actions);
 		:details="details"
 		@click="$inertia.visit(route('rental.show', rental.id))"
 	>
-		<!-- Details slot -->
+			<!-- Additional details slot -->
 		<template #additional-details>
-			<p v-if="rental.status === 'active'" class="text-muted-foreground text-sm">
-				Due: {{ formatRentalDate(rental.end_date) }}
-			</p>
+			<RentalDurationTracker 
+				v-if="rental.status === 'active'" 
+				:rental="rental"
+				class="mt-4"
+			/>
 		</template>
 
 		<!-- Actions slot -->

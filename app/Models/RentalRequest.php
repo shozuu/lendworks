@@ -36,7 +36,11 @@ class RentalRequest extends Model
     ];
 
     protected $appends = [
-        'available_actions'
+        'available_actions',
+        'rental_duration',
+        'remaining_days',
+        'overdue_days',
+        'is_overdue'
     ];
 
     // Define core rental status constants
@@ -158,10 +162,11 @@ class RentalRequest extends Model
 
     public function getIsOverdueAttribute(): bool
     {
-        if (!$this->hasStarted || $this->hasEnded) {
+        if ($this->status !== 'active' || !$this->end_date) {
             return false;
         }
-        return now()->greaterThan($this->end_date);
+        
+        return Carbon::now()->startOfDay()->gt(Carbon::parse($this->end_date)->startOfDay());
     }
 
     public function getHasHandoverProofAttribute(): bool
@@ -202,6 +207,57 @@ class RentalRequest extends Model
             $this->renter_id === $user->id;
 
         return $actions;
+    }
+
+    public function getRentalDurationAttribute()
+    {
+        if (!$this->start_date || !$this->end_date) {
+            return 0;
+        }
+        
+        // Add one day to include both start and end dates
+        return Carbon::parse($this->start_date)->startOfDay()
+            ->diffInDays(Carbon::parse($this->end_date)->startOfDay()) + 1;
+    }
+
+    public function getRemainingDaysAttribute()
+    {
+        if ($this->status !== 'active' || !$this->end_date || !$this->start_date) {
+            return 0;
+        }
+        
+        $now = Carbon::now()->startOfDay();
+        $start = Carbon::parse($this->start_date)->startOfDay();
+        $end = Carbon::parse($this->end_date)->startOfDay();
+        
+        // Return the total duration before rental starts
+        if ($now->lt($start)) {
+            return $start->diffInDays($end) + 1;
+        }
+        
+        // Return 0 if we're past the end date
+        if ($now->gt($end)) {
+            return 0;
+        }
+        
+        // Return remaining days from today
+        return $now->diffInDays($end) + 1;
+    }
+
+    public function getOverdueDaysAttribute()
+    {
+        if ($this->status !== 'active' || !$this->end_date) {
+            return 0;
+        }
+        
+        $now = Carbon::now()->startOfDay();
+        $end = Carbon::parse($this->end_date)->startOfDay();
+        
+        if ($now->gt($end)) {
+            return $now->diffInDays($end);
+        }
+        
+        return 0;
     }
 
     // Scopes

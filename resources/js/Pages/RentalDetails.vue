@@ -16,6 +16,7 @@ import { Link } from "@inertiajs/vue3";
 import PaymentDialog from "@/Components/PaymentDialog.vue";
 import HandoverDialog from "@/Components/HandoverDialog.vue";
 import PickupDateSelector from "@/Components/PickupDateSelector.vue";
+import RentalDurationTracker from "@/Components/RentalDurationTracker.vue";
 
 const props = defineProps({
 	rental: Object,
@@ -168,6 +169,8 @@ const canShowHandover = computed(() => {
 				class="sm:text-base self-start text-sm"
 			/>
 		</div>
+
+		<RentalDurationTracker :rental="rental" />
 
 		<Card class="shadow-sm">
 			<CardHeader class="bg-card border-b">
