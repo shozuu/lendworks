@@ -18,6 +18,20 @@ class RentalTimelineEvent extends Model
         'metadata' => 'array'
     ];
 
+    protected static $eventTypes = [
+        'return_initiated',
+        'return_schedule_proposed',
+        'return_schedule_selected',
+        'return_schedule_confirmed',
+        'return_submitted',
+        'return_confirmed'
+    ];
+
+    public static function isValidEventType($type)
+    {
+        return in_array($type, self::$eventTypes);
+    }
+
     public function rental_request()
     {
         return $this->belongsTo(RentalRequest::class);

@@ -52,6 +52,12 @@ const getEventIcon = (eventType) => {
 			return XCircle;
 		case "handover":
 		case "handover_confirmed":
+		case "return_initiated":
+		case "return_schedule_proposed":
+		case "return_schedule_selected":
+		case "return_schedule_confirmed":
+		case "return_submitted":
+		case "return_confirmed":
 			return PackageCheck;
 		case "returned":
 			return CheckCircle2;
@@ -81,9 +87,16 @@ const getEventColor = (eventType) => {
 		case "handover_confirmed":
 		case "returned":
 		case "receive":
+		case "return_confirmed":
 			return "text-emerald-500";
 		case "pickup_schedule_selected":
+		case "return_initiated":
+		case "return_schedule_proposed":
+		case "return_schedule_selected":
+		case "return_schedule_confirmed":
 			return "text-blue-500";
+		case "return_submitted":
+			return "text-yellow-500";
 		default:
 			return "text-muted-foreground";
 	}
@@ -213,6 +226,37 @@ const formatEventMessage = (event) => {
 					: `${actorLabel} selected a pickup schedule for ${metadata.day_of_week}, ${metadata.date} from ${formatTime(metadata.start_time)} to ${formatTime(metadata.end_time)}`;
 			}
 			return `${actorLabel} selected a pickup schedule`;
+
+		case "return_initiated":
+			if (isLatest) {
+				return performedByViewer
+					? "You initiated the return process"
+					: `${actorLabel} initiated the return process`;
+			}
+			return `${actorLabel} initiated the return process`;
+
+		case "return_schedule_proposed":
+			return `${actorLabel} proposed a return schedule for ${formatDateTime(event.metadata?.datetime)}`;
+
+		case "return_schedule_selected":
+			return `${actorLabel} selected a return schedule for ${formatDateTime(event.metadata?.datetime)}`;
+
+		case "return_schedule_confirmed":
+			return `${actorLabel} confirmed the return schedule for ${formatDateTime(event.metadata?.datetime)}`;
+
+		case "return_submitted":
+			if (isLatest) {
+				return performedByViewer
+					? "You submitted return proof - awaiting confirmation"
+					: `${actorLabel} submitted return proof - awaiting confirmation`;
+			}
+			return `${actorLabel} submitted return proof`;
+
+		case "return_confirmed":
+			if (isLatest) {
+				return "Rental completed - item returned successfully";
+			}
+			return `${actorLabel} confirmed the return`;
 
 		default:
 			return `Unknown event by ${actorLabel}`;

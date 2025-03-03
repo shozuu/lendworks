@@ -17,6 +17,7 @@ import PaymentDialog from "@/Components/PaymentDialog.vue";
 import HandoverDialog from "@/Components/HandoverDialog.vue";
 import PickupDateSelector from "@/Components/PickupDateSelector.vue";
 import RentalDurationTracker from "@/Components/RentalDurationTracker.vue";
+import ReturnScheduler from '@/Components/ReturnScheduler.vue';
 
 const props = defineProps({
 	rental: Object,
@@ -328,6 +329,16 @@ const canShowHandover = computed(() => {
 					:lenderSchedules="lenderSchedules"
 					/>
 				</Card>
+
+				<!-- Add ReturnScheduler after PickupScheduler -->
+				<ReturnScheduler 
+					v-if="rental.status === 'active' || 
+							rental.status === 'pending_return' || 
+							rental.status === 'return_scheduled' ||
+							rental.status === 'pending_return_confirmation'"
+					:rental="rental"
+					:userRole="userRole"
+				/>
 			</div>
 
 			<!-- Right Column -->

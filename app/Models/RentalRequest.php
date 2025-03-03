@@ -20,7 +20,9 @@ class RentalRequest extends Model
         'service_fee',
         'deposit_fee',
         'total_price',
-        'status'
+        'status',
+        'handover_at',
+        'return_at'
     ];
 
     protected $casts = [
@@ -141,6 +143,11 @@ class RentalRequest extends Model
         return $this->hasMany(PickupSchedule::class);
     }
 
+    public function return_schedules()
+    {
+        return $this->hasMany(ReturnSchedule::class);
+    }
+
     /**
      * Get the timeline events for the rental request.
      */
@@ -192,6 +199,9 @@ class RentalRequest extends Model
             'canPayNow' => $isRenter && $this->canPayNow(),
             'canHandover' => false,
             'canReceive' => false,
+            'canInitiateReturn' => $isRenter && $this->status === 'active',
+            'canSubmitReturn' => $isRenter && $this->status === 'return_scheduled',
+            'canConfirmReturn' => $isLender && $this->status === 'pending_return_confirmation',
         ];
 
         if (!$user) return $actions;
