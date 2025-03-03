@@ -28,7 +28,10 @@ class RentalRequestController extends Controller
             'renter',
             'timelineEvents.actor',
             'payment_request',
-            'pickup_schedules'  // Add this line
+            'return_schedules' => function($query) {
+                $query->orderBy('created_at', 'desc');
+            },
+            'pickup_schedules'
         ]);
 
         // Check if the authenticated user is either the renter or the lender

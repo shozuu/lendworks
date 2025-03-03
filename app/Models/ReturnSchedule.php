@@ -10,7 +10,9 @@ class ReturnSchedule extends Model
         'rental_request_id',
         'return_datetime',
         'is_selected',
-        'is_confirmed'
+        'is_confirmed',
+        'start_time',
+        'end_time'
     ];
 
     protected $casts = [

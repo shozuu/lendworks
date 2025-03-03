@@ -338,6 +338,7 @@ const canShowHandover = computed(() => {
 							rental.status === 'pending_return_confirmation'"
 					:rental="rental"
 					:userRole="userRole"
+					:lenderSchedules="lenderSchedules"
 				/>
 			</div>
 

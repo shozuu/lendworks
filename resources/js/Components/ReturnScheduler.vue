@@ -17,12 +17,15 @@ import {
 const props = defineProps({
   rental: Object,
   userRole: String,
+  lenderSchedules: Array,  // Add this
 });
 
 const initiateForm = useForm({});
 const scheduleForm = useForm({
   return_datetime: '',
-});
+  start_time: '',
+  end_time: ''
+}); // Remove the nested 'data' structure
 const selectForm = useForm({});
 const confirmForm = useForm({});
 
@@ -82,47 +85,120 @@ const handleConfirmReturn = () => {
 const selectedDate = ref('');
 const selectedTime = ref('');
 
-// Generate available return dates (starting from rental end date)
-const availableDates = computed(() => {
-  if (!props.rental.end_date) return [];
+// Replace the availableDates computed with this
+const availableSchedules = computed(() => {
+  if (!props.rental.end_date || !props.lenderSchedules?.length) return [];
   
   const endDate = new Date(props.rental.end_date);
-  const dates = [];
-  
-  // Generate next 7 days from end date
-  for (let i = 0; i <= 7; i++) {
-    const date = addDays(endDate, i);
-    dates.push({
-      value: format(date, 'yyyy-MM-dd'),
-      label: format(date, 'EEEE, MMMM d, yyyy')
-    });
-  }
-  
-  return dates;
+  endDate.setHours(0, 0, 0, 0);
+
+  return props.lenderSchedules
+    .map(schedule => {
+      const scheduleDate = getScheduleDate(schedule.day_of_week);
+      return {
+        ...schedule,
+        scheduleDate,
+        formattedTime: formatScheduleTime(schedule)
+      };
+    })
+    .filter(schedule => schedule.scheduleDate >= endDate)
+    .sort((a, b) => a.scheduleDate - b.scheduleDate);
 });
 
-// Available time slots
-const timeSlots = [
-  { value: '09:00', label: '9:00 AM' },
-  { value: '10:00', label: '10:00 AM' },
-  { value: '11:00', label: '11:00 AM' },
-  { value: '13:00', label: '1:00 PM' },
-  { value: '14:00', label: '2:00 PM' },
-  { value: '15:00', label: '3:00 PM' },
-  { value: '16:00', label: '4:00 PM' },
-];
+// Add helper functions
+const getScheduleDate = (dayOfWeek) => {
+  const today = new Date();
+  const daysMap = {
+    'Monday': 1,
+    'Tuesday': 2,
+    'Wednesday': 3,
+    'Thursday': 4,
+    'Friday': 5,
+    'Saturday': 6,
+    'Sunday': 0
+  };
+  
+  const currentDay = today.getDay();
+  const targetDay = daysMap[dayOfWeek];
+  let daysToAdd = targetDay - currentDay;
+  
+  if (daysToAdd <= 0) {
+    daysToAdd += 7;
+  }
+  
+  const scheduleDate = new Date(today);
+  scheduleDate.setDate(today.getDate() + daysToAdd);
+  return scheduleDate;
+};
 
-const handleScheduleSubmit = () => {
-  if (!selectedDate.value || !selectedTime.value) return;
+const formatScheduleTime = (schedule) => {
+  const formatTimeString = (timeStr) => {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    const date = new Date();
+    date.setHours(parseInt(hours), parseInt(minutes));
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  return `${formatTimeString(schedule.start_time)} to ${formatTimeString(schedule.end_time)}`;
+};
+
+const formatTimeFrame = (schedule) => {
+  const formatTimeStr = (timeStr) => {
+    const [hours, minutes] = timeStr.split(':');
+    const date = new Date();
+    date.setHours(parseInt(hours), parseInt(minutes));
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  return `${formatTimeStr(schedule.start_time)} to ${formatTimeStr(schedule.end_time)}`;
+};
+
+// Update the selectedScheduleDetails computed
+const selectedScheduleDetails = computed(() => {
+  if (!selectedSchedule.value) return null;
   
-  const datetime = `${selectedDate.value} ${selectedTime.value}:00`;
+  const scheduleDate = new Date(selectedSchedule.value.return_datetime);
   
+  return {
+    dayOfWeek: format(scheduleDate, 'EEEE'),
+    date: format(scheduleDate, 'MMMM d, yyyy'),
+    timeFrame: formatTimeFrame(selectedSchedule.value),
+    selectedOn: format(new Date(selectedSchedule.value.created_at), 'MMM d, yyyy h:mm a')
+  };
+});
+
+// Update handleScheduleSubmit to properly send the data
+const handleScheduleSubmit = (schedule) => {
+  console.log('=== Return Schedule Submission Started ===');
+  console.log('Schedule data:', schedule);
+  
+  const datetime = format(schedule.scheduleDate, 'yyyy-MM-dd');
+  console.log('Formatted datetime:', datetime);
+  
+  // Update the form data directly, not through a nested 'data' object
+  scheduleForm.return_datetime = datetime;
+  scheduleForm.start_time = schedule.start_time;
+  scheduleForm.end_time = schedule.end_time;
+  
+  console.log('Form data being sent:', scheduleForm);
+
   scheduleForm.post(route('return-schedules.store', props.rental.id), {
-    data: { return_datetime: datetime },
     preserveScroll: true,
-    onSuccess: () => {
-      selectedDate.value = '';
-      selectedTime.value = '';
+    onError: (errors) => {
+      console.error('Schedule submission failed with errors:', errors);
+    },
+    onSuccess: (response) => {
+      console.log('Schedule submission successful!');
+      window.location.reload();
     }
   });
 };
@@ -157,49 +233,39 @@ const showWaitingMessage = computed(() => {
 
         <!-- Return Schedule Selection - Only visible to renter -->
         <div v-if="showSchedulePicker" class="space-y-4">
-          <div class="space-y-2">
-            <label class="text-sm font-medium">Select Return Date</label>
-            <Select v-model="selectedDate">
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a date" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem 
-                  v-for="date in availableDates" 
-                  :key="date.value" 
-                  :value="date.value"
-                >
-                  {{ date.label }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div class="space-y-2">
-            <label class="text-sm font-medium">Select Time</label>
-            <Select v-model="selectedTime">
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a time" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem 
-                  v-for="slot in timeSlots" 
-                  :key="slot.value" 
-                  :value="slot.value"
-                >
-                  {{ slot.label }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Button 
-            class="w-full" 
-            :disabled="!selectedDate || !selectedTime || scheduleForm.processing"
-            @click="handleScheduleSubmit"
+          <div 
+            v-for="schedule in availableSchedules" 
+            :key="schedule.id"
+            class="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
           >
-            Propose Return Schedule
-          </Button>
+            <div class="flex items-center justify-between">
+              <div class="space-y-1">
+                <div class="flex items-baseline gap-2">
+                  <p class="text-sm font-medium">{{ schedule.day_of_week }}</p>
+                  <p class="text-xs text-muted-foreground">
+                    {{ format(schedule.scheduleDate, 'MMM d, yyyy') }}
+                  </p>
+                </div>
+                <p class="text-sm text-muted-foreground">
+                  {{ schedule.formattedTime }}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                @click="handleScheduleSubmit(schedule)"
+                :disabled="scheduleForm.processing"
+              >
+                Select
+              </Button>
+            </div>
+          </div>
+
+          <p 
+            v-if="!availableSchedules.length" 
+            class="text-muted-foreground py-8 text-center text-sm"
+          >
+            No available schedules after the rental end date.
+          </p>
         </div>
 
         <!-- Waiting message - Only visible to lender -->
@@ -211,19 +277,36 @@ const showWaitingMessage = computed(() => {
         </div>
 
         <!-- Selected Schedule Display -->
-        <div v-if="selectedSchedule" class="p-4 border rounded-lg">
-          <div class="space-y-2">
-            <h3 class="font-medium">Selected Return Schedule</h3>
-            <p class="text-sm">{{ formatDateTime(selectedSchedule.return_datetime) }}</p>
-            
-            <Button 
-              v-if="userRole === 'lender' && !selectedSchedule.is_confirmed"
-              class="mt-2"
-              @click="handleConfirmSchedule(selectedSchedule)"
-              :disabled="confirmForm.processing"
-            >
-              Confirm Schedule
-            </Button>
+        <div v-if="selectedSchedule && !selectedSchedule.is_confirmed" 
+             class="p-4 border rounded-lg"
+        >
+          <div class="space-y-3">
+            <div class="space-y-1">
+              <h3 class="font-medium">Proposed Return Schedule</h3>
+              <div class="flex items-baseline justify-between">
+                <span class="text-sm">{{ selectedScheduleDetails.dayOfWeek }}</span>
+                <span class="text-sm text-muted-foreground">
+                  {{ selectedScheduleDetails.date }}
+                </span>
+              </div>
+              <p class="text-sm text-muted-foreground">
+                {{ selectedScheduleDetails.timeFrame }}
+              </p>
+            </div>
+
+            <div v-if="userRole === 'lender'" class="pt-2 border-t">
+              <Button 
+                class="w-full"
+                @click="handleConfirmSchedule(selectedSchedule)"
+                :disabled="confirmForm.processing"
+              >
+                Confirm Return Schedule
+              </Button>
+            </div>
+
+            <div v-else class="pt-2 border-t text-center text-sm text-muted-foreground">
+              Waiting for lender to confirm schedule...
+            </div>
           </div>
         </div>
 
