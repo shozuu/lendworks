@@ -12,6 +12,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('rental_request_id')->constrained()->onDelete('cascade');
             $table->dateTime('return_datetime');
+            $table->string('start_time')->nullable();
+            $table->string('end_time')->nullable();
             $table->boolean('is_selected')->default(false);
             $table->boolean('is_confirmed')->default(false);
             $table->timestamps();
