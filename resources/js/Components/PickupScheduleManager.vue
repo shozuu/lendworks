@@ -60,7 +60,40 @@ watch(selectedDay, (value) => {
   form.day_of_week = value;
 });
 
+// Add error state
+const timeError = ref('');
+
+// Update the time validation
+const validateTimeRange = () => {
+  timeError.value = '';
+
+  if (!startHour.value || !startMinute.value || !endHour.value || !endMinute.value) {
+    return false;
+  }
+
+  const start = parseInt(startHour.value) * 60 + parseInt(startMinute.value);
+  const end = parseInt(endHour.value) * 60 + parseInt(endMinute.value);
+
+  if (end <= start) {
+    timeError.value = 'End time must be later than start time and within the same day';
+    return false;
+  }
+
+  return true;
+};
+
+// Update watches for time inputs
+watch([startHour, startMinute, endHour, endMinute], () => {
+  if (startHour.value && startMinute.value && endHour.value && endMinute.value) {
+    validateTimeRange();
+  }
+});
+
 const handleSubmit = () => {
+  if (!validateTimeRange()) {
+    return;
+  }
+
   form.post(route('lender.pickup-schedules.store'), {
     preserveScroll: true,
     onSuccess: () => {
@@ -70,6 +103,7 @@ const handleSubmit = () => {
       startMinute.value = '';
       endHour.value = '';
       endMinute.value = '';
+      timeError.value = '';
     },
   });
 };
@@ -126,6 +160,7 @@ const startEditing = (schedule) => {
   editForm.end_time = schedule.end_time;
 };
 
+// Update cancelEditing to clear error
 const cancelEditing = () => {
   editingSchedule.value = null;
   editForm.reset();
@@ -133,6 +168,7 @@ const cancelEditing = () => {
   editingStartMinute.value = '';
   editingEndHour.value = '';
   editingEndMinute.value = '';
+  editTimeError.value = '';
 };
 
 watch([editingStartHour, editingStartMinute], () => {
@@ -147,11 +183,59 @@ watch([editingEndHour, editingEndMinute], () => {
   }
 });
 
+// Add edit form error state
+const editTimeError = ref('');
+
+// Add validation for edit form
+const validateEditTimeRange = () => {
+  editTimeError.value = '';
+
+  if (!editingStartHour.value || !editingStartMinute.value || !editingEndHour.value || !editingEndMinute.value) {
+    return false;
+  }
+
+  const start = parseInt(editingStartHour.value) * 60 + parseInt(editingStartMinute.value);
+  const end = parseInt(editingEndHour.value) * 60 + parseInt(editingEndMinute.value);
+
+  if (end <= start) {
+    editTimeError.value = 'End time must be later than start time and within the same day';
+    return false;
+  }
+
+  return true;
+};
+
+// Add watch for edit form time inputs
+watch([editingStartHour, editingStartMinute, editingEndHour, editingEndMinute], () => {
+  if (editingStartHour.value && editingStartMinute.value && editingEndHour.value && editingEndMinute.value) {
+    validateEditTimeRange();
+  }
+});
+
+// Add computed property for edit form validity
+const isEditFormValid = computed(() => {
+  if (!editForm.day_of_week || !editingStartHour.value || !editingStartMinute.value || 
+      !editingEndHour.value || !editingEndMinute.value) {
+    return false;
+  }
+
+  const start = parseInt(editingStartHour.value) * 60 + parseInt(editingStartMinute.value);
+  const end = parseInt(editingEndHour.value) * 60 + parseInt(editingEndMinute.value);
+
+  return end > start && !editTimeError.value;
+});
+
+// Update handleUpdate to include validation
 const handleUpdate = () => {
+  if (!validateEditTimeRange()) {
+    return;
+  }
+
   editForm.patch(route('lender.pickup-schedules.update', editingSchedule.value.id), {
     preserveScroll: true,
     onSuccess: () => {
       cancelEditing();
+      editTimeError.value = '';
     },
   });
 };
@@ -196,6 +280,18 @@ const formatScheduleTime = (schedule) => {
 
   return `${formatTimeString(schedule.start_time)} to ${formatTimeString(schedule.end_time)}`;
 };
+
+// Add a computed property for form validity
+const isFormValid = computed(() => {
+  if (!form.day_of_week || !startHour.value || !startMinute.value || !endHour.value || !endMinute.value) {
+    return false;
+  }
+
+  const start = parseInt(startHour.value) * 60 + parseInt(startMinute.value);
+  const end = parseInt(endHour.value) * 60 + parseInt(endMinute.value);
+
+  return end > start && !timeError.value;
+});
 </script>
 
 <template>
@@ -288,9 +384,13 @@ const formatScheduleTime = (schedule) => {
               </div>
             </div>
 
+            <p v-if="timeError" class="text-destructive text-sm mt-1">
+              {{ timeError }}
+            </p>
+
             <Button 
               class="w-full" 
-              :disabled="!form.day_of_week || !form.start_time || !form.end_time || form.processing"
+              :disabled="!isFormValid || form.processing"
               @click="handleSubmit"
             >
               Add Schedule
@@ -391,10 +491,14 @@ const formatScheduleTime = (schedule) => {
                     </div>
                   </div>
 
+                  <p v-if="editTimeError" class="text-destructive text-sm mt-1">
+                    {{ editTimeError }}
+                  </p>
+
                   <div class="flex gap-2">
                     <Button 
                       @click="handleUpdate"
-                      :disabled="!editForm.day_of_week || !editForm.start_time || !editForm.end_time || editForm.processing"
+                      :disabled="!isEditFormValid || editForm.processing"
                     >
                       Save
                     </Button>
