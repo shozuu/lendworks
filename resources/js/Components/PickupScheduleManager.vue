@@ -128,8 +128,29 @@ const handleDelete = () => {
   });
 };
 
-// Add a computed property for safe schedules
-const safeSchedules = computed(() => props.schedules || []);
+// Add a day order map for sorting
+const dayOrder = {
+  'Monday': 1,
+  'Tuesday': 2,
+  'Wednesday': 3,
+  'Thursday': 4,
+  'Friday': 5,
+  'Saturday': 6,
+  'Sunday': 7
+};
+
+// Update the safeSchedules computed property to include sorting
+const safeSchedules = computed(() => {
+  const schedules = props.schedules || [];
+  return [...schedules].sort((a, b) => {
+    // Sort by day of week first
+    const dayDiff = dayOrder[a.day_of_week] - dayOrder[b.day_of_week];
+    if (dayDiff !== 0) return dayDiff;
+    
+    // If same day, sort by start time
+    return a.start_time.localeCompare(b.start_time);
+  });
+});
 
 const editingSchedule = ref(null);
 const editForm = useForm({
