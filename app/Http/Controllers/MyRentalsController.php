@@ -12,21 +12,15 @@ class MyRentalsController extends Controller
 {
     public function index()
     {
-        $renter = Auth::user();
-        
-        // Get rentals where user is the renter
-        $rentals = RentalRequest::where('renter_id', $renter->id)
+        $rentals = RentalRequest::where('renter_id', Auth::id())
             ->with(['listing.images', 'listing.user', 'payment_request'])
             ->get();
 
-        // Group rentals by status
-        $groupedRentals = $rentals->groupBy(function ($rental) {
-            // Special handling for payments tab
+        $groupedListings = $rentals->groupBy(function ($rental) {
             if ($rental->status === 'approved' && $rental->payment_request) {
                 return 'payments';
             }
 
-            // Special handling for to_handover tab
             if (in_array($rental->status, ['to_handover', 'pending_proof'])) {
                 return 'to_handover';
             }
@@ -44,8 +38,11 @@ class MyRentalsController extends Controller
                 ->filter(function ($rental) {
                     return $rental->payment_request !== null;
                 })->count(),
-            'to_receive' => $rentals->whereIn('status', ['to_handover', 'pending_proof'])->count(),
+            'to_handover' => $rentals->whereIn('status', ['to_handover', 'pending_proof'])->count(),
             'active' => $rentals->where('status', 'active')->count(),
+            'pending_return' => $rentals->where('status', 'pending_return')->count(),
+            'return_scheduled' => $rentals->where('status', 'return_scheduled')->count(),
+            'pending_return_confirmation' => $rentals->where('status', 'pending_return_confirmation')->count(),
             'completed' => $rentals->where('status', 'completed')->count(),
             'rejected' => $rentals->where('status', 'rejected')->count(),
             'cancelled' => $rentals->where('status', 'cancelled')->count(),
@@ -63,8 +60,8 @@ class MyRentalsController extends Controller
             ->values()
             ->all();
 
-        return Inertia::render('MyRentals/MyRentals', [
-            'groupedRentals' => $groupedRentals,
+        return Inertia::render('MyRentals', [
+            'groupedListings' => $groupedListings,
             'rentalStats' => $rentalStats,
             'cancellationReasons' => $cancellationReasons,
         ]);
