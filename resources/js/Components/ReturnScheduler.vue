@@ -126,6 +126,15 @@ const handleScheduleSubmit = () => {
     }
   });
 };
+
+// Add computed property to control schedule picker visibility
+const showSchedulePicker = computed(() => {
+  return props.rental.status === 'pending_return' && props.userRole === 'renter';
+});
+
+const showWaitingMessage = computed(() => {
+  return props.rental.status === 'pending_return' && props.userRole === 'lender';
+});
 </script>
 
 <template>
@@ -146,8 +155,8 @@ const handleScheduleSubmit = () => {
           </Button>
         </div>
 
-        <!-- Return Schedule Selection -->
-        <div v-if="rental.status === 'pending_return'" class="space-y-4">
+        <!-- Return Schedule Selection - Only visible to renter -->
+        <div v-if="showSchedulePicker" class="space-y-4">
           <div class="space-y-2">
             <label class="text-sm font-medium">Select Return Date</label>
             <Select v-model="selectedDate">
@@ -191,6 +200,14 @@ const handleScheduleSubmit = () => {
           >
             Propose Return Schedule
           </Button>
+        </div>
+
+        <!-- Waiting message - Only visible to lender -->
+        <div 
+          v-if="showWaitingMessage" 
+          class="p-4 text-center text-muted-foreground bg-muted/30 rounded-lg"
+        >
+          Waiting for renter to select a return schedule...
         </div>
 
         <!-- Selected Schedule Display -->
