@@ -87,6 +87,7 @@ const showSuccessStatus = computed(() => {
            props.rental.available_actions.hasDepositRefund;
 });
 
+
 // Add new refs for payment proof dialog
 const showPaymentProofDialog = ref(false);
 const selectedPayment = ref(null);
