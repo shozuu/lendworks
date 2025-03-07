@@ -16,6 +16,12 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert"; // Add Alert components
 import PayOverdueDialog from "@/Components/PayOverdueDialog.vue";
 
+import ConfirmDialog from "@/Components/ConfirmDialog.vue"; // Add this import
+
+// Add ref for early return confirmation dialog
+const showEarlyReturnDialog = ref(false);
+
+
 const props = defineProps({
   rental: Object,
   userRole: String,
@@ -31,9 +37,32 @@ const scheduleForm = useForm({
 const selectForm = useForm({});
 const confirmForm = useForm({});
 
+// Modify handleInitiateReturn
 const handleInitiateReturn = () => {
+  // Check if return is being initiated within rental period
+  const today = new Date();
+  const endDate = new Date(props.rental.end_date);
+  
+  // Set both dates to start of day for accurate comparison
+  today.setHours(0, 0, 0, 0);
+  endDate.setHours(0, 0, 0, 0);
+  
+  if (today < endDate) {
+    // Show confirmation dialog for early return
+    showEarlyReturnDialog.value = true;
+  } else {
+    // Proceed with normal return process
+    proceedWithReturn();
+  }
+};
+
+// Modify the proceedWithReturn method to close the dialog
+const proceedWithReturn = () => {
   initiateForm.post(route('rentals.initiate-return', props.rental.id), {
     preserveScroll: true,
+    onSuccess: () => {
+      showEarlyReturnDialog.value = false; // Close the dialog after successful submission
+    }
   });
 };
 
@@ -454,4 +483,32 @@ const hasVerifiedOverduePayment = computed(() => {
     v-model:show="showOverduePayment"
     :rental="rental"
   />
+
+  <!-- Add Early Return Confirmation Dialog -->
+  <ConfirmDialog
+    v-model:show="showEarlyReturnDialog"
+    title="Early Return Notice"
+    description="We noticed you're returning this item before the rental period ends. Here's what you need to know:"
+    confirmLabel="Yes, Initiate Return"
+    cancelLabel="No, Keep Renting"
+    :processing="initiateForm.processing"
+    @confirm="proceedWithReturn"
+    @cancel="showEarlyReturnDialog = false"
+  >
+    <ul class="space-y-2 mt-4 text-sm text-muted-foreground">
+      <li class="flex items-start gap-2">
+        <span class="text-primary">•</span>
+        <span>Your rental payment for the remaining days cannot be refunded</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-primary">•</span>
+        <span>Your security deposit will be returned after we verify the item's condition</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-primary">•</span>
+        <span>The lender will need to confirm the return schedule</span>
+      </li>
+    </ul>
+  </ConfirmDialog>
+
 </template>
