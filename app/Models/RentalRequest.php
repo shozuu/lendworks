@@ -401,6 +401,14 @@ class RentalRequest extends Model
             ->exists();
     }
 
+    public function hasPendingOverduePayment(): bool
+    {
+        return $this->payment_request()
+            ->where('type', 'overdue')
+            ->where('status', 'pending')
+            ->exists();
+    }
+
     public function isPaidOverdue(): bool
     {
         return $this->is_overdue && $this->hasVerifiedOverduePayment();

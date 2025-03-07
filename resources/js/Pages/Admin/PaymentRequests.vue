@@ -16,6 +16,7 @@ import { ref } from "vue";
 import { ChevronRight } from "lucide-vue-next";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import PaymentRequestCard from "@/Components/PaymentRequestCard.vue";
+import OverduePaymentDialog from "@/Components/OverduePaymentDialog.vue";
 
 defineOptions({ layout: AdminLayout });
 
@@ -30,6 +31,7 @@ const showRejectDialog = ref(false);
 const rejectionFeedback = ref("");
 const rejectionError = ref("");
 const selectedForAction = ref(null);
+const showOverdueDialog = ref(false);
 
 const closeDialog = () => {
 	selectedPayment.value = null;
@@ -84,6 +86,40 @@ const handleReject = () => {
 			},
 		}
 	);
+};
+
+const openPaymentDialog = (payment) => {
+    if (payment.type === 'overdue') {
+        selectedPayment.value = payment;
+        showOverdueDialog.value = true;
+    } else {
+        selectedPayment.value = payment;
+        showPaymentDialog.value = true;
+    }
+};
+
+// Add computed properties for safer data access
+const getRentalImage = (payment) => {
+    if (!payment?.rental_request?.listing?.images?.length) {
+        return '/storage/images/listing/default.png';
+    }
+    return `/storage/${payment.rental_request.listing.images[0].image_path}`;
+};
+
+const getRentalTitle = (payment) => {
+    return payment?.rental_request?.listing?.title || 'Untitled Listing';
+};
+
+const getLenderName = (payment) => {
+    return payment?.rental_request?.listing?.user?.name || 'Unknown Lender';
+};
+
+const getRenterName = (payment) => {
+    return payment?.rental_request?.renter?.name || 'Unknown Renter';
+};
+
+const getRentalPrice = (payment) => {
+    return payment?.rental_request?.total_price || 0;
 };
 </script>
 
@@ -169,38 +205,35 @@ const handleReject = () => {
 				<!-- Rental Context Section -->
 				<div class="bg-muted p-4 space-y-3 rounded-lg">
 					<div class="flex items-start gap-4">
-						<!-- Listing Image -->
+						<!-- Listing Image with safe access -->
 						<img
-							:src="
-								selectedPayment.rental_request.listing.images[0]?.image_path
-									? `/storage/${selectedPayment.rental_request.listing.images[0].image_path}`
-									: '/storage/images/listing/default.png'
-							"
+							:src="getRentalImage(selectedPayment)"
 							class="object-cover w-20 h-20 rounded-md"
-							:alt="selectedPayment.rental_request.listing.title"
+							:alt="getRentalTitle(selectedPayment)"
 						/>
 						<div class="flex-1 min-w-0">
 							<h4 class="font-medium truncate">
-								{{ selectedPayment.rental_request.listing.title }}
+								{{ getRentalTitle(selectedPayment) }}
 							</h4>
 							<div class="text-muted-foreground space-y-1 text-sm">
 								<p>
 									<span class="font-medium">Lender:</span>
-									{{ selectedPayment.rental_request.listing.user.name }}
+										{{ getLenderName(selectedPayment) }}
 								</p>
 								<p>
 									<span class="font-medium">Renter:</span>
-									{{ selectedPayment.rental_request.renter.name }}
+										{{ getRenterName(selectedPayment) }}
 								</p>
 								<p>
 									<span class="font-medium">Total Price:</span> ₱{{
-										selectedPayment.rental_request.total_price
+										getRentalPrice(selectedPayment)
 									}}
 								</p>
 							</div>
 						</div>
 					</div>
 					<Link
+						v-if="selectedPayment.rental_request"
 						:href="
 							route('admin.rental-transactions.show', selectedPayment.rental_request.id)
 						"
@@ -216,6 +249,7 @@ const handleReject = () => {
 					<h4 class="text-sm font-medium">Payment Screenshot</h4>
 					<div class="aspect-video overflow-hidden border rounded-lg">
 						<img
+							v-if="selectedPayment.payment_proof_path"
 							:src="`/storage/${selectedPayment.payment_proof_path}`"
 							:alt="'Payment proof for ' + selectedPayment.reference_number"
 							class="object-contain w-full h-full"
@@ -280,4 +314,10 @@ const handleReject = () => {
 			}
 		"
 	/>
+
+	<!-- Add Overdue Payment Dialog -->
+    <OverduePaymentDialog
+        v-model:show="showOverdueDialog"
+        :payment="selectedPayment"
+    />
 </template>

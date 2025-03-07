@@ -17,6 +17,8 @@ return new class extends Migration
             $table->text('admin_feedback')->nullable();
             $table->foreignId('verified_by')->nullable()->constrained('users');
             $table->timestamp('verified_at')->nullable();
+            $table->enum('type', ['regular', 'overdue'])->default('regular');  // Add type field
+            $table->integer('amount')->nullable();  // Add amount field
             $table->timestamps();
         });
     }

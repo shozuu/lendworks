@@ -8,14 +8,14 @@ class PaymentRequest extends Model
 {
     protected $fillable = [
         'rental_request_id',
-        'type',
-        'amount',
         'reference_number',
         'payment_proof_path',
         'status',
         'admin_feedback',
         'verified_by',
-        'verified_at'
+        'verified_at',
+        'type',    // 'regular' or 'overdue'
+        'amount'   // stores the payment amount
     ];
 
     protected $casts = [

@@ -58,6 +58,8 @@ Route::middleware(['auth', 'verified'])->group(function() {
 
     // payment submission
     Route::post('/rentals/{rental}/submit-payment', [PaymentController::class, 'store'])->name('rentals.submit-payment');
+    Route::post('/rentals/{rental}/submit-overdue-payment', [PaymentController::class, 'storeOverduePayment'])
+        ->name('rentals.submit-overdue-payment');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -124,8 +126,17 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     
     // Payment routes
     Route::get('/payments', [AdminController::class, 'payments'])->name('payments');
-    Route::post('/payments/{payment}/verify', [AdminController::class, 'verifyPayment'])->name('payments.verify');
-    Route::post('/payments/{payment}/reject', [AdminController::class, 'rejectPayment'])->name('payments.reject');
+    
+    // Separate routes for regular and overdue payments
+    Route::post('/payments/{payment}/verify', [PaymentController::class, 'verify'])
+        ->name('payments.verify');
+    
+    Route::post('/payments/{payment}/reject', [PaymentController::class, 'reject'])
+        ->name('payments.reject');
+
+    // Add route for getting payment details if needed
+    Route::get('/payments/{payment}', [PaymentController::class, 'show'])
+        ->name('payments.show');
 });
 
 Route::get('/', [ListingController::class, 'index'])->name('home');
