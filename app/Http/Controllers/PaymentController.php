@@ -141,20 +141,33 @@ class PaymentController extends Controller
                 'verified_at' => now()
             ]);
 
+            // Common payment metadata
+            $paymentMetadata = [
+                'payment_request' => [
+                    'id' => $payment->id,
+                    'reference_number' => $payment->reference_number,
+                    'payment_proof_path' => $payment->payment_proof_path,
+                    'amount' => $payment->amount,
+                    'verified_at' => now()->toDateTimeString()
+                ],
+                'verified_by' => Auth::user()->name
+            ];
+
             // Different handling based on payment type
             if ($payment->type === 'overdue') {
                 $payment->rentalRequest->recordTimelineEvent('overdue_payment_verified', Auth::id(), [
-                    'payment_request_id' => $payment->id,
+                    ...$paymentMetadata,
                     'amount' => $payment->amount,
-                    'verified_by' => Auth::user()->name
+                    'is_overdue_payment' => true
                 ]);
             } else {
                 // For regular rental payments, update rental status to 'to_handover'
                 $payment->rentalRequest->update(['status' => 'to_handover']);
                 
                 $payment->rentalRequest->recordTimelineEvent('payment_verified', Auth::id(), [
-                    'payment_request_id' => $payment->id,
-                    'verified_by' => Auth::user()->name
+                    ...$paymentMetadata,
+                    'total_amount' => $payment->rentalRequest->total_price,
+                    'is_initial_payment' => true
                 ]);
             }
 
