@@ -425,14 +425,20 @@ const handleHandoverProofClose = () => {
 	}, 300);
 };
 
-// Add helper function to handle proof viewing
+// Update the showPaymentProof function
 const showPaymentProof = (event) => {
     if (event.metadata?.proof_path) {
+        // For overdue payments, use the overdue fee amount
+        const amount = event.event_type.includes('overdue_payment') 
+            ? props.rental.overdue_fee 
+            : event.metadata.amount;
+
         selectedHistoricalPayment.value = {
             proof_path: event.metadata.proof_path,
             reference_number: event.metadata.reference_number,
-            amount: event.metadata.amount,
-            processed_at: event.created_at
+            amount: amount,
+            processed_at: event.created_at,
+            type: event.event_type // Add type to identify overdue payments
         };
         showHistoricalPayment.value = true;
     }
@@ -590,83 +596,22 @@ const showReturnProof = (event) => {
 						<!-- Add specialized card for payment processing events -->
 						<div 
 							v-if="['lender_payment_processed', 'deposit_refund_processed'].includes(event.event_type)" 
-							class="bg-muted p-3 mt-2 text-sm rounded-md"
+							class="space-y-2"
 						>
-							<div class="space-y-2">
-								<div class="flex justify-between items-center">
-									<span class="text-muted-foreground">Amount:</span>
-									<span class="font-medium">{{ formatNumber(event.metadata?.amount) }}</span>
-								</div>
-								<div class="flex justify-between items-center">
-									<span class="text-muted-foreground">Reference:</span>
-									<span class="font-medium">{{ event.metadata?.reference_number }}</span>
-								</div>
-								<div 
-									v-if="event.metadata?.proof_path" 
-									class="flex justify-end mt-2"
-								>
-									<Button
-										variant="outline"
-										size="sm"
-										@click="showPaymentProof(event)"
-									>
-										View Payment Proof
-									</Button>
-								</div>
-							</div>
-						</div>
-
-						 <!-- Update the lender payment processing event display -->
-						<div 
-						  v-if="['lender_payment_processed'].includes(event.event_type)" 
-						  class="bg-muted p-3 mt-2 text-sm rounded-md"
-						>
-						  <div class="space-y-2">
-						    <!-- Add payment breakdown -->
-						    <div class="space-y-1 pb-2 border-b">
-						      <div class="flex justify-between">
-						        <span class="text-muted-foreground">Base Price:</span>
-						        <span>{{ formatNumber(rental.base_price) }}</span>
-						      </div>
-						      <div class="flex justify-between">
-						        <span class="text-muted-foreground">Discount:</span>
-						        <span class="text-destructive">- {{ formatNumber(rental.discount) }}</span>
-						      </div>
-						      <div class="flex justify-between">
-						        <span class="text-muted-foreground">Platform Fee:</span>
-						        <span class="text-destructive">- {{ formatNumber(rental.service_fee) }}</span>
-						      </div>
-						      <div v-if="rental.overdue_payment" class="flex justify-between">
-						        <span class="text-muted-foreground">Overdue Fees:</span>
-						        <span class="text-emerald-500">+ {{ formatNumber(rental.overdue_fee) }}</span>
-						      </div>
-						    </div>
-						    <!-- Total and reference details -->
-						    <div class="flex justify-between items-center font-medium">
-						      <span class="text-muted-foreground">Total Amount:</span>
-						      <span>{{ formatNumber(event.metadata?.amount) }}</span>
-						    </div>
-						    <div class="flex justify-between items-center">
-						      <span class="text-muted-foreground">Reference:</span>
-						      <span>{{ event.metadata?.reference_number }}</span>
-						    </div>
-						    <!-- Payment proof button -->
-						    <div v-if="event.metadata?.proof_path" class="flex justify-end mt-2">
-						      <Button
-						        variant="outline"
-						        size="sm"
-						        @click="showPaymentProof(event)"
-						      >
-						        View Payment Proof
-						      </Button>
-						    </div>
-						  </div>
+							<p class="text-xs">
+								<span class="font-medium">Reference Number:</span>
+								{{ event.metadata?.reference_number }}
+							</p>
+							<p class="text-xs">
+								<span class="font-medium">Amount:</span>
+								{{ formatNumber(event.metadata?.amount) }}
+							</p>
 						</div>
 
 						<!-- Add specialized card for rental completion -->
 						<div 
 							v-if="event.event_type === 'rental_completed'" 
-							class="bg-muted p-3 mt-2 text-sm rounded-md"
+							class="bg-muted mt-2 text-sm rounded-md"
 						>
 							<div class="space-y-2">
 								<div class="flex justify-between items-center">
@@ -677,25 +622,12 @@ const showReturnProof = (event) => {
 									<span class="text-muted-foreground">Return Date:</span>
 									<span class="font-medium">{{ formatDateTime(event.metadata?.actual_return_date) }}</span>
 								</div>
-								<div class="mt-3 pt-3 border-t border-border">
-									<p class="text-xs text-muted-foreground">Pending Payments:</p>
-									<div class="space-y-1 mt-2">
-										<div class="flex justify-between text-xs">
-											<span>Lender Payment:</span>
-											<span class="font-medium">{{ formatNumber(event.metadata?.pending_payments?.lender_payment) }}</span>
-										</div>
-										<div class="flex justify-between text-xs">
-											<span>Security Deposit:</span>
-											<span class="font-medium">{{ formatNumber(event.metadata?.pending_payments?.deposit_refund) }}</span>
-										</div>
-									</div>
-								</div>
 							</div>
 						</div>
 
 						<!-- Add return proof details -->
 						<template v-if="['return_submitted', 'return_receipt_confirmed'].includes(event.event_type)">
-							<div class="bg-muted p-3 mt-2 text-sm rounded-md">
+							<div class="bg-muted mt-2 text-sm rounded-md">
 								<div class="flex flex-col gap-2">
 									<Button 
 										variant="outline" 

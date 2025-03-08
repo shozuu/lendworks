@@ -31,9 +31,11 @@ const form = useForm({
   notes: '',
   amount: computed(() => {
     if (props.type === 'lender_payment') {
-      // Base earnings: rental price - discount - service fee + overdue fee (if verified)
+      // Base earnings: rental price - discount - service fee
       const baseEarnings = props.rental.base_price - props.rental.discount - props.rental.service_fee;
+      // Add overdue fee if it exists and was verified
       const overdueFee = props.rental.overdue_payment ? props.rental.overdue_fee : 0;
+      // Return total earnings including overdue fee
       return baseEarnings + overdueFee;
     }
     return props.rental.deposit_fee;  // For deposit refund
