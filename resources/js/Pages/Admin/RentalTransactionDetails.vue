@@ -539,7 +539,7 @@ const showOverduePaymentDialog = ref(false);
 							</div>
 							<div class="flex justify-between font-medium">
 								<span>Total Payment:</span>
-								<span>{{ formatNumber(rental.lender_earnings) }}</span>
+								<span>{{ formatNumber(lenderPayment.amount) }}</span>
 							</div>
 
 							<!-- Rest of the payment details -->
