@@ -323,7 +323,7 @@ const scheduleConfirmationMessage = computed(() => {
                 variant="default" 
                 @click="showOverduePayment = true"
               >
-                Submit New Payment
+                Submit Overdue Payment
               </Button>
               <Button 
                 variant="outline" 
@@ -595,7 +595,7 @@ const scheduleConfirmationMessage = computed(() => {
   <ConfirmDialog
     v-model:show="showEarlyReturnDialog"
     title="Early Return Notice"
-    description="We noticed you're returning this item before the rental period ends. Here's what you need to know:"
+    description="We noticed you're returning this item before the rental period ends. Here's what you need to know: <br><br> Your rental payment for the remaining days cannot be refunded. <br>Your security deposit will be returned after we verify the item's condition. <br>The lender will need to confirm the return schedule."
     confirmLabel="Yes, Initiate Return"
     cancelLabel="No, Keep Renting"
     :processing="initiateForm.processing"
