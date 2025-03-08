@@ -35,22 +35,48 @@ const listingImage = computed(() => {
 		: "/storage/images/listing/default.png";
 });
 
-const details = computed(() => [
-	{
-		label: "Total",
-		value: formatNumber(props.data.rental_request.total_price),
-	},
-	{
-		label: "Period",
-		value: `${formatRentalDate(
-			props.data.rental_request.start_date
-		)} - ${formatRentalDate(props.data.rental_request.end_date)}`,
-	},
-	{
-		label: "Renter",
-		value: props.data.rental_request.renter.name,
-	},
-]);
+// Add overdue status check
+const isOverdue = computed(() => {
+  if (props.data.rental_request.status !== 'active') return false;
+  return new Date(props.data.rental_request.end_date) < new Date();
+});
+
+const isPaidOverdue = computed(() => {
+  return isOverdue.value && 
+    props.data.rental_request.payment_request && 
+    props.data.rental_request.payment_request.status === 'verified';
+});
+
+// Update details computed to include overdue information
+const details = computed(() => {
+  const baseDetails = [
+    {
+      label: "Total",
+      value: formatNumber(props.data.rental_request.total_price),
+    },
+    {
+      label: "Period",
+      value: `${formatRentalDate(props.data.rental_request.start_date)} - ${formatRentalDate(
+        props.data.rental_request.end_date
+      )}`,
+    },
+    {
+      label: "Renter",
+      value: props.data.rental_request.renter.name,
+    },
+  ];
+
+  // Add overdue days if rental is overdue
+  if (isOverdue.value) {
+    baseDetails.push({
+      label: isPaidOverdue.value ? "Paid Overdue Days" : "Overdue Days",
+      value: `${props.data.rental_request.overdue_days} days`,
+      class: isPaidOverdue.value ? 'text-amber-600' : 'text-red-600'
+    });
+  }
+
+  return baseDetails;
+});
 
 const showRejectDialog = ref(false);
 const showAcceptDialog = ref(false);
@@ -134,7 +160,13 @@ const canShowHandover = computed(() => {
 				v-if="data.rental_request.status === 'active'" 
 				:rental="data.rental_request"
 				class="mt-4"
-			/>
+				/>
+			<div v-if="isOverdue && !isPaidOverdue" class="mt-4 text-red-600 text-sm font-medium">
+				This rental is overdue. Contact the renter to arrange return.
+			</div>
+			<div v-if="isPaidOverdue" class="mt-4 text-amber-600 text-sm font-medium">
+				This rental is overdue but paid. Please arrange return soon.
+			</div>
 		</template>
 
 		<!-- Actions slot -->
