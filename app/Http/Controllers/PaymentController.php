@@ -132,51 +132,70 @@ class PaymentController extends Controller
     public function verify(Request $request, PaymentRequest $payment)
     {
         try {
-            DB::beginTransaction();
+            DB::transaction(function () use ($payment) {
+                $rentalRequest = $payment->rentalRequest;
 
-            // Update payment request
-            $payment->update([
-                'status' => 'verified',
-                'verified_by' => Auth::id(),
-                'verified_at' => now()
-            ]);
+                if ($payment->type === 'overdue') {
+                    // Calculate and store overdue fee
+                    $overdueFee = $rentalRequest->overdue_fee;
 
-            // Common payment metadata
-            $paymentMetadata = [
-                'payment_request' => [
-                    'id' => $payment->id,
-                    'reference_number' => $payment->reference_number,
-                    'payment_proof_path' => $payment->payment_proof_path,
-                    'amount' => $payment->amount,
-                    'verified_at' => now()->toDateTimeString()
-                ],
-                'verified_by' => Auth::user()->name
-            ];
+                    // Create/update overdue payment record
+                    $overduePayment = $rentalRequest->overdue_payment()->create([
+                        'amount' => $overdueFee,
+                        'reference_number' => $payment->reference_number,
+                        'proof_path' => $payment->payment_proof_path,
+                        'verified_at' => now(),
+                        'verified_by' => Auth::id()
+                    ]);
 
-            // Different handling based on payment type
-            if ($payment->type === 'overdue') {
-                $payment->rentalRequest->recordTimelineEvent('overdue_payment_verified', Auth::id(), [
-                    ...$paymentMetadata,
-                    'amount' => $payment->amount,
-                    'is_overdue_payment' => true
-                ]);
-            } else {
-                // For regular rental payments, update rental status to 'to_handover'
-                $payment->rentalRequest->update(['status' => 'to_handover']);
-                
-                $payment->rentalRequest->recordTimelineEvent('payment_verified', Auth::id(), [
-                    ...$paymentMetadata,
-                    'total_amount' => $payment->rentalRequest->total_price,
-                    'is_initial_payment' => true
-                ]);
-            }
+                    // Update payment request
+                    $payment->update([
+                        'status' => 'verified',
+                        'verified_by' => Auth::id(),
+                        'verified_at' => now(),
+                        'amount' => $overdueFee
+                    ]);
 
-            DB::commit();
+                    // Record timeline event
+                    $rentalRequest->recordTimelineEvent('overdue_payment_verified', Auth::id(), [
+                        'payment_request' => [
+                            'id' => $payment->id,
+                            'reference_number' => $payment->reference_number,
+                            'amount' => $overdueFee,
+                            'verified_at' => now()->toDateTimeString()
+                        ],
+                        'verified_by' => Auth::user()->name,
+                        'amount' => $overdueFee,
+                        'overdue_days' => $rentalRequest->overdue_days
+                    ]);
+
+                    // Force refresh to ensure we have latest data
+                    $rentalRequest->load('overdue_payment');
+                    $rentalRequest->refresh();
+                } else {
+                    // For regular rental payments, update rental status to 'to_handover'
+                    $payment->rentalRequest->update(['status' => 'to_handover']);
+                    
+                    $payment->rentalRequest->recordTimelineEvent('payment_verified', Auth::id(), [
+                        'payment_request' => [
+                            'id' => $payment->id,
+                            'reference_number' => $payment->reference_number,
+                            'payment_proof_path' => $payment->payment_proof_path,
+                            'amount' => $payment->amount,
+                            'verified_at' => now()->toDateTimeString()
+                        ],
+                        'verified_by' => Auth::user()->name,
+                        'total_amount' => $payment->rentalRequest->total_price,
+                        'is_initial_payment' => true
+                    ]);
+                }
+            });
+
             return back()->with('success', 'Payment verified successfully.');
-
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Failed to verify payment.');
+            report($e);
+            return back()->with('error', 'Failed to verify payment: ' . $e->getMessage());
         }
     }
 

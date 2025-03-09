@@ -8,48 +8,63 @@ use App\Models\CompletionPayment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class CompletionPaymentController extends Controller
 {
     public function storeLenderPayment(Request $request, RentalRequest $rental)
     {
         $validated = $request->validate([
-            'proof_image' => 'required|image|max:5120',
-            'reference_number' => 'required|string',
-            'amount' => 'required|numeric|min:0',
-            'notes' => 'nullable|string'
+            'reference_number' => ['required', 'string'],
+            'payment_proof' => ['required', 'image', 'max:2048']
         ]);
 
-        DB::transaction(function () use ($rental, $request, $validated) {
-            $path = $request->file('proof_image')->store('completion-payments', 'public');
+        try {
+            DB::beginTransaction();
 
-            CompletionPayment::create([
-                'rental_request_id' => $rental->id,
+            // Calculate base earnings
+            $baseEarnings = $rental->base_price - $rental->discount - $rental->service_fee;
+            
+            // Add overdue fee if there's a verified overdue payment
+            $overdueFee = $rental->overdue_payment ? $rental->overdue_fee : 0;
+            
+            // Calculate total payment
+            $totalPayment = $baseEarnings + $overdueFee;
+
+            $path = $request->file('payment_proof')->store('payment-proofs', 'public');
+
+            // Create completion payment record
+            $payment = $rental->completion_payments()->create([
                 'type' => 'lender_payment',
-                'amount' => $validated['amount'],
-                'proof_path' => $path,
-                'admin_id' => Auth::id(),
+                'amount' => $totalPayment,
                 'reference_number' => $validated['reference_number'],
-                'notes' => $validated['notes'],
-                'processed_at' => now()
+                'proof_path' => $path,
+                'processed_by' => Auth::id(),
+                'processed_at' => now(),
+                'includes_overdue_fee' => $overdueFee > 0
             ]);
 
-            // Update rental status if both payments are processed
-            if ($rental->completion_payments()->where('type', 'deposit_refund')->exists()) {
-                $rental->update(['status' => 'completed_with_payments']);
-            }
-
-            // Record timeline event with metadata
+            // Record timeline event with detailed breakdown
             $rental->recordTimelineEvent('lender_payment_processed', Auth::id(), [
-                'amount' => $validated['amount'],
+                'amount' => $totalPayment,
+                'base_earnings' => $baseEarnings,
+                'overdue_fee' => $overdueFee,
                 'reference_number' => $validated['reference_number'],
                 'proof_path' => $path,
                 'processed_by' => Auth::user()->name,
-                'processed_at' => now()->format('Y-m-d H:i:s')
+                'processed_at' => now()->toDateTimeString()
             ]);
-        });
 
-        return back()->with('success', 'Lender payment processed successfully.');
+            DB::commit();
+            return back()->with('success', 'Lender payment processed successfully.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            if (isset($path)) {
+                Storage::disk('public')->delete($path);
+            }
+            return back()->with('error', 'Failed to process lender payment.');
+        }
     }
 
     public function storeDepositRefund(Request $request, RentalRequest $rental)

@@ -136,12 +136,15 @@ const lenderEarnings = computed(() => {
     const discount = props.rental.discount;
     const serviceFee = props.rental.service_fee;
     const overdueFee = props.rental.overdue_payment ? props.rental.overdue_fee : 0;
+    const hasOverdue = props.rental.overdue_payment !== null;
 
     return {
         basePrice,
         discount,
         serviceFee,
         overdueFee,
+        hasOverdue,
+        baseEarnings: basePrice - discount - serviceFee,
         total: basePrice - discount - serviceFee + overdueFee
     };
 });
@@ -495,31 +498,54 @@ const lenderEarnings = computed(() => {
 					</CardHeader>
 					<CardContent class="p-4">
 						<div class="space-y-3">
-							<div class="grid gap-2 text-sm">
-								<div class="flex justify-between items-center">
-									<span class="text-muted-foreground">Base Price:</span>
-									<span>{{ formatNumber(lenderEarnings.basePrice) }}</span>
-								</div>
-								<div class="flex justify-between items-center text-destructive">
-									<span class="text-muted-foreground">Duration Discount:</span>
-									<span>-{{ formatNumber(lenderEarnings.discount) }}</span>
-								</div>
-								<div class="flex justify-between items-center text-destructive">
-									<span class="text-muted-foreground">Platform Fee:</span>
-									<span>-{{ formatNumber(lenderEarnings.serviceFee) }}</span>
-								</div>
-								<div v-if="lenderEarnings.overdueFee" class="flex justify-between items-center text-emerald-500">
-									<span class="text-muted-foreground">Overdue Fee:</span>
-									<span>+{{ formatNumber(lenderEarnings.overdueFee) }}</span>
-								</div>
-								<Separator class="my-1" />
-								<div class="flex justify-between items-center font-medium">
-									<span>Total Earnings:</span>
-									<span class="text-emerald-500">{{ formatNumber(lenderEarnings.total) }}</span>
+							<!-- Base Earnings Section -->
+							<div class="space-y-2 p-3 bg-muted rounded-lg">
+								<h4 class="text-sm font-medium mb-2">Base Rental Earnings</h4>
+								<div class="grid gap-2 text-sm">
+									<div class="flex justify-between items-center">
+										<span class="text-muted-foreground">Base Price:</span>
+										<span>{{ formatNumber(lenderEarnings.basePrice) }}</span>
+									</div>
+									<div class="flex justify-between items-center text-destructive">
+										<span class="text-muted-foreground">Duration Discount:</span>
+										<span>-{{ formatNumber(lenderEarnings.discount) }}</span>
+									</div>
+									<div class="flex justify-between items-center text-destructive">
+										<span class="text-muted-foreground">Platform Fee:</span>
+										<span>-{{ formatNumber(lenderEarnings.serviceFee) }}</span>
+									</div>
+									<Separator class="my-1" />
+									<div class="flex justify-between items-center font-medium">
+										<span>Base Earnings:</span>
+										<span>{{ formatNumber(lenderEarnings.baseEarnings) }}</span>
+									</div>
 								</div>
 							</div>
+
+							<!-- Overdue Earnings Section -->
+							<div v-if="lenderEarnings.hasOverdue" class="space-y-2 p-3 bg-muted rounded-lg">
+								<h4 class="text-sm font-medium mb-2">Additional Earnings</h4>
+								<div class="grid gap-2 text-sm">
+									<div class="flex justify-between items-center text-emerald-500">
+										<span class="text-muted-foreground">Overdue Fee:</span>
+										<span>+{{ formatNumber(lenderEarnings.overdueFee) }}</span>
+									</div>
+								</div>
+							</div>
+
+							<!-- Total Earnings -->
+							<Separator />
+							<div class="flex justify-between items-center font-medium">
+								<span>Total Earnings:</span>
+								<span class="text-emerald-500 text-lg">
+									{{ formatNumber(lenderEarnings.total) }}
+								</span>
+							</div>
+
 							<p class="text-muted-foreground text-xs">
-								Final earnings after deducting platform fees and discounts
+								{{ lenderEarnings.hasOverdue 
+									? 'Final earnings including base rental and overdue fees' 
+									: 'Final earnings after deducting platform fees and discounts' }}
 							</p>
 						</div>
 					</CardContent>

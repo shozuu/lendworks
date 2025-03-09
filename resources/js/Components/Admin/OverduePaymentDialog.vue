@@ -27,12 +27,16 @@ const isRejecting = ref(false);
 const handleVerify = () => {
     isVerifying.value = true;
     router.post(route('admin.payments.verify', props.payment.id), {}, {
+        preserveScroll: true, // Add this option
         onSuccess: () => {
             emit('update:show', false);
             isVerifying.value = false;
+            // Force a page refresh to show updated data
+            router.reload();
         },
-        onError: () => {
+        onError: (error) => {
             isVerifying.value = false;
+            console.error('Verification failed:', error);
         },
     });
 };

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import RentalStatusBadge from "@/Components/RentalStatusBadge.vue";
 import { formatNumber, formatDateTime, timeAgo } from "@/lib/formatters";
 import { Separator } from "@/components/ui/separator";
-import { Package, Clock } from "lucide-vue-next";
+import { Package, Clock, DollarSign } from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
 import { computed } from "vue";
 import { calculateDiscountPercentage } from "@/lib/rentalCalculator";
@@ -205,6 +205,27 @@ const rentalOnlyTotal = computed(() => {
 
 const totalWithDeposit = computed(() => {
   return rentalOnlyTotal.value + props.rental.deposit_fee;
+});
+
+// Add new computed property for lender earnings
+const lenderEarnings = computed(() => {
+    if (props.userRole !== 'lender') return null;
+    
+    const basePrice = props.rental.base_price;
+    const discount = props.rental.discount;
+    const serviceFee = props.rental.service_fee;
+    const overdueFee = props.rental.overdue_payment ? props.rental.overdue_fee : 0;
+    const hasOverdue = props.rental.overdue_payment !== null;
+
+    return {
+        basePrice,
+        discount,
+        serviceFee,
+        overdueFee,
+        hasOverdue,
+        baseEarnings: basePrice - discount - serviceFee,
+        total: basePrice - discount - serviceFee + overdueFee
+    };
 });
 </script>
 
@@ -414,7 +435,10 @@ const totalWithDeposit = computed(() => {
 											<!-- Final total with overdue - different for renter and lender -->
 											<div class="flex justify-between font-medium">
 												<span>{{ userRole === 'renter' ? 'Total Amount Due' : 'Total Earnings with Overdue' }}</span>
-												<span class="text-destructive">
+												<span :class="{
+															'text-destructive': userRole === 'renter',
+															'text-emerald-500': userRole === 'lender'
+														}">
 													{{ formatNumber(userRole === 'renter' ? rental.overdue_fee : rentalOnlyTotal + rental.overdue_fee) }}
 												</span>
 											</div>
@@ -674,6 +698,69 @@ const totalWithDeposit = computed(() => {
 							</Button>
 						</div>
 					</div>
+					</CardContent>
+				</Card>
+
+				<!-- Add this card in the right column for lenders only -->
+				<Card v-if="userRole === 'lender'" class="shadow-sm">
+					<CardHeader class="bg-card border-b">
+						<CardTitle class="flex items-center gap-2">
+							<DollarSign class="w-4 h-4 text-emerald-500" />
+							Your Earnings
+						</CardTitle>
+					</CardHeader>
+					<CardContent class="p-4">
+						<div class="space-y-3">
+							<!-- Base Earnings -->
+							<div class="space-y-2 p-3 bg-muted rounded-lg">
+								<h4 class="text-sm font-medium mb-2">Base Rental Earnings</h4>
+								<div class="grid gap-2 text-sm">
+									<div class="flex justify-between items-center">
+										<span class="text-muted-foreground">Base Price:</span>
+										<span>{{ formatNumber(lenderEarnings.basePrice) }}</span>
+									</div>
+									<div class="flex justify-between items-center text-destructive">
+										<span class="text-muted-foreground">Duration Discount:</span>
+										<span>-{{ formatNumber(lenderEarnings.discount) }}</span>
+									</div>
+									<div class="flex justify-between items-center text-destructive">
+										<span class="text-muted-foreground">Platform Fee:</span>
+										<span>-{{ formatNumber(lenderEarnings.serviceFee) }}</span>
+									</div>
+									<Separator class="my-1" />
+									<div class="flex justify-between items-center font-medium">
+										<span>Base Earnings:</span>
+										<span>{{ formatNumber(lenderEarnings.baseEarnings) }}</span>
+									</div>
+								</div>
+							</div>
+
+							<!-- Overdue Earnings if applicable -->
+							<div v-if="lenderEarnings.hasOverdue" class="space-y-2 p-3 bg-muted rounded-lg">
+								<h4 class="text-sm font-medium mb-2">Additional Earnings</h4>
+								<div class="grid gap-2 text-sm">
+									<div class="flex justify-between items-center text-emerald-500">
+										<span class="text-muted-foreground">Overdue Fee:</span>
+										<span>+{{ formatNumber(lenderEarnings.overdueFee) }}</span>
+									</div>
+								</div>
+							</div>
+
+							<!-- Total Earnings -->
+							<Separator />
+							<div class="flex justify-between items-center font-medium">
+								<span>Total Earnings:</span>
+								<span class="text-emerald-500 text-lg">
+									{{ formatNumber(lenderEarnings.total) }}
+								</span>
+							</div>
+
+							<p class="text-muted-foreground text-xs">
+								{{ lenderEarnings.hasOverdue 
+									? 'Your total earnings including overdue fees' 
+									: 'Your earnings after platform fees and discounts' }}
+							</p>
+						</div>
 					</CardContent>
 				</Card>
 			</div>
