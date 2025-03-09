@@ -353,6 +353,132 @@ const showOverdueSection = computed(() => {
 					</CardContent>
 				</Card>
 
+				 <!-- Completion Payments -->
+				<Card v-if="needsCompletionPayments" class="shadow-sm">
+					<CardHeader class="bg-card border-b">
+						<CardTitle>{{ showSuccessStatus ? 'Payment Status' : 'Completion Payments' }}</CardTitle>
+					</CardHeader>
+					<CardContent class="p-6">
+						<!-- Show this when both payments are completed -->
+						<div v-if="showSuccessStatus" class="space-y-6">
+							<div class="flex items-center justify-center text-emerald-500 gap-2">
+								<CheckCircle2 class="w-6 h-6" />
+								<p class="text-lg font-medium">All payments processed successfully</p>
+							</div>
+
+							<!-- Lender Payment Details -->
+							<div class="space-y-3 p-4 bg-muted rounded-lg">
+								<h3 class="font-medium">Lender Payment</h3>
+								<div class="space-y-2 text-sm">
+									<!-- Add breakdown of lender payment -->
+									<div class="space-y-1 pb-2 border-b">
+										<div class="flex justify-between">
+											<span class="text-muted-foreground">Base Rental Price:</span>
+											<span>{{ formatNumber(rental.base_price) }}</span>
+										</div>
+										<div class="flex justify-between">
+											<span class="text-muted-foreground">Duration Discount:</span>
+											<span class="text-destructive">- {{ formatNumber(rental.discount) }}</span>
+										</div>
+										<div class="flex justify-between">
+											<span class="text-muted-foreground">Platform Fee:</span>
+											<span class="text-destructive">- {{ formatNumber(rental.service_fee) }}</span>
+										</div>
+										<div v-if="rental.overdue_payment" class="flex justify-between">
+											<span class="text-muted-foreground">Overdue Fees:</span>
+											<span class="text-emerald-500">+ {{ formatNumber(rental.overdue_fee) }}</span>
+										</div>
+									</div>
+									<div class="flex justify-between font-medium">
+										<span>Total Payment:</span>
+										<span>{{ formatNumber(lenderPayment.amount) }}</span>
+									</div>
+
+									<!-- Rest of the payment details -->
+									<div v-if="lenderPayment" class="pt-2 border-t mt-2">
+										<div class="flex justify-between">
+											<span class="text-muted-foreground">Reference:</span>
+											<span class="font-medium">{{ lenderPayment.reference_number }}</span>
+										</div>
+										<div class="flex justify-between">
+											<span class="text-muted-foreground">Processed on:</span>
+											<span class="font-medium">{{ formatDateTime(lenderPayment.processed_at) }}</span>
+										</div>
+										<Button
+											variant="outline"
+											size="sm"
+											class="mt-2"
+											@click="showPaymentProof(lenderPayment)"
+										>
+											View Payment Proof
+										</Button>
+									</div>
+								</div>
+							</div>
+
+							<!-- Deposit Refund Details -->
+							<div class="space-y-3 p-4 bg-muted rounded-lg">
+								<h3 class="font-medium">Security Deposit Refund</h3>
+								<div class="space-y-2 text-sm">
+									<div class="flex justify-between">
+										<span class="text-muted-foreground">Amount:</span>
+										<span class="font-medium">{{ formatNumber(depositRefund.amount) }}</span>
+									</div>
+									<div class="flex justify-between">
+										<span class="text-muted-foreground">Reference:</span>
+										<span class="font-medium">{{ depositRefund.reference_number }}</span>
+									</div>
+									<div class="flex justify-between">
+										<span class="text-muted-foreground">Processed on:</span>
+										<span class="font-medium">{{ formatDateTime(depositRefund.processed_at) }}</span>
+									</div>
+									<Button
+										variant="outline"
+										size="sm"
+										class="mt-2"
+										@click="showPaymentProof(depositRefund)"
+									>
+										View Payment Proof
+									</Button>
+								</div>
+							</div>
+						</div>
+
+						<!-- Show this when payments are still pending -->
+						<div v-else class="space-y-6">
+							<!-- Lender Payment Section -->
+							<div class="space-y-4">
+								<h3 class="font-medium">Lender Payment</h3>
+								<p class="text-sm text-muted-foreground">
+									Process the payment to be sent to the lender
+								</p>
+									<Button 
+										@click="showLenderPaymentDialog = true"
+										:disabled="!rental.available_actions.canProcessLenderPayment"
+									>
+										{{ rental.available_actions.canProcessLenderPayment ? 'Process Lender Payment' : 'Payment Processed' }}
+									</Button>
+							</div>
+
+							<Separator />
+
+							<!-- Deposit Refund Section -->
+							<div class="space-y-4">
+								<h3 class="font-medium">Security Deposit Refund</h3>
+								<p class="text-sm text-muted-foreground">
+									Process the security deposit refund for the renter
+								</p>
+									<Button 
+										@click="showDepositRefundDialog = true"
+										:disabled="!rental.available_actions.canProcessDepositRefund"
+									>
+										{{ rental.available_actions.canProcessDepositRefund ? 'Process Deposit Refund' : 'Refund Processed' }}
+									</Button>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
+
 				<!-- Overdue Payment Management -->
 				<Card v-if="showOverdueSection" class="shadow-sm">
 					<CardHeader class="bg-card border-b">
@@ -658,133 +784,7 @@ const showOverdueSection = computed(() => {
 			</div>
 		</div>
 
-		<!-- Completion Payments -->
-		<Card v-if="needsCompletionPayments" class="shadow-sm">
-			<CardHeader class="bg-card border-b">
-				<CardTitle>{{ showSuccessStatus ? 'Payment Status' : 'Completion Payments' }}</CardTitle>
-			</CardHeader>
-			<CardContent class="p-6">
-				<!-- Show this when both payments are completed -->
-				<div v-if="showSuccessStatus" class="space-y-6">
-					<div class="flex items-center justify-center text-emerald-500 gap-2">
-						<CheckCircle2 class="w-6 h-6" />
-						<p class="text-lg font-medium">All payments processed successfully</p>
-					</div>
-
-					<!-- Lender Payment Details -->
-					<div class="space-y-3 p-4 bg-muted rounded-lg">
-						<h3 class="font-medium">Lender Payment</h3>
-						<div class="space-y-2 text-sm">
-							<!-- Add breakdown of lender payment -->
-							<div class="space-y-1 pb-2 border-b">
-								<div class="flex justify-between">
-									<span class="text-muted-foreground">Base Rental Price:</span>
-									<span>{{ formatNumber(rental.base_price) }}</span>
-								</div>
-								<div class="flex justify-between">
-									<span class="text-muted-foreground">Duration Discount:</span>
-									<span class="text-destructive">- {{ formatNumber(rental.discount) }}</span>
-								</div>
-								<div class="flex justify-between">
-									<span class="text-muted-foreground">Platform Fee:</span>
-									<span class="text-destructive">- {{ formatNumber(rental.service_fee) }}</span>
-								</div>
-								<div v-if="rental.overdue_payment" class="flex justify-between">
-									<span class="text-muted-foreground">Overdue Fees:</span>
-									<span class="text-emerald-500">+ {{ formatNumber(rental.overdue_fee) }}</span>
-								</div>
-							</div>
-							<div class="flex justify-between font-medium">
-								<span>Total Payment:</span>
-								<span>{{ formatNumber(lenderPayment.amount) }}</span>
-							</div>
-
-							<!-- Rest of the payment details -->
-							<div v-if="lenderPayment" class="pt-2 border-t mt-2">
-								<div class="flex justify-between">
-									<span class="text-muted-foreground">Reference:</span>
-									<span class="font-medium">{{ lenderPayment.reference_number }}</span>
-								</div>
-								<div class="flex justify-between">
-									<span class="text-muted-foreground">Processed on:</span>
-									<span class="font-medium">{{ formatDateTime(lenderPayment.processed_at) }}</span>
-								</div>
-								<Button
-									variant="outline"
-									size="sm"
-									class="mt-2"
-									@click="showPaymentProof(lenderPayment)"
-								>
-									View Payment Proof
-								</Button>
-							</div>
-						</div>
-					</div>
-
-					<!-- Deposit Refund Details -->
-					<div class="space-y-3 p-4 bg-muted rounded-lg">
-						<h3 class="font-medium">Security Deposit Refund</h3>
-						<div class="space-y-2 text-sm">
-							<div class="flex justify-between">
-								<span class="text-muted-foreground">Amount:</span>
-								<span class="font-medium">{{ formatNumber(depositRefund.amount) }}</span>
-							</div>
-							<div class="flex justify-between">
-								<span class="text-muted-foreground">Reference:</span>
-								<span class="font-medium">{{ depositRefund.reference_number }}</span>
-							</div>
-							<div class="flex justify-between">
-								<span class="text-muted-foreground">Processed on:</span>
-								<span class="font-medium">{{ formatDateTime(depositRefund.processed_at) }}</span>
-							</div>
-							<Button
-								variant="outline"
-								size="sm"
-								class="mt-2"
-								@click="showPaymentProof(depositRefund)"
-							>
-								View Payment Proof
-							</Button>
-						</div>
-					</div>
-				</div>
-
-				<!-- Show this when payments are still pending -->
-				<div v-else class="space-y-6">
-					<!-- Lender Payment Section -->
-					<div class="space-y-4">
-						<h3 class="font-medium">Lender Payment</h3>
-						<p class="text-sm text-muted-foreground">
-							Process the payment to be sent to the lender
-						</p>
-							<Button 
-								@click="showLenderPaymentDialog = true"
-								:disabled="!rental.available_actions.canProcessLenderPayment"
-							>
-								{{ rental.available_actions.canProcessLenderPayment ? 'Process Lender Payment' : 'Payment Processed' }}
-							</Button>
-					</div>
-
-					<Separator />
-
-					<!-- Deposit Refund Section -->
-					<div class="space-y-4">
-						<h3 class="font-medium">Security Deposit Refund</h3>
-						<p class="text-sm text-muted-foreground">
-							Process the security deposit refund for the renter
-						</p>
-							<Button 
-								@click="showDepositRefundDialog = true"
-								:disabled="!rental.available_actions.canProcessDepositRefund"
-							>
-								{{ rental.available_actions.canProcessDepositRefund ? 'Process Deposit Refund' : 'Refund Processed' }}
-							</Button>
-					</div>
-				</div>
-			</CardContent>
-		</Card>
-
-		<!-- Add completion payment dialogs -->
+		 <!-- Add completion payment dialogs -->
 		<CompletionPaymentDialog
 			v-model:show="showLenderPaymentDialog"
 			:rental="rental"
