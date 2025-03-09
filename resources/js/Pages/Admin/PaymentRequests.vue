@@ -152,21 +152,11 @@ const getRentalPrice = (payment) => {
 			<template v-for="payment in payments.data" :key="payment.id">
 				<!-- Use div for pending payments to show dialog -->
 				<div
-					v-if="payment.status === 'pending'"
 					class="block cursor-pointer"
 					@click="selectedPayment = payment"
 				>
 					<PaymentRequestCard :payment="payment" />
 				</div>
-
-				<!-- Use Link for non-pending payments to navigate -->
-				<Link
-					v-else
-					:href="route('admin.rental-transactions.show', payment.rental_request_id)"
-					class="block"
-				>
-					<PaymentRequestCard :payment="payment" />
-				</Link>
 			</template>
 			<PaginationLinks :paginator="payments" />
 		</div>
@@ -257,12 +247,14 @@ const getRentalPrice = (payment) => {
 					</div>
 				</div>
 
-				<!-- Action Buttons -->
-				<div class="flex justify-end gap-2 pt-4">
+				<!-- Action Buttons - Only show for pending payments -->
+				<div v-if="selectedPayment?.status === 'pending'" class="flex justify-end gap-2 pt-4">
 					<Button variant="destructive" @click="openRejectDialog(selectedPayment)">
 						Reject
 					</Button>
-					<Button @click="openVerifyDialog(selectedPayment)"> Verify Payment </Button>
+					<Button @click="openVerifyDialog(selectedPayment)">
+						Verify Payment
+					</Button>
 				</div>
 			</div>
 		</DialogContent>

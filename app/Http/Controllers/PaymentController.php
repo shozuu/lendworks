@@ -173,6 +173,13 @@ class PaymentController extends Controller
                     $rentalRequest->load('overdue_payment');
                     $rentalRequest->refresh();
                 } else {
+                    // Update payment request status
+                    $payment->update([
+                        'status' => 'verified',
+                        'verified_by' => Auth::id(),
+                        'verified_at' => now()
+                    ]);
+
                     // For regular rental payments, update rental status to 'to_handover'
                     $payment->rentalRequest->update(['status' => 'to_handover']);
                     
