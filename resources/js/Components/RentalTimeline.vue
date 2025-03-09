@@ -459,7 +459,7 @@ const showReturnProof = (event) => {
   }
 };
 
-// Update phases nextPhase dependencies
+// Update phases object with new payment_release phase
 const phases = {
   request: {
     title: 'Request',
@@ -509,8 +509,15 @@ const phases = {
   },
   completion: {
     title: 'Completion',
-    events: ['rental_completed', 'lender_payment_processed', 'deposit_refund_processed'],
+    events: ['rental_completed'],
     icon: CheckCircle2,
+    color: 'text-emerald-500',
+    nextPhase: 'payment_release'
+  },
+  payment_release: {
+    title: computed(() => props.userRole === 'lender' ? 'Payment Release' : 'Deposit Refund'),
+    events: ['lender_payment_processed', 'deposit_refund_processed'],
+    icon: Wallet,
     color: 'text-emerald-500',
     nextPhase: null
   }
@@ -523,7 +530,8 @@ const completedEventTypes = {
   handover: ['handover_confirmed', 'receive'],
   return: ['return_confirmed', 'return_receipt_confirmed'],
   overdue: ['overdue_payment_verified'],
-  completion: ['rental_completed', 'lender_payment_processed', 'deposit_refund_processed']
+  completion: ['rental_completed'],
+  payment_release: ['lender_payment_processed', 'deposit_refund_processed']
 };
 
 // Add computed property to check for overdue events
@@ -533,28 +541,50 @@ const hasOverdueEvents = computed(() => {
   );
 });
 
-// Add function to check if phase is completed
+// Single definition of eventsByPhase that handles both regular and payment release events
+const eventsByPhase = computed(() => {
+  const grouped = Object.entries(phases).reduce((acc, [phase, config]) => {
+    // Get base events for the phase
+    const events = filteredEvents.value.filter(event => 
+      config.events.includes(event.event_type)
+    );
+
+    // Handle payment release events specially
+    if (phase === 'payment_release') {
+      acc[phase] = events.filter(event => {
+        if (props.userRole === 'lender') {
+          return event.event_type === 'lender_payment_processed';
+        }
+        if (props.userRole === 'renter') {
+          return event.event_type === 'deposit_refund_processed';
+        }
+        return true; // For admin, show all
+      });
+    } else {
+      acc[phase] = events;
+    }
+    
+    return acc;
+  }, {});
+  
+  return grouped;
+});
+
+// Single definition of hasEvents
+const hasEvents = (phase) => (eventsByPhase.value[phase] || []).length > 0;
+
+// Update getPhaseEvents to use eventsByPhase directly
+const getPhaseEvents = (phase) => eventsByPhase.value[phase] || [];
+
+// Update isPhaseCompleted to use getPhaseEvents
 const isPhaseCompleted = (phase) => {
-  const phaseEvents = eventsByPhase.value[phase] || [];
+  const phaseEvents = getPhaseEvents(phase);
   const requiredEvents = completedEventTypes[phase];
   return phaseEvents.some(event => requiredEvents.includes(event.event_type));
 };
 
 // Add state for selected phase
 const selectedPhase = ref(null);
-
-// Group events by phase
-const eventsByPhase = computed(() => {
-  return Object.entries(phases).reduce((acc, [phase, config]) => {
-    acc[phase] = filteredEvents.value.filter(event => 
-      config.events.includes(event.event_type)
-    );
-    return acc;
-  }, {});
-});
-
-// Check if phase has any events
-const hasEvents = (phase) => eventsByPhase.value[phase]?.length > 0;
 
 // Get active phases (phases that have events)
 const activePhases = computed(() => 
@@ -567,7 +597,7 @@ const orderedPhases = computed(() => {
   if (hasOverdueEvents.value) {
     basePhases.push('overdue');
   }
-  return [...basePhases, 'return', 'completion'];
+  return [...basePhases, 'return', 'completion', 'payment_release'];
 });
 
 // Add function to check if connection line should be highlighted
@@ -645,7 +675,7 @@ const isConnectionHighlighted = (phase) => {
 								v-else 
 								class="text-xs"
 							>
-								{{ eventsByPhase[phase]?.length }}
+								 {{ getPhaseEvents(phase).length }}
 							</span>
 						</div>
 					</button>
@@ -664,10 +694,10 @@ const isConnectionHighlighted = (phase) => {
 		</div>
 
 		<!-- Event Details -->
-		<div v-if="selectedPhase && eventsByPhase[selectedPhase]?.length" class="mt-8 border rounded-lg p-4">
+		<div v-if="selectedPhase && getPhaseEvents(selectedPhase).length" class="mt-8 border rounded-lg p-4">
 			<div class="space-y-6">
 				<div 
-					v-for="event in eventsByPhase[selectedPhase]" 
+					v-for="event in getPhaseEvents(selectedPhase)" 
 					:key="event.id" 
 					class="relative pl-8"
 				>
