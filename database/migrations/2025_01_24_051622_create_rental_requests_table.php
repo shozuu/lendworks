@@ -30,7 +30,9 @@ return new class extends Migration
                 'cancelled',                  // Renter cancelled the request
                 'pending_return',             // renter initiated return
                 'return_scheduled',           // lender confirmed return schedule
-                'pending_return_confirmation' // renter and lender confirming return
+                'pending_return_confirmation', // renter and lender confirming return
+                'overdue',                    // Rental is overdue without payment
+                'paid_overdue'                // Rental is overdue but paid
             ])->default('pending');
             $table->timestamp('handover_at')->nullable();
             $table->timestamp('return_at')->nullable();

@@ -29,6 +29,8 @@ const tabs = [
 	{ id: "payments", label: "Payments" },
 	{ id: "to_handover", label: "To Handover" },
 	{ id: "active", label: "Active" },
+	{ id: "overdue", label: "Overdue" },
+	{ id: "paid_overdue", label: "Paid Overdue" },
 	{ id: "pending_return", label: "Return Pending" },
 	{ id: "return_scheduled", label: "Return Scheduled" },
 	{ id: "pending_return_confirmation", label: "Return Confirmation" },

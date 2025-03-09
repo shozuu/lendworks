@@ -23,6 +23,15 @@ class LenderDashboardController extends Controller
 
         // Group rentals by status
         $groupedListings = $rentals->groupBy(function ($rental) {
+            // Check for paid overdue rentals first
+            if ($rental->status === 'active' && $rental->end_date < now() && $rental->payment_request && $rental->payment_request->status === 'verified') {
+                return 'paid_overdue';
+            }
+            // Check for unpaid overdue rentals
+            if ($rental->status === 'active' && $rental->end_date < now()) {
+                return 'overdue';
+            }
+
             // Special handling for payments tab
             if ($rental->status === 'approved' && $rental->payment_request) {
                 return 'payments';
@@ -55,7 +64,18 @@ class LenderDashboardController extends Controller
                     return $rental->payment_request !== null;
                 })->count(),
             'to_handover' => $rentals->whereIn('status', ['to_handover', 'pending_proof'])->count(),
-            'active' => $rentals->where('status', 'active')->count(),
+            'active' => $rentals->where('status', 'active')
+                ->filter(function ($rental) {
+                    return $rental->end_date >= now();
+                })->count(),
+            'overdue' => $rentals->where('status', 'active')
+                ->filter(function ($rental) {
+                    return $rental->end_date < now() && (!$rental->payment_request || $rental->payment_request->status !== 'verified');
+                })->count(),
+            'paid_overdue' => $rentals->where('status', 'active')
+                ->filter(function ($rental) {
+                    return $rental->end_date < now() && $rental->payment_request && $rental->payment_request->status === 'verified';
+                })->count(),
             'pending_return' => $rentals->where('status', 'pending_return')->count(),
             'return_scheduled' => $rentals->where('status', 'return_scheduled')->count(),
             'pending_return_confirmation' => $rentals->where('status', 'pending_return_confirmation')->count(),
