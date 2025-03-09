@@ -48,6 +48,10 @@ const proceedWithReturn = () => {
   });
 };
 
+const handleDialogCancel = () => {
+  showEarlyReturnDialog.value = false;
+};
+
 // Available schedules computation
 const availableSchedules = computed(() => {
   if (!props.rental.end_date || !props.lenderSchedules?.length) return [];
@@ -272,21 +276,37 @@ const confirmedSchedule = computed(() => {
   <ConfirmDialog
     v-model:show="showEarlyReturnDialog"
     title="Early Return Notice"
-    description="You're returning this item before the rental period ends. Please note:"
+    description="Are you sure you want to return this item before the rental period ends?"
     confirmLabel="Yes, Proceed with Return"
     cancelLabel="No, Keep Renting"
     :processing="initiateForm.processing"
     @confirm="proceedWithReturn"
+    @cancel="handleDialogCancel"
   >
-    <ul class="space-y-2 mt-4 text-sm text-muted-foreground">
-      <li class="flex items-start gap-2">
-        <span class="text-primary">•</span>
-        <span>No refund will be issued for unused rental days</span>
-      </li>
-      <li class="flex items-start gap-2">
-        <span class="text-primary">•</span>
-        <span>Security deposit return is subject to item condition verification</span>
-      </li>
-    </ul>
+    <template #default>
+      <div class="mt-6 space-y-4">
+        <div class="p-4 bg-muted/30 rounded-lg space-y-3">
+          <h4 class="font-medium text-sm">Important Notes:</h4>
+          <div class="space-y-2">
+            <div class="flex items-start gap-2">
+              <div class="h-5 w-5 flex items-center justify-center">
+                <span class="text-primary text-lg">•</span>
+              </div>
+              <p class="text-sm text-muted-foreground">
+                No refund will be issued for any remaining days in the rental period
+              </p>
+            </div>
+            <div class="flex items-start gap-2">
+              <div class="h-5 w-5 flex items-center justify-center">
+                <span class="text-primary text-lg">•</span>
+              </div>
+              <p class="text-sm text-muted-foreground">
+                Return of security deposit is contingent upon verification of the item's condition
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
   </ConfirmDialog>
 </template>
