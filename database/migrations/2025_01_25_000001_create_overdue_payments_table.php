@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('overdue_payments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('rental_request_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('rental_request_id')->constrained()->onDelete('cascade');
             $table->decimal('amount', 10, 2);
             $table->string('reference_number');
             $table->string('proof_path');
