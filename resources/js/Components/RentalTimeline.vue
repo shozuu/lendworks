@@ -15,6 +15,7 @@ import {
 	XCircleIcon, // Add this import
 	Wallet, // Add this import
 	PackageOpen, // Add this import
+	Check // Add Check icon import
 } from "lucide-vue-next";
 import { ref, computed } from "vue";
 import PaymentDialog from "@/Components/PaymentDialog.vue";
@@ -506,6 +507,23 @@ const phases = {
   }
 };
 
+// Add completed event types for each phase
+const completedEventTypes = {
+  request: ['approved'],
+  payment: ['payment_verified'],
+  handover: ['handover_confirmed', 'receive'],
+  return: ['return_confirmed', 'return_receipt_confirmed'],
+  overdue: ['overdue_payment_verified'],
+  completion: ['rental_completed', 'lender_payment_processed', 'deposit_refund_processed']
+};
+
+// Add function to check if phase is completed
+const isPhaseCompleted = (phase) => {
+  const phaseEvents = eventsByPhase.value[phase] || [];
+  const requiredEvents = completedEventTypes[phase];
+  return phaseEvents.some(event => requiredEvents.includes(event.event_type));
+};
+
 // Add state for selected phase
 const selectedPhase = ref(null);
 
@@ -557,16 +575,35 @@ const activePhases = computed(() =>
 							class="w-5 h-5"
 							:class="phases[phase].color"
 						/>
-						<!-- Event count badge -->
-						<span 
+						 <!-- Updated Event Status Indicator -->
+						<div 
 							v-if="eventsByPhase[phase]?.length"
-							class="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center"
+							class="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center"
+							:class="[
+								isPhaseCompleted(phase) 
+								? 'bg-emerald-500 text-white' 
+								: 'bg-primary text-primary-foreground'
+							]"
 						>
-							{{ eventsByPhase[phase].length }}
-						</span>
+							<Check 
+								v-if="isPhaseCompleted(phase)" 
+								class="w-3 h-3"
+							/>
+							<span 
+								v-else 
+								class="text-xs"
+							>
+								{{ eventsByPhase[phase].length }}
+							</span>
+						</div>
 					</button>
 					<!-- Phase title -->
-					<span class="text-xs font-medium">{{ phases[phase].title }}</span>
+					<span 
+						class="text-xs font-medium"
+						:class="{'text-emerald-500': isPhaseCompleted(phase)}"
+					>
+						{{ phases[phase].title }}
+					</span>
 				</div>
 			</div>
 		</div>
