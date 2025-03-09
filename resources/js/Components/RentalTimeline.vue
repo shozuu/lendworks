@@ -459,25 +459,38 @@ const showReturnProof = (event) => {
   }
 };
 
-// Add phase definitions with their events
+// Update phases nextPhase dependencies
 const phases = {
   request: {
     title: 'Request',
     events: ['created', 'approved', 'rejected', 'cancelled'],
     icon: Send,
-    color: 'text-blue-500'
+    color: 'text-blue-500',
+    nextPhase: 'payment'
   },
   payment: {
     title: 'Payment',
     events: ['payment_submitted', 'payment_verified', 'payment_rejected'],
     icon: DollarSign,
-    color: 'text-emerald-500'
+    color: 'text-emerald-500',
+    nextPhase: 'handover'
   },
   handover: {
     title: 'Handover',
     events: ['pickup_schedule_selected', 'handover', 'handover_confirmed', 'receive'],
     icon: PackageCheck,
-    color: 'text-blue-500'
+    color: 'text-blue-500',
+    // Change nextPhase to check for overdue events
+    get nextPhase() {
+      return hasOverdueEvents.value ? 'overdue' : 'return';
+    }
+  },
+  overdue: {
+    title: 'Overdue',
+    events: ['overdue_payment_submitted', 'overdue_payment_verified', 'overdue_payment_rejected'],
+    icon: Clock,
+    color: 'text-destructive',
+    nextPhase: 'return'
   },
   return: {
     title: 'Return',
@@ -491,19 +504,15 @@ const phases = {
       'return_receipt_confirmed'
     ],
     icon: PackageOpen,
-    color: 'text-yellow-500'
-  },
-  overdue: {
-    title: 'Overdue',
-    events: ['overdue_payment_submitted', 'overdue_payment_verified', 'overdue_payment_rejected'],
-    icon: Clock,
-    color: 'text-destructive'
+    color: 'text-yellow-500',
+    nextPhase: 'completion'
   },
   completion: {
     title: 'Completion',
     events: ['rental_completed', 'lender_payment_processed', 'deposit_refund_processed'],
     icon: CheckCircle2,
-    color: 'text-emerald-500'
+    color: 'text-emerald-500',
+    nextPhase: null
   }
 };
 
@@ -516,6 +525,13 @@ const completedEventTypes = {
   overdue: ['overdue_payment_verified'],
   completion: ['rental_completed', 'lender_payment_processed', 'deposit_refund_processed']
 };
+
+// Add computed property to check for overdue events
+const hasOverdueEvents = computed(() => {
+  return filteredEvents.value.some(event => 
+    event.event_type.includes('overdue_payment')
+  );
+});
 
 // Add function to check if phase is completed
 const isPhaseCompleted = (phase) => {
@@ -544,45 +560,81 @@ const hasEvents = (phase) => eventsByPhase.value[phase]?.length > 0;
 const activePhases = computed(() => 
   Object.keys(phases).filter(phase => hasEvents(phase))
 );
+
+// Update orderedPhases to place overdue before return
+const orderedPhases = computed(() => {
+  const basePhases = ['request', 'payment', 'handover'];
+  if (hasOverdueEvents.value) {
+    basePhases.push('overdue');
+  }
+  return [...basePhases, 'return', 'completion'];
+});
+
+// Add function to check if connection line should be highlighted
+const isConnectionHighlighted = (phase) => {
+  const currentPhase = phase;
+  const nextPhase = typeof phases[phase].nextPhase === 'function' 
+    ? phases[phase].nextPhase()
+    : phases[phase].nextPhase;
+  
+  if (!nextPhase) return false;
+  
+  return isPhaseCompleted(currentPhase);
+};
 </script>
 
 <template>
 	<div class="space-y-8">
 		<!-- Phase Timeline -->
 		<div class="relative">
-			<!-- Horizontal connector line -->
-			<div class="absolute top-6 left-0 right-0 h-[2px] bg-border -z-10"></div>
+			<!-- Connector lines container -->
+			<div class="absolute top-6 left-0 right-0 flex justify-between items-center -z-10">
+				<!-- Generate connector lines between nodes -->
+				<template v-for="(phase, index) in orderedPhases" :key="`connector-${phase}`">
+					<div 
+						v-if="index < orderedPhases.length - 1"
+						class="h-[2px] flex-1 mx-2 transition-colors"
+						:class="[
+							isConnectionHighlighted(phase) 
+								? 'bg-emerald-500' 
+								: 'bg-border'
+						]"
+					></div>
+				</template>
+			</div>
 
 			<!-- Phase nodes -->
 			<div class="flex justify-between items-center relative">
 				<div 
-					v-for="phase in activePhases" 
+					v-for="phase in orderedPhases" 
 					:key="phase"
 					class="flex flex-col items-center gap-2"
 				>
 					<!-- Node -->
 					<button
 						@click="selectedPhase = selectedPhase === phase ? null : phase"
-						class="w-12 h-12 rounded-full flex items-center justify-center transition-colors relative"
+						class="w-12 h-12 rounded-full flex items-center justify-center transition-all relative border-2"
 						:class="[
-							hasEvents(phase) ? 'cursor-pointer hover:bg-muted' : 'opacity-50 cursor-not-allowed',
-							selectedPhase === phase ? 'bg-muted' : 'bg-background',
-							'border-2 border-border'
+							selectedPhase === phase ? 'bg-muted scale-110' : 'bg-background',
+							isPhaseCompleted(phase) ? 'border-emerald-500' : 'border-border',
+							hasEvents(phase) ? 'cursor-pointer hover:bg-muted' : 'opacity-50'
 						]"
 					>
 						<component
 							:is="phases[phase].icon"
-							class="w-5 h-5"
-							:class="phases[phase].color"
+							class="w-5 h-5 transition-colors"
+							:class="[
+								isPhaseCompleted(phase) ? 'text-emerald-500' : phases[phase].color
+							]"
 						/>
-						 <!-- Updated Event Status Indicator -->
+						<!-- Event Status Indicator -->
 						<div 
-							v-if="eventsByPhase[phase]?.length"
+							v-if="hasEvents(phase)"
 							class="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center"
 							:class="[
 								isPhaseCompleted(phase) 
-								? 'bg-emerald-500 text-white' 
-								: 'bg-primary text-primary-foreground'
+									? 'bg-emerald-500 text-white' 
+									: 'bg-primary text-primary-foreground'
 							]"
 						>
 							<Check 
@@ -593,14 +645,17 @@ const activePhases = computed(() =>
 								v-else 
 								class="text-xs"
 							>
-								{{ eventsByPhase[phase].length }}
+								{{ eventsByPhase[phase]?.length }}
 							</span>
 						</div>
 					</button>
 					<!-- Phase title -->
 					<span 
-						class="text-xs font-medium"
-						:class="{'text-emerald-500': isPhaseCompleted(phase)}"
+						class="text-xs font-medium transition-colors"
+						:class="{
+							'text-emerald-500': isPhaseCompleted(phase),
+							'text-muted-foreground': !hasEvents(phase)
+						}"
 					>
 						{{ phases[phase].title }}
 					</span>
