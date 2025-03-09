@@ -457,180 +457,298 @@ const showReturnProof = (event) => {
     showHandoverProof.value = true;
   }
 };
+
+// Add phase definitions with their events
+const phases = {
+  request: {
+    title: 'Request',
+    events: ['created', 'approved', 'rejected', 'cancelled'],
+    icon: Send,
+    color: 'text-blue-500'
+  },
+  payment: {
+    title: 'Payment',
+    events: ['payment_submitted', 'payment_verified', 'payment_rejected'],
+    icon: DollarSign,
+    color: 'text-emerald-500'
+  },
+  handover: {
+    title: 'Handover',
+    events: ['pickup_schedule_selected', 'handover', 'handover_confirmed', 'receive'],
+    icon: PackageCheck,
+    color: 'text-blue-500'
+  },
+  return: {
+    title: 'Return',
+    events: [
+      'return_initiated',
+      'return_schedule_proposed',
+      'return_schedule_selected',
+      'return_schedule_confirmed',
+      'return_submitted',
+      'return_confirmed',
+      'return_receipt_confirmed'
+    ],
+    icon: PackageOpen,
+    color: 'text-yellow-500'
+  },
+  overdue: {
+    title: 'Overdue',
+    events: ['overdue_payment_submitted', 'overdue_payment_verified', 'overdue_payment_rejected'],
+    icon: Clock,
+    color: 'text-destructive'
+  },
+  completion: {
+    title: 'Completion',
+    events: ['rental_completed', 'lender_payment_processed', 'deposit_refund_processed'],
+    icon: CheckCircle2,
+    color: 'text-emerald-500'
+  }
+};
+
+// Add state for selected phase
+const selectedPhase = ref(null);
+
+// Group events by phase
+const eventsByPhase = computed(() => {
+  return Object.entries(phases).reduce((acc, [phase, config]) => {
+    acc[phase] = filteredEvents.value.filter(event => 
+      config.events.includes(event.event_type)
+    );
+    return acc;
+  }, {});
+});
+
+// Check if phase has any events
+const hasEvents = (phase) => eventsByPhase.value[phase]?.length > 0;
+
+// Get active phases (phases that have events)
+const activePhases = computed(() => 
+  Object.keys(phases).filter(phase => hasEvents(phase))
+);
 </script>
 
 <template>
-	<div class="space-y-6">
-		<!-- Change props.events to filteredEvents -->
-		<div v-for="event in filteredEvents" :key="event.id" class="relative pl-8">
-			<!-- Connector Line -->
-			<div
-				v-if="!event.isLast"
-				class="absolute left-[11px] top-[24px] h-full w-[2px] bg-border"
-			></div>
+	<div class="space-y-8">
+		<!-- Phase Timeline -->
+		<div class="relative">
+			<!-- Horizontal connector line -->
+			<div class="absolute top-6 left-0 right-0 h-[2px] bg-border -z-10"></div>
 
-			<!-- Event Item -->
-			<div class="flex items-start gap-4">
-				<!-- Icon -->
-				<component
-					:is="getEventIcon(event.event_type)"
-					class="absolute left-0 w-6 h-6"
-					:class="getEventColor(event.event_type)"
-				/>
-
-				<!-- Content -->
-				<div class="space-y-1">
-					<p class="text-sm font-medium">{{ formatEventMessage(event) }}</p>
-					<p class="text-muted-foreground text-xs">
-						{{ formatDateTime(event.created_at) }}
-					</p>
-
-					<!-- Additional Details -->
-					<div v-if="event.metadata" class="bg-muted p-3 mt-2 text-sm rounded-md">
-						<!-- Payment Details -->
-						<template
-							v-if="
-								['payment_submitted', 'payment_verified', 'payment_rejected'].includes(
-									event.event_type
-								)
-							"
+			<!-- Phase nodes -->
+			<div class="flex justify-between items-center relative">
+				<div 
+					v-for="phase in activePhases" 
+					:key="phase"
+					class="flex flex-col items-center gap-2"
+				>
+					<!-- Node -->
+					<button
+						@click="selectedPhase = selectedPhase === phase ? null : phase"
+						class="w-12 h-12 rounded-full flex items-center justify-center transition-colors relative"
+						:class="[
+							hasEvents(phase) ? 'cursor-pointer hover:bg-muted' : 'opacity-50 cursor-not-allowed',
+							selectedPhase === phase ? 'bg-muted' : 'bg-background',
+							'border-2 border-border'
+						]"
+					>
+						<component
+							:is="phases[phase].icon"
+							class="w-5 h-5"
+							:class="phases[phase].color"
+						/>
+						<!-- Event count badge -->
+						<span 
+							v-if="eventsByPhase[phase]?.length"
+							class="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center"
 						>
-							<div class="flex flex-col items-start justify-between">
-								<div>
-									<p v-if="event.metadata.reference_number" class="text-xs">
-										<span class="font-medium">Reference Number:</span>
-										{{ event.metadata.reference_number }}
-									</p>
-									<p v-if="event.metadata.amount" class="text-xs mt-1">
-										<span class="font-medium">Amount:</span>
-										{{ formatNumber(event.metadata.amount) }}
-									</p>
-								</div>
-							</div>
-							<p
-								v-if="event.metadata.feedback"
-								class="text-muted-foreground mt-2 text-xs italic"
-							>
-								"{{ event.metadata.feedback }}"
+							{{ eventsByPhase[phase].length }}
+						</span>
+					</button>
+					<!-- Phase title -->
+					<span class="text-xs font-medium">{{ phases[phase].title }}</span>
+				</div>
+			</div>
+		</div>
+
+		<!-- Event Details -->
+		<div v-if="selectedPhase && eventsByPhase[selectedPhase]?.length" class="mt-8 border rounded-lg p-4">
+			<div class="space-y-6">
+				<div 
+					v-for="event in eventsByPhase[selectedPhase]" 
+					:key="event.id" 
+					class="relative pl-8"
+				>
+					<!-- Connector Line -->
+					<div
+						v-if="!event.isLast"
+						class="absolute left-[11px] top-[24px] h-full w-[2px] bg-border"
+					></div>
+
+					<!-- Event Item -->
+					<div class="flex items-start gap-4">
+						<!-- Icon -->
+						<component
+							:is="getEventIcon(event.event_type)"
+							class="absolute left-0 w-6 h-6"
+							:class="getEventColor(event.event_type)"
+						/>
+
+						<!-- Content -->
+						<div class="space-y-1">
+							<p class="text-sm font-medium">{{ formatEventMessage(event) }}</p>
+							<p class="text-muted-foreground text-xs">
+								{{ formatDateTime(event.created_at) }}
 							</p>
-							<!-- Add View Payment Details button if we have payment data -->
-							<Button
-								v-if="event.metadata.payment_request"
-								variant="outline"
-								size="sm"
-								class="mt-2"
-								@click="showPaymentDetails(event)"
-							>
-								View Payment Details
-							</Button>
-						</template>
 
-						<!-- Overdue Payment Details -->
-						<template v-if="['overdue_payment_submitted', 'overdue_payment_verified', 'overdue_payment_rejected'].includes(event.event_type)">
-							<div class="flex flex-col items-start justify-between">
-								<div>
-									<p v-if="event.metadata.reference_number" class="text-xs">
-										<span class="font-medium">Reference Number:</span>
-										{{ event.metadata.reference_number }}
-									</p>
-									 <p class="text-xs mt-1">
-										<span class="font-medium">Overdue Payment:</span>
-										{{ formatNumber(props.rental.overdue_fee) }}
-									</p>
-								</div>
-							</div>
-						</template>
-
-						<!-- Rejection/Cancellation Details -->
-						<template v-else-if="['rejected', 'cancelled'].includes(event.event_type)">
-							<p class="text-xs font-medium">Reason:</p>
-							<p class="text-muted-foreground mt-1 text-xs">
-								{{ event.metadata.reason }}
-							</p>
-							<p
-								v-if="event.metadata.feedback"
-								class="text-muted-foreground mt-2 text-xs italic"
-							>
-								"{{ event.metadata.feedback }}"
-							</p>
-						</template>
-
-						<!-- Handover Details -->
-						<template v-if="['handover', 'receive'].includes(event.event_type)">
-							<div class="flex flex-col gap-2">
-								<Button variant="outline" size="sm" @click="showHandoverDetails(event)">
-									View {{ event.event_type === "receive" ? "Receive" : "Handover" }} Proof
-								</Button>
-							</div>
-						</template>
-
-						<!-- Add Pickup Schedule Details -->
-						<template v-if="event.event_type === 'pickup_schedule_selected'">
-							<div class="space-y-2 text-xs">
-								<div class="flex items-baseline gap-1">
-									<span class="font-medium">Pickup Schedule:</span>
-									<span class="text-muted-foreground">
-										{{ event.metadata.day_of_week }}, {{ event.metadata.date }}
-									</span>
-								</div>
-								<div class="flex items-baseline gap-1">
-									<span class="font-medium">Time:</span>
-									<span class="text-muted-foreground">
-										{{ formatTime(event.metadata.start_time) }} to {{ formatTime(event.metadata.end_time) }}
-									</span>
-								</div>
-							</div>
-						</template>
-
-						<!-- Add specialized card for payment processing events -->
-						<div 
-							v-if="['lender_payment_processed', 'deposit_refund_processed'].includes(event.event_type)" 
-							class="space-y-2"
-						>
-							<p class="text-xs">
-								<span class="font-medium">Reference Number:</span>
-								{{ event.metadata?.reference_number }}
-							</p>
-							<p class="text-xs">
-								<span class="font-medium">Amount:</span>
-								{{ formatNumber(event.metadata?.amount) }}
-							</p>
-						</div>
-
-						<!-- Add specialized card for rental completion -->
-						<div 
-							v-if="event.event_type === 'rental_completed'" 
-							class="bg-muted mt-2 text-sm rounded-md"
-						>
-							<div class="space-y-2">
-								<div class="flex justify-between items-center">
-									<span class="text-muted-foreground">Rental Duration:</span>
-									<span class="font-medium">{{ event.metadata?.rental_duration }} days</span>
-								</div>
-								<div class="flex justify-between items-center">
-									<span class="text-muted-foreground">Return Date:</span>
-									<span class="font-medium">{{ formatDateTime(event.metadata?.actual_return_date) }}</span>
-								</div>
-							</div>
-						</div>
-
-						<!-- Add return proof details -->
-						<template v-if="['return_submitted', 'return_receipt_confirmed'].includes(event.event_type)">
-							<div class="bg-muted mt-2 text-sm rounded-md">
-								<div class="flex flex-col gap-2">
-									<Button 
-										variant="outline" 
-										size="sm" 
-										@click="showReturnProof(event)"
+							<!-- Additional Details -->
+							<div v-if="event.metadata" class="bg-muted p-3 mt-2 text-sm rounded-md">
+								<!-- Payment Details -->
+								<template
+									v-if="
+										['payment_submitted', 'payment_verified', 'payment_rejected'].includes(
+											event.event_type
+										)
+									"
+								>
+									<div class="flex flex-col items-start justify-between">
+										<div>
+											<p v-if="event.metadata.reference_number" class="text-xs">
+												<span class="font-medium">Reference Number:</span>
+												{{ event.metadata.reference_number }}
+											</p>
+											<p v-if="event.metadata.amount" class="text-xs mt-1">
+												<span class="font-medium">Amount:</span>
+												{{ formatNumber(event.metadata.amount) }}
+											</p>
+										</div>
+									</div>
+									<p
+										v-if="event.metadata.feedback"
+										class="text-muted-foreground mt-2 text-xs italic"
 									>
-										View {{ event.event_type === 'return_receipt_confirmed' ? 'Receive' : 'Return' }} Proof
+										"{{ event.metadata.feedback }}"
+									</p>
+									<!-- Add View Payment Details button if we have payment data -->
+									<Button
+										v-if="event.metadata.payment_request"
+										variant="outline"
+										size="sm"
+										class="mt-2"
+										@click="showPaymentDetails(event)"
+									>
+										View Payment Details
 									</Button>
-									<p v-if="event.metadata?.notes" class="text-xs text-muted-foreground italic">
-										"{{ event.metadata.notes }}"
+								</template>
+
+								<!-- Overdue Payment Details -->
+								<template v-if="['overdue_payment_submitted', 'overdue_payment_verified', 'overdue_payment_rejected'].includes(event.event_type)">
+									<div class="flex flex-col items-start justify-between">
+										<div>
+											<p v-if="event.metadata.reference_number" class="text-xs">
+												<span class="font-medium">Reference Number:</span>
+												{{ event.metadata.reference_number }}
+											</p>
+											 <p class="text-xs mt-1">
+												<span class="font-medium">Overdue Payment:</span>
+												{{ formatNumber(props.rental.overdue_fee) }}
+											</p>
+										</div>
+									</div>
+								</template>
+
+								<!-- Rejection/Cancellation Details -->
+								<template v-else-if="['rejected', 'cancelled'].includes(event.event_type)">
+									<p class="text-xs font-medium">Reason:</p>
+									<p class="text-muted-foreground mt-1 text-xs">
+										{{ event.metadata.reason }}
+									</p>
+									<p
+										v-if="event.metadata.feedback"
+										class="text-muted-foreground mt-2 text-xs italic"
+									>
+										"{{ event.metadata.feedback }}"
+									</p>
+								</template>
+
+								<!-- Handover Details -->
+								<template v-if="['handover', 'receive'].includes(event.event_type)">
+									<div class="flex flex-col gap-2">
+										<Button variant="outline" size="sm" @click="showHandoverDetails(event)">
+											View {{ event.event_type === "receive" ? "Receive" : "Handover" }} Proof
+										</Button>
+									</div>
+								</template>
+
+								<!-- Add Pickup Schedule Details -->
+								<template v-if="event.event_type === 'pickup_schedule_selected'">
+									<div class="space-y-2 text-xs">
+										<div class="flex items-baseline gap-1">
+											<span class="font-medium">Pickup Schedule:</span>
+											<span class="text-muted-foreground">
+												{{ event.metadata.day_of_week }}, {{ event.metadata.date }}
+											</span>
+										</div>
+										<div class="flex items-baseline gap-1">
+											<span class="font-medium">Time:</span>
+											<span class="text-muted-foreground">
+												{{ formatTime(event.metadata.start_time) }} to {{ formatTime(event.metadata.end_time) }}
+											</span>
+										</div>
+									</div>
+								</template>
+
+								<!-- Add specialized card for payment processing events -->
+								<div 
+									v-if="['lender_payment_processed', 'deposit_refund_processed'].includes(event.event_type)" 
+									class="space-y-2"
+								>
+									<p class="text-xs">
+										<span class="font-medium">Reference Number:</span>
+										{{ event.metadata?.reference_number }}
+									</p>
+									<p class="text-xs">
+										<span class="font-medium">Amount:</span>
+										{{ formatNumber(event.metadata?.amount) }}
 									</p>
 								</div>
+
+								<!-- Add specialized card for rental completion -->
+								<div 
+									v-if="event.event_type === 'rental_completed'" 
+									class="bg-muted mt-2 text-sm rounded-md"
+								>
+									<div class="space-y-2">
+										<div class="flex justify-between items-center">
+											<span class="text-muted-foreground">Rental Duration:</span>
+											<span class="font-medium">{{ event.metadata?.rental_duration }} days</span>
+										</div>
+										<div class="flex justify-between items-center">
+											<span class="text-muted-foreground">Return Date:</span>
+											<span class="font-medium">{{ formatDateTime(event.metadata?.actual_return_date) }}</span>
+										</div>
+									</div>
+								</div>
+
+								<!-- Add return proof details -->
+								<template v-if="['return_submitted', 'return_receipt_confirmed'].includes(event.event_type)">
+									<div class="bg-muted mt-2 text-sm rounded-md">
+										<div class="flex flex-col gap-2">
+											<Button 
+												variant="outline" 
+												size="sm" 
+												@click="showReturnProof(event)"
+											>
+												View {{ event.event_type === 'return_receipt_confirmed' ? 'Receive' : 'Return' }} Proof
+											</Button>
+											<p v-if="event.metadata?.notes" class="text-xs text-muted-foreground italic">
+												"{{ event.metadata.notes }}"
+											</p>
+										</div>
+									</div>
+								</template>
 							</div>
-						</template>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -656,3 +774,16 @@ const showReturnProof = (event) => {
 		/>
 	</div>
 </template>
+
+<style scoped>
+/* Add smooth transitions */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
