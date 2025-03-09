@@ -283,30 +283,28 @@ const confirmedSchedule = computed(() => {
     @confirm="proceedWithReturn"
     @cancel="handleDialogCancel"
   >
-    <template #default>
-      <div class="mt-6 space-y-4">
-        <div class="p-4 bg-muted/30 rounded-lg space-y-3">
-          <h4 class="font-medium text-sm">Important Notes:</h4>
-          <div class="space-y-2">
-            <div class="flex items-start gap-2">
-              <div class="h-5 w-5 flex items-center justify-center">
-                <span class="text-primary text-lg">•</span>
-              </div>
-              <p class="text-sm text-muted-foreground">
-                No refund will be issued for any remaining days in the rental period
-              </p>
+    <div class="mt-6 space-y-4">
+      <div class="p-4 bg-muted/30 rounded-lg space-y-3">
+        <h4 class="font-medium text-sm">Important Notes:</h4>
+        <div class="space-y-2">
+          <div class="flex items-start gap-2">
+            <div class="h-5 w-5 flex items-center justify-center">
+              <span class="text-primary text-lg">•</span>
             </div>
-            <div class="flex items-start gap-2">
-              <div class="h-5 w-5 flex items-center justify-center">
-                <span class="text-primary text-lg">•</span>
-              </div>
-              <p class="text-sm text-muted-foreground">
-                Return of security deposit is contingent upon verification of the item's condition
-              </p>
+            <p class="text-sm text-muted-foreground">
+              No refund will be issued for any remaining days in the rental period
+            </p>
+          </div>
+          <div class="flex items-start gap-2">
+            <div class="h-5 w-5 flex items-center justify-center">
+              <span class="text-primary text-lg">•</span>
             </div>
+            <p class="text-sm text-muted-foreground">
+              Return of security deposit is contingent upon verification of the item's condition
+            </p>
           </div>
         </div>
       </div>
-    </template>
+    </div>
   </ConfirmDialog>
 </template>
