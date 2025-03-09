@@ -16,7 +16,7 @@ return new class extends Migration
             $table->boolean('includes_overdue_fee')->default(false);
             $table->integer('total_amount')->nullable();
             $table->string('proof_path');
-            $table->foreignId('admin_id')->constrained('users'); // Change to admin_id for consistency
+            $table->foreignId('admin_id')->constrained('users');
             $table->string('reference_number');
             $table->text('notes')->nullable();
             $table->timestamp('processed_at')->nullable();
