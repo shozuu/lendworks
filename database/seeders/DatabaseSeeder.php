@@ -21,7 +21,6 @@ class DatabaseSeeder extends Seeder
             TakedownReasonSeeder::class,  
             RentalRejectionReasonSeeder::class,
             RentalCancellationReasonSeeder::class,
-            OverdueRentalSeeder::class,
         ]);
     }
 }
