@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import {
   Dialog,
   DialogContent,
@@ -39,35 +39,69 @@ const earnings = computed(() => {
   };
 });
 
+// Remove the computed amount and make it a regular property
 const form = useForm({
   proof_image: null,
   reference_number: '',
   notes: '',
-  amount: computed(() => {
-    if (props.type === 'lender_payment') {
-      return earnings.value.total; // This will be used as total_amount
-    }
-    return props.rental?.deposit_fee || 0;
-  })
+  amount: props.type === 'lender_payment' 
+    ? (props.rental?.base_price - props.rental?.discount - props.rental?.service_fee + (props.rental?.overdue_fee || 0))
+    : props.rental?.deposit_fee || 0
 });
+
+// Add a watch to update amount when type or rental changes
+watch(
+  [() => props.type, () => props.rental],
+  ([newType, newRental]) => {
+    if (newType === 'lender_payment') {
+      form.amount = newRental?.base_price - newRental?.discount - newRental?.service_fee + (newRental?.overdue_fee || 0);
+    } else {
+      form.amount = newRental?.deposit_fee || 0;
+    }
+  },
+  { immediate: true }
+);
 
 const selectedImage = ref([]);
 
 const handleSubmit = () => {
+  if (!selectedImage.value[0]) {
+    console.error('No image selected');
+    return;
+  }
+
+  form.proof_image = selectedImage.value[0];
+  
   const endpoint = props.type === 'lender_payment' 
     ? route('admin.completion-payments.store-lender-payment', props.rental.id)
     : route('admin.completion-payments.store-deposit-refund', props.rental.id);
 
-  form.proof_image = selectedImage.value[0];
-  
   form.post(endpoint, {
+    forceFormData: true,
+    preserveScroll: true,
+    preserveState: true,
     onSuccess: () => {
       emit('update:show', false);
-      form.reset();
+      form.reference_number = '';
+      form.notes = '';
+      form.proof_image = null;
       selectedImage.value = [];
+      window.location.reload();
+    },
+    onError: (errors) => {
+      console.error('Submission errors:', errors);
     }
   });
 };
+
+// Add a new watch for selectedImage
+watch(selectedImage, (newImages) => {
+  if (newImages.length > 0) {
+    form.proof_image = newImages[0];
+  } else {
+    form.proof_image = null;
+  }
+});
 
 const title = computed(() => 
   props.type === 'lender_payment' ? 'Process Lender Payment' : 'Process Deposit Refund'
@@ -88,7 +122,7 @@ const description = computed(() =>
         <DialogDescription>{{ description }}</DialogDescription>
       </DialogHeader>
 
-      <form @submit.prevent="handleSubmit" class="space-y-4">
+      <form @submit.prevent="handleSubmit" class="space-y-4" enctype="multipart/form-data">
         <div class="space-y-2">
           <label class="text-sm font-medium">Amount</label>
           <!-- Lender Payment Amount Display -->
@@ -161,7 +195,11 @@ const description = computed(() =>
             @images="selectedImage = $event"
             :error="form.errors.proof_image"
             class="w-full aspect-video"
+            accept="image/*"
           />
+          <p v-if="form.errors.proof_image" class="text-sm text-destructive">
+            {{ form.errors.proof_image }}
+          </p>
         </div>
 
         <div class="space-y-2">
