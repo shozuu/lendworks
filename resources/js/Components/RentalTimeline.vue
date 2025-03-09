@@ -663,13 +663,13 @@ const isConnectionHighlighted = (phase) => {
 							class="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center"
 							:class="[
 								isPhaseCompleted(phase) 
-									? 'bg-emerald-500 text-white' 
+									? 'bg-emerald-500' 
 									: 'bg-primary text-primary-foreground'
 							]"
 						>
 							<Check 
 								v-if="isPhaseCompleted(phase)" 
-								class="w-3 h-3"
+								class="w-3 h-3 text-green-500"
 							/>
 							<span 
 								v-else 
