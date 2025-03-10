@@ -15,6 +15,7 @@ import {
     SelectTrigger,
     SelectValue 
 } from "@/components/ui/select";
+import { DollarSign, Shield } from "lucide-vue-next";
 
 defineOptions({ layout: AdminLayout });
 
@@ -129,6 +130,28 @@ watch(deductionType, (newValue) => {
     if (newValue === 'percentage') {
         deductionPercentage.value = Math.floor((updateForm.deposit_deduction / props.dispute.rental.deposit_fee) * 100);
     }
+});
+
+// Add computed properties for safe number formatting
+const safeNumber = (value) => Number(value || 0);
+
+const formattedNumbers = computed(() => {
+    const rental = props.dispute?.rental;
+    if (!rental) return {};
+
+    const currentEarnings = rental.current_earnings || 
+        (rental.base_price - rental.discount - rental.service_fee + (rental.overdue_fee || 0));
+
+    return {
+        basePrice: safeNumber(rental.base_price).toLocaleString(),
+        discount: safeNumber(rental.discount).toLocaleString(),
+        serviceFee: safeNumber(rental.service_fee).toLocaleString(),
+        overdueFee: safeNumber(rental.overdue_fee).toLocaleString(),
+        depositFee: safeNumber(rental.deposit_fee).toLocaleString(),
+        remainingDeposit: safeNumber(rental.remaining_deposit).toLocaleString(),
+        deductionAmount: safeNumber(updateForm.deposit_deduction).toLocaleString(),
+        currentEarnings: safeNumber(currentEarnings).toLocaleString()
+    };
 });
 </script>
 
@@ -259,178 +282,252 @@ watch(deductionType, (newValue) => {
         </div>
 
         <!-- Admin Actions -->
-        <Card v-if="dispute.status !== 'resolved'">
-            <CardHeader>
-                <CardTitle>Admin Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div class="space-y-4">
-                    <div v-if="dispute.status === 'pending'" class="flex gap-4">
-                        <Button 
-                            variant="outline"
-                            @click="handleUpdateStatus('reviewed')"
-                            :disabled="updateForm.processing"
-                        >
-                            Mark as Reviewed
-                        </Button>
-                    </div>
-
-                    <div v-if="dispute.status === 'reviewed'" class="space-y-6">
-                        <!-- Resolution Type Selection -->
-                        <div class="space-y-2">
-                            <label class="text-sm font-medium">Resolution Type</label>
-                            <Select v-model="updateForm.resolution_type">
-                                <SelectTrigger class="w-full bg-background">
-                                    <SelectValue placeholder="Select resolution type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem 
-                                        v-for="type in resolutionTypes" 
-                                        :key="type.value" 
-                                        :value="type.value"
-                                    >
-                                        {{ type.label }}
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
+        <div class="grid md:grid-cols-[2fr_1fr] gap-6">
+            <!-- Main Form Card -->
+            <Card v-if="dispute.status !== 'resolved'">
+                <CardHeader>
+                    <CardTitle>Admin Actions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div class="space-y-4">
+                        <div v-if="dispute.status === 'pending'" class="flex gap-4">
+                            <Button 
+                                variant="outline"
+                                @click="handleUpdateStatus('reviewed')"
+                                :disabled="updateForm.processing"
+                            >
+                                Mark as Reviewed
+                            </Button>
                         </div>
 
-                        <!-- Deduction Details -->
-                        <div v-if="updateForm.resolution_type === 'deposit_deducted'" 
-                            class="space-y-4 p-4 bg-muted/50 rounded-lg border"
-                        >
-                            <div class="space-y-4">
-                                <div class="space-y-2">
-                                    <label class="text-sm font-medium">Deduction Type</label>
-                                    <Select v-model="deductionType">
-                                        <SelectTrigger class="w-full bg-background">
-                                            <SelectValue placeholder="Select deduction type" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="amount">Fixed Amount</SelectItem>
-                                            <SelectItem value="percentage">Percentage</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                        <div v-if="dispute.status === 'reviewed'" class="space-y-6">
+                            <!-- Resolution Type Selection -->
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium">Resolution Type</label>
+                                <Select v-model="updateForm.resolution_type">
+                                    <SelectTrigger class="w-full bg-background">
+                                        <SelectValue placeholder="Select resolution type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem 
+                                            v-for="type in resolutionTypes" 
+                                            :key="type.value" 
+                                            :value="type.value"
+                                        >
+                                            {{ type.label }}
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
-                                <div class="space-y-2">
-                                    <label class="text-sm font-medium">
-                                        {{ deductionType === 'amount' ? 'Deduction Amount' : 'Deduction Percentage' }}
-                                    </label>
-                                    
-                                    <!-- Amount Input -->
-                                    <div v-if="deductionType === 'amount'" class="relative">
-                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
-                                        <input
-                                            type="number"
-                                            v-model="updateForm.deposit_deduction"
-                                            class="w-full p-2 pl-8 border rounded-md bg-background"
-                                            :max="dispute.rental.deposit_fee"
-                                            min="0"
-                                            step="0.01"
-                                        />
+                            <!-- Deduction Details -->
+                            <div v-if="updateForm.resolution_type === 'deposit_deducted'" 
+                                class="space-y-4 p-4 bg-muted/50 rounded-lg border"
+                            >
+                                <div class="space-y-4">
+                                    <div class="space-y-2">
+                                        <label class="text-sm font-medium">Deduction Type</label>
+                                        <Select v-model="deductionType">
+                                            <SelectTrigger class="w-full bg-background">
+                                                <SelectValue placeholder="Select deduction type" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="amount">Fixed Amount</SelectItem>
+                                                <SelectItem value="percentage">Percentage</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
 
-                                    <!-- Percentage Input -->
-                                    <div v-else class="space-y-2">
-                                        <div class="relative">
-                                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                                    <div class="space-y-2">
+                                        <label class="text-sm font-medium">
+                                            {{ deductionType === 'amount' ? 'Deduction Amount' : 'Deduction Percentage' }}
+                                        </label>
+                                        
+                                        <!-- Amount Input -->
+                                        <div v-if="deductionType === 'amount'" class="relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
                                             <input
                                                 type="number"
-                                                v-model="deductionPercentage"
-                                                class="w-full p-2 pr-8 border rounded-md bg-background"
+                                                v-model="updateForm.deposit_deduction"
+                                                class="w-full p-2 pl-8 border rounded-md bg-background"
+                                                :max="dispute.rental.deposit_fee"
                                                 min="0"
-                                                max="100"
-                                                step="1"
+                                                step="0.01"
                                             />
                                         </div>
-                                        <div class="flex justify-between text-sm text-muted-foreground">
-                                            <span>Amount to deduct:</span>
-                                            <span>₱{{ updateForm.deposit_deduction.toLocaleString() }}</span>
-                                        </div>
-                                    </div>
 
-                                    <p class="text-xs text-muted-foreground">
-                                        Available deposit: ₱{{ dispute.rental.remaining_deposit.toLocaleString() }}
-                                    </p>
+                                        <!-- Percentage Input -->
+                                        <div v-else class="space-y-2">
+                                            <div class="relative">
+                                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                                                <input
+                                                    type="number"
+                                                    v-model="deductionPercentage"
+                                                    class="w-full p-2 pr-8 border rounded-md bg-background"
+                                                    min="0"
+                                                    max="100"
+                                                    step="1"
+                                                />
+                                            </div>
+                                            <div class="flex justify-between text-sm text-muted-foreground">
+                                                <span>Amount to deduct:</span>
+                                                <span>₱{{ updateForm.deposit_deduction.toLocaleString() }}</span>
+                                            </div>
+                                        </div>
+
+                                        <p class="text-xs text-muted-foreground">
+                                            Available deposit: ₱{{ dispute.rental.remaining_deposit.toLocaleString() }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-2">
+                                    <label class="text-sm font-medium">Deduction Reason</label>
+                                    <Select v-model="selectedReason" class="mb-2">
+                                        <SelectTrigger class="w-full bg-background">
+                                            <SelectValue placeholder="Select or type custom reason" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem 
+                                                v-for="reason in predefinedReasons" 
+                                                :key="reason.value" 
+                                                :value="reason.value"
+                                            >
+                                                {{ reason.label }}
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <textarea
+                                        v-model="updateForm.deposit_deduction_reason"
+                                        rows="2"
+                                        :placeholder="selectedReason === 'custom' ? 'Enter custom reason...' : 'Add additional details to selected reason...'"
+                                        class="w-full p-2 border rounded-md bg-background resize-none"
+                                    />
                                 </div>
                             </div>
 
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Deduction Reason</label>
-                                <Select v-model="selectedReason" class="mb-2">
-                                    <SelectTrigger class="w-full bg-background">
-                                        <SelectValue placeholder="Select or type custom reason" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem 
-                                            v-for="reason in predefinedReasons" 
-                                            :key="reason.value" 
-                                            :value="reason.value"
-                                        >
-                                            {{ reason.label }}
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <textarea
-                                    v-model="updateForm.deposit_deduction_reason"
-                                    rows="2"
-                                    :placeholder="selectedReason === 'custom' ? 'Enter custom reason...' : 'Add additional details to selected reason...'"
-                                    class="w-full p-2 border rounded-md bg-background resize-none"
-                                />
+                            <!-- Verdict Section -->
+                            <div class="space-y-4 p-4 bg-muted/50 rounded-lg border">
+                                <div class="space-y-2">
+                                    <label class="text-sm font-medium">Verdict</label>
+                                    <Select v-model="selectedVerdict" class="mb-2">
+                                        <SelectTrigger class="w-full bg-background">
+                                            <SelectValue placeholder="Select or type custom verdict" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem 
+                                                v-for="verdict in predefinedVerdicts" 
+                                                :key="verdict.value" 
+                                                :value="verdict.value"
+                                            >
+                                                {{ verdict.label }}
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <textarea
+                                        v-model="updateForm.verdict"
+                                        rows="3"
+                                        :placeholder="selectedVerdict === 'custom' ? 'Enter custom verdict...' : 'Add additional details to selected verdict...'"
+                                        class="w-full p-2 border rounded-md bg-background resize-none"
+                                    />
+                                </div>
+
+                                <div class="space-y-2">
+                                    <label class="text-sm font-medium">Additional Notes</label>
+                                    <textarea
+                                        v-model="updateForm.verdict_notes"
+                                        rows="3"
+                                        class="w-full p-2 border rounded-md bg-background resize-none"
+                                        placeholder="Add any instructions or additional information..."
+                                    />
+                                </div>
                             </div>
+
+                            <!-- Submit Button -->
+                            <Button 
+                                variant="default"
+                                @click="handleResolve"
+                                :disabled="updateForm.processing || !isFormValid"
+                                class="w-full"
+                            >
+                                {{ updateForm.processing ? 'Submitting...' : 'Submit Resolution' }}
+                            </Button>
                         </div>
-
-                        <!-- Verdict Section -->
-                        <div class="space-y-4 p-4 bg-muted/50 rounded-lg border">
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Verdict</label>
-                                <Select v-model="selectedVerdict" class="mb-2">
-                                    <SelectTrigger class="w-full bg-background">
-                                        <SelectValue placeholder="Select or type custom verdict" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem 
-                                            v-for="verdict in predefinedVerdicts" 
-                                            :key="verdict.value" 
-                                            :value="verdict.value"
-                                        >
-                                            {{ verdict.label }}
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <textarea
-                                    v-model="updateForm.verdict"
-                                    rows="3"
-                                    :placeholder="selectedVerdict === 'custom' ? 'Enter custom verdict...' : 'Add additional details to selected verdict...'"
-                                    class="w-full p-2 border rounded-md bg-background resize-none"
-                                />
-                            </div>
-
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium">Additional Notes</label>
-                                <textarea
-                                    v-model="updateForm.verdict_notes"
-                                    rows="3"
-                                    class="w-full p-2 border rounded-md bg-background resize-none"
-                                    placeholder="Add any instructions or additional information..."
-                                />
-                            </div>
-                        </div>
-
-                        <!-- Submit Button -->
-                        <Button 
-                            variant="default"
-                            @click="handleResolve"
-                            :disabled="updateForm.processing || !isFormValid"
-                            class="w-full"
-                        >
-                            {{ updateForm.processing ? 'Submitting...' : 'Submit Resolution' }}
-                        </Button>
                     </div>
-                </div>
-            </CardContent>
-        </Card>
+                </CardContent>
+            </Card>
+
+            <!-- Reference Information -->
+            <div class="space-y-6">
+                <!-- Lender Earnings Card -->
+                <Card>
+                    <CardHeader>
+                        <CardTitle class="flex items-center gap-2">
+                            <DollarSign class="w-4 h-4 text-emerald-500" />
+                            Lender Earnings Breakdown
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent class="p-4">
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm">Base Rental:</span>
+                                <span>₱{{ formattedNumbers.basePrice }}</span>
+                            </div>
+                            <div class="flex justify-between items-center text-destructive">
+                                <span class="text-sm">Discounts & Fees:</span>
+                                <span>- ₱{{ formattedNumbers.discount }}</span>
+                            </div>
+                            <div v-if="dispute?.rental?.overdue_fee" class="flex justify-between items-center text-emerald-500">
+                                <span class="text-sm">Overdue Fee:</span>
+                                <span>+ ₱{{ formattedNumbers.overdueFee }}</span>
+                            </div>
+                            <Separator />
+                            <div class="flex justify-between items-center font-medium">
+                                <span>Current Total:</span>
+                                <span class="text-emerald-500">
+                                    ₱{{ formattedNumbers.currentEarnings }}
+                                </span>
+                            </div>
+                            <p v-if="updateForm.resolution_type === 'deposit_deducted'" class="text-xs text-muted-foreground">
+                                + ₱{{ formattedNumbers.deductionAmount }} (pending deduction)
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <!-- Renter Deposit Card -->
+                <Card>
+                    <CardHeader>
+                        <CardTitle class="flex items-center gap-2">
+                            <Shield class="w-4 h-4 text-blue-500" />
+                            Security Deposit Status
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent class="p-4">
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm">Original Deposit:</span>
+                                <span>₱{{ formattedNumbers.depositFee }}</span>
+                            </div>
+                            <div v-if="dispute?.rental?.has_deductions" class="flex justify-between items-center text-destructive">
+                                <span class="text-sm">Previous Deductions:</span>
+                                <span>- ₱{{ (safeNumber(dispute?.rental?.deposit_fee - dispute?.rental?.remaining_deposit)).toLocaleString() }}</span>
+                            </div>
+                            <Separator />
+                            <div class="flex justify-between items-center font-medium">
+                                <span>Available Deposit:</span>
+                                <span class="text-blue-500">
+                                    ₱{{ formattedNumbers.remainingDeposit }}
+                                </span>
+                            </div>
+                            <p v-if="updateForm.resolution_type === 'deposit_deducted'" class="text-xs text-destructive">
+                                - ₱{{ formattedNumbers.deductionAmount }} (pending deduction)
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
     </div>
 </template>
 

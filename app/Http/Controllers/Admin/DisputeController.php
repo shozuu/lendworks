@@ -42,6 +42,15 @@ class DisputeController extends Controller
             'resolvedBy'
         ]);
 
+        // Calculate lender earnings
+        $rental = $dispute->rental;
+        $basePrice = $rental->base_price ?? 0;
+        $discount = $rental->discount ?? 0;
+        $serviceFee = $rental->service_fee ?? 0;
+        $overdueFee = $rental->overdue_fee ?? 0;
+
+        $currentEarnings = $basePrice - $discount - $serviceFee + $overdueFee;
+
         return Inertia::render('Admin/DisputeDetails', [
             'dispute' => [
                 'id' => $dispute->id,
@@ -67,7 +76,13 @@ class DisputeController extends Controller
                     ],
                     'deposit_fee' => $dispute->rental->deposit_fee,
                     'remaining_deposit' => $dispute->rental->remaining_deposit,
-                    'has_deductions' => $dispute->rental->depositDeductions()->exists()
+                    'has_deductions' => $dispute->rental->depositDeductions()->exists(),
+                    // Add payment details
+                    'base_price' => $basePrice,
+                    'discount' => $discount,
+                    'service_fee' => $serviceFee,
+                    'overdue_fee' => $overdueFee,
+                    'current_earnings' => $currentEarnings
                 ]
             ]
         ]);
