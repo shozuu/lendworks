@@ -18,6 +18,8 @@ import HandoverDialog from "@/Components/HandoverDialog.vue";
 import PickupDateSelector from "@/Components/PickupDateSelector.vue";
 import RentalDurationTracker from "@/Components/RentalDurationTracker.vue";
 import ReturnScheduler from '@/Components/ReturnScheduler.vue';
+import ReturnConfirmationDialog from '@/Components/ReturnConfirmationDialog.vue';
+import PaymentProofDialog from '@/Components/PaymentProofDialog.vue';
 
 const props = defineProps({
 	rental: Object,
@@ -64,6 +66,8 @@ const showCancelDialog = ref(false);
 const showRejectDialog = ref(false);
 const showAcceptDialog = ref(false);
 const showHandoverDialog = ref(false);
+const showReturnDialog = ref(false);
+const returnDialogType = ref('submit');
 
 // Forms
 const approveForm = useForm({});
@@ -158,6 +162,24 @@ const totalWithOverdue = computed(() => {
 
 // Add computed for base total (without overdue)
 const baseTotal = computed(() => props.rental.total_price);
+
+const lenderPayment = computed(() => 
+    props.rental.completion_payments?.find(p => p.type === 'lender_payment')
+);
+
+const depositRefund = computed(() => 
+    props.rental.completion_payments?.find(p => p.type === 'deposit_refund')
+);
+
+// Add new refs for payment proof dialog
+const showPaymentProofDialog = ref(false);
+const selectedPayment = ref(null);
+
+// Add showPaymentProof function
+const showPaymentProof = (payment) => {
+  selectedPayment.value = payment;
+  showPaymentProofDialog.value = true;
+};
 </script>
 
 <template>
@@ -428,6 +450,43 @@ const baseTotal = computed(() => props.rental.total_price);
 								</Button>
 							</template>
 
+							 <!-- Return Actions -->
+							 <Button
+								v-if="actions.canSubmitReturn"
+								variant="default"
+								class="w-full"
+								@click="() => {
+									returnDialogType = 'submit';
+									showReturnDialog = true;
+								}"
+							>
+								Submit Return Proof
+							</Button>
+		
+							<Button
+								v-if="actions.canConfirmReturn"
+								variant="default"
+								class="w-full"
+								@click="() => {
+									returnDialogType = 'confirm';
+									showReturnDialog = true;
+								}"
+							>
+								Confirm Item Receipt
+							</Button>
+		
+							<Button
+								v-if="actions.canFinalizeReturn"
+								variant="default"
+								class="w-full"
+								@click="() => {
+									returnDialogType = 'finalize';
+									showReturnDialog = true;
+								}"
+							>
+								Complete Transaction
+							</Button>
+
 							<!-- No Actions Message -->
 							<p
 								v-if="
@@ -435,7 +494,10 @@ const baseTotal = computed(() => props.rental.total_price);
 									!actions.canCancel &&
 									!actions.canApprove &&
 									!actions.canHandover &&
-									!actions.canReceive
+									!actions.canReceive &&
+									!actions.canSubmitReturn &&
+									!actions.canConfirmReturn &&
+									!actions.canFinalizeReturn
 								"
 								class="text-muted-foreground text-sm text-center"
 							>
@@ -494,6 +556,59 @@ const baseTotal = computed(() => props.rental.total_price);
 								</Button>
 							</div>
 						</div>
+					</CardContent>
+				</Card>
+
+				 <Card 
+					v-if="props.rental.status === 'completed_pending_payments' || 
+						props.rental.status === 'completed_with_payments'" 
+					class="shadow-sm"
+				>
+					<CardHeader class="bg-card border-b">
+					<CardTitle>Payment Status</CardTitle>
+					</CardHeader>
+					<CardContent class="p-6">
+					<div v-if="userRole === 'lender'" class="space-y-4">
+						<h3 class="font-medium">Payment Processing</h3>
+						<p class="text-sm text-muted-foreground">
+							Your payment is being processed by the admin. You will be notified once the payment has been sent.
+						</p>
+						<div v-if="lenderPayment" class="mt-4 p-4 bg-muted rounded-lg">
+							<p class="text-sm font-medium">Payment Processed</p>
+							<p class="text-sm text-muted-foreground mt-1">
+								Reference: {{ lenderPayment.reference_number }}
+							</p>
+							<Button
+								variant="outline"
+								size="sm"
+								class="mt-2"
+								@click="showPaymentProof(lenderPayment)"
+							>
+								View Payment Proof
+							</Button>
+						</div>
+					</div>
+
+					<div v-if="userRole === 'renter'" class="space-y-4">
+						<h3 class="font-medium">Deposit Refund Status</h3>
+						<p class="text-sm text-muted-foreground">
+							Your security deposit refund is being processed. You will be notified once it has been sent.
+						</p>
+						<div v-if="depositRefund" class="mt-4 p-4 bg-muted rounded-lg">
+							<p class="text-sm font-medium">Refund Processed</p>
+							<p class="text-sm text-muted-foreground mt-1">
+								Reference: {{ depositRefund.reference_number }}
+							</p>
+							<Button
+								variant="outline"
+								size="sm"
+								class="mt-2"
+								@click="showPaymentProof(depositRefund)"
+							>
+								View Refund Proof
+							</Button>
+						</div>
+					</div>
 					</CardContent>
 				</Card>
 			</div>
@@ -576,5 +691,20 @@ const baseTotal = computed(() => props.rental.total_price);
 		v-model:show="showHandoverDialog"
 		:rental="rental"
 		:type="actions.canHandover ? 'handover' : 'receive'"
+	/>
+
+	<!-- Return Confirmation Dialog -->
+	<ReturnConfirmationDialog
+		v-model:show="showReturnDialog"
+		:rental="rental"
+		:type="returnDialogType"
+	/>
+
+	<!-- Add PaymentProofDialog component -->
+	<PaymentProofDialog
+		v-if="selectedPayment"
+		:show="showPaymentProofDialog"
+		:payment="selectedPayment"
+		@update:show="showPaymentProofDialog = $event"
 	/>
 </template>

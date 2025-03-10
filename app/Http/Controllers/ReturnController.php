@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\RentalRequest;
 use App\Models\ReturnSchedule;
+use App\Models\ReturnProof;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -131,24 +132,32 @@ class ReturnController extends Controller
             'proof_image' => ['required', 'image', 'max:5120']
         ]);
 
-        $path = $request->file('proof_image')->store('return-proofs', 'public');
+        DB::transaction(function () use ($rental, $request) {
+            $path = $request->file('proof_image')->store('return-proofs', 'public');
 
-        $rental->handoverProofs()->create([
-            'type' => 'return',
-            'proof_path' => $path,
-            'user_id' => Auth::id()
-        ]);
+            // Create return proof using the new model
+            ReturnProof::create([
+                'rental_request_id' => $rental->id,
+                'type' => 'return',
+                'proof_path' => $path,
+                'submitted_by' => Auth::id()
+            ]);
 
-        $rental->update(['status' => 'pending_return_confirmation']);
-        
-        $rental->recordTimelineEvent('return_submitted', Auth::id(), [
-            'proof_path' => $path
-        ]);
+            $rental->update(['status' => 'pending_return_confirmation']);
+            
+            $rental->recordTimelineEvent('return_submitted', Auth::id(), [
+                'proof_path' => $path,
+                'submitted_by' => 'renter',
+                'submission_datetime' => now()->format('Y-m-d H:i:s'),
+                'notes' => $request->input('notes'),
+                'location' => $request->input('location')
+            ]);
+        });
 
         return back()->with('success', 'Return proof submitted.');
     }
 
-    public function confirmReturn(Request $request, RentalRequest $rental)
+    public function confirmItemReceived(Request $request, RentalRequest $rental)
     {
         if ($rental->listing->user_id !== Auth::id()) {
             abort(403);
@@ -158,26 +167,57 @@ class ReturnController extends Controller
             'proof_image' => ['required', 'image', 'max:5120']
         ]);
 
-        $path = $request->file('proof_image')->store('return-proofs', 'public');
+        DB::transaction(function () use ($rental, $request) {
+            $path = $request->file('proof_image')->store('return-proofs', 'public');
 
-        $rental->handoverProofs()->create([
-            'type' => 'return_confirmation',
-            'proof_path' => $path,
-            'user_id' => Auth::id()
-        ]);
+            ReturnProof::create([
+                'rental_request_id' => $rental->id,
+                'type' => 'return_receipt',
+                'proof_path' => $path,
+                'submitted_by' => Auth::id()
+            ]);
 
-        $rental->update([
-            'status' => 'completed',
-            'return_at' => now()
-        ]);
+            $rental->update(['status' => 'pending_final_confirmation']);
+            
+            $rental->recordTimelineEvent('return_receipt_confirmed', Auth::id(), [
+                'proof_path' => $path,
+                'confirmed_by' => 'lender',
+                'confirmation_datetime' => now()->format('Y-m-d H:i:s'),
+                'notes' => $request->input('notes'),
+                'location' => $request->input('location'),
+                'item_condition' => $request->input('item_condition', 'good')
+            ]);
+        });
 
-        // Mark the listing as available again
-        $rental->listing->update(['is_rented' => false]);
+        return back()->with('success', 'Return receipt confirmed.');
+    }
 
-        $rental->recordTimelineEvent('return_confirmed', Auth::id(), [
-            'proof_path' => $path
-        ]);
+    public function finalizeReturn(Request $request, RentalRequest $rental)
+    {
+        if ($rental->listing->user_id !== Auth::id()) {
+            abort(403);
+        }
 
-        return back()->with('success', 'Return confirmed. Rental completed.');
+        DB::transaction(function () use ($rental) {
+            $rental->update([
+                'status' => 'completed_pending_payments', // Changed from 'completed'
+                'return_at' => now()
+            ]);
+
+            $rental->listing->update(['is_rented' => false]);
+
+            $rental->recordTimelineEvent('rental_completed', Auth::id(), [
+                'completed_by' => 'lender',
+                'completion_datetime' => now()->format('Y-m-d H:i:s'),
+                'rental_duration' => $rental->rental_duration,
+                'actual_return_date' => now()->format('Y-m-d'),
+                'pending_payments' => [
+                    'lender_payment' => $rental->base_price,
+                    'deposit_refund' => $rental->deposit_fee
+                ]
+            ]);
+        });
+
+        return back()->with('success', 'Rental completed. Awaiting payment processing.');
     }
 }

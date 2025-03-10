@@ -31,7 +31,8 @@ class RentalRequestController extends Controller
             'return_schedules' => function($query) {
                 $query->orderBy('created_at', 'desc');
             },
-            'pickup_schedules'
+            'pickup_schedules',
+            'completion_payments',  // Add this line
         ]);
 
         // Check if the authenticated user is either the renter or the lender

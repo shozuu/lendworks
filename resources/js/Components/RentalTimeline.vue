@@ -13,8 +13,10 @@ import {
 	DollarSign, // Add this import
 	CheckCircleIcon, // Add this import
 	XCircleIcon, // Add this import
+	Wallet, // Add this import
+	PackageOpen, // Add this import
 } from "lucide-vue-next";
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import PaymentDialog from "@/Components/PaymentDialog.vue";
 import HandoverProofDialog from "@/Components/HandoverProofDialog.vue";
 import { Button } from "@/components/ui/button";
@@ -36,6 +38,25 @@ const props = defineProps({
 		type: Function,
 		default: null,
 	},
+});
+
+// Add computed property to filter timeline events based on user role
+const filteredEvents = computed(() => {
+	return props.events.filter(event => {
+		// Allow admin to see all events
+		if (props.userRole === 'admin') return true;
+
+		// For completion payment events, check user role
+		if (event.event_type === 'lender_payment_processed') {
+			return props.userRole === 'lender';
+		}
+		if (event.event_type === 'deposit_refund_processed') {
+			return props.userRole === 'renter';
+		}
+
+		// Show all other events
+		return true;
+	});
 });
 
 const getEventIcon = (eventType) => {
@@ -75,6 +96,13 @@ const getEventIcon = (eventType) => {
 			return CheckCircleIcon;
 		case "overdue_payment_rejected":
 			return XCircleIcon;
+		case 'rental_completed':
+			return CheckCircle2;
+		case 'lender_payment_processed':
+		case 'deposit_refund_processed':
+			return Wallet;
+		case "return_receipt_confirmed":
+			return PackageOpen;
 		default:
 			return AlertCircle;
 	}
@@ -113,6 +141,13 @@ const getEventColor = (eventType) => {
 			return "text-emerald-500";
 		case "overdue_payment_rejected":
 			return "text-destructive";
+		case 'rental_completed':
+			return 'text-blue-500';
+		case 'lender_payment_processed':
+		case 'deposit_refund_processed':
+			return 'text-emerald-500';
+		case "return_receipt_confirmed":
+			return "text-blue-500";
 		default:
 			return "text-muted-foreground";
 	}
@@ -294,6 +329,23 @@ const formatEventMessage = (event) => {
 			}
 			return "Overdue payment was rejected";
 
+		case 'return_receipt_confirmed':
+			if (isLatest) {
+				return performedByViewer
+					? "You confirmed receiving the item - pending final confirmation"
+					: `${actorLabel} confirmed receiving the item - pending final confirmation`;
+			}
+			return `${actorLabel} confirmed receiving the item`;
+
+		case 'rental_completed':
+			return "Rental transaction completed - pending final payments";
+
+		case 'lender_payment_processed':
+			return `Admin processed lender payment (${formatNumber(event.metadata?.amount)})`;
+
+		case 'deposit_refund_processed':
+			return `Admin processed security deposit refund (${formatNumber(event.metadata?.amount)})`;
+
 		default:
 			return `Unknown event by ${actorLabel}`;
 	}
@@ -365,11 +417,38 @@ const handleHandoverProofClose = () => {
 		selectedHandoverProof.value = null;
 	}, 300);
 };
+
+// Add helper function to handle proof viewing
+const showPaymentProof = (event) => {
+    if (event.metadata?.proof_path) {
+        selectedHistoricalPayment.value = {
+            proof_path: event.metadata.proof_path,
+            reference_number: event.metadata.reference_number,
+            amount: event.metadata.amount,
+            processed_at: event.created_at
+        };
+        showHistoricalPayment.value = true;
+    }
+};
+
+// Add helper function for return-related metadata
+const showReturnProof = (event) => {
+  if (event.metadata?.proof_path) {
+    selectedHandoverProof.value = {
+      path: event.metadata.proof_path,
+      type: event.event_type,
+      performer: event.actor,
+      timestamp: event.created_at
+    };
+    showHandoverProof.value = true;
+  }
+};
 </script>
 
 <template>
 	<div class="space-y-6">
-		<div v-for="event in events" :key="event.id" class="relative pl-8">
+		<!-- Change props.events to filteredEvents -->
+		<div v-for="event in filteredEvents" :key="event.id" class="relative pl-8">
 			<!-- Connector Line -->
 			<div
 				v-if="!event.isLast"
@@ -469,6 +548,83 @@ const handleHandoverProofClose = () => {
 									<span class="text-muted-foreground">
 										{{ formatTime(event.metadata.start_time) }} to {{ formatTime(event.metadata.end_time) }}
 									</span>
+								</div>
+							</div>
+						</template>
+
+						<!-- Add specialized card for payment processing events -->
+						<div 
+							v-if="['lender_payment_processed', 'deposit_refund_processed'].includes(event.event_type)" 
+							class="bg-muted p-3 mt-2 text-sm rounded-md"
+						>
+							<div class="space-y-2">
+								<div class="flex justify-between items-center">
+									<span class="text-muted-foreground">Amount:</span>
+									<span class="font-medium">{{ formatNumber(event.metadata?.amount) }}</span>
+								</div>
+								<div class="flex justify-between items-center">
+									<span class="text-muted-foreground">Reference:</span>
+									<span class="font-medium">{{ event.metadata?.reference_number }}</span>
+								</div>
+								<div 
+									v-if="event.metadata?.proof_path" 
+									class="flex justify-end mt-2"
+								>
+									<Button
+										variant="outline"
+										size="sm"
+										@click="showPaymentProof(event)"
+									>
+										View Payment Proof
+									</Button>
+								</div>
+							</div>
+						</div>
+
+						<!-- Add specialized card for rental completion -->
+						<div 
+							v-if="event.event_type === 'rental_completed'" 
+							class="bg-muted p-3 mt-2 text-sm rounded-md"
+						>
+							<div class="space-y-2">
+								<div class="flex justify-between items-center">
+									<span class="text-muted-foreground">Rental Duration:</span>
+									<span class="font-medium">{{ event.metadata?.rental_duration }} days</span>
+								</div>
+								<div class="flex justify-between items-center">
+									<span class="text-muted-foreground">Return Date:</span>
+									<span class="font-medium">{{ formatDateTime(event.metadata?.actual_return_date) }}</span>
+								</div>
+								<div class="mt-3 pt-3 border-t border-border">
+									<p class="text-xs text-muted-foreground">Pending Payments:</p>
+									<div class="space-y-1 mt-2">
+										<div class="flex justify-between text-xs">
+											<span>Lender Payment:</span>
+											<span class="font-medium">{{ formatNumber(event.metadata?.pending_payments?.lender_payment) }}</span>
+										</div>
+										<div class="flex justify-between text-xs">
+											<span>Security Deposit:</span>
+											<span class="font-medium">{{ formatNumber(event.metadata?.pending_payments?.deposit_refund) }}</span>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Add return proof details -->
+						<template v-if="['return_submitted', 'return_receipt_confirmed'].includes(event.event_type)">
+							<div class="bg-muted p-3 mt-2 text-sm rounded-md">
+								<div class="flex flex-col gap-2">
+									<Button 
+										variant="outline" 
+										size="sm" 
+										@click="showReturnProof(event)"
+									>
+										View {{ event.event_type === 'return_receipt_confirmed' ? 'Receive' : 'Return' }} Proof
+									</Button>
+									<p v-if="event.metadata?.notes" class="text-xs text-muted-foreground italic">
+										"{{ event.metadata.notes }}"
+									</p>
 								</div>
 							</div>
 						</template>

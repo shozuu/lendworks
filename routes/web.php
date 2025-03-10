@@ -15,6 +15,7 @@ use App\Http\Controllers\HandoverController;
 use App\Http\Controllers\PickupScheduleController;
 use App\Http\Controllers\LenderPickupScheduleController;
 use App\Http\Controllers\ReturnController;
+use App\Http\Controllers\Admin\CompletionPaymentController;  // Add this import at the top
 use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -98,6 +99,12 @@ Route::middleware(['auth'])->group(function () {
             ->name('rentals.submit-return');
         Route::post('/rentals/{rental}/confirm-return', 'confirmReturn')
             ->name('rentals.confirm-return');
+        Route::post('/rentals/{rental}/return-item', 'submitReturn')
+            ->name('rentals.submit-return');
+        Route::post('/rentals/{rental}/confirm-receipt', 'confirmItemReceived')
+            ->name('rentals.confirm-receipt');
+        Route::post('/rentals/{rental}/finalize-return', 'finalizeReturn')
+            ->name('rentals.finalize-return');
     });
 
     // Add the overdue payment route
@@ -139,6 +146,12 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     // Add route for getting payment details if needed
     Route::get('/payments/{payment}', [PaymentController::class, 'show'])
         ->name('payments.show');
+
+    // Add routes for completion payments
+    Route::post('/rentals/{rental}/completion-payments/lender', [CompletionPaymentController::class, 'storeLenderPayment'])
+        ->name('completion-payments.store-lender-payment');
+    Route::post('/rentals/{rental}/completion-payments/deposit', [CompletionPaymentController::class, 'storeDepositRefund'])
+        ->name('completion-payments.store-deposit-refund');
 });
 
 Route::get('/', [ListingController::class, 'index'])->name('home');

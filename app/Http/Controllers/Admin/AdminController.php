@@ -459,13 +459,25 @@ class AdminController extends Controller
 
     public function rentalTransactionDetails(RentalRequest $rental)
     {
+        // Add viewer_id to help with determining actions
+        $rental->viewer_id = Auth::id();
+        
         $rental->load([
             'listing' => fn($q) => $q->with(['images', 'category', 'location', 'user']),
             'renter',
             'latestRejection.rejectionReason',
             'latestCancellation.cancellationReason',
-            'timelineEvents',
-            'payment_request'
+            'timelineEvents.actor',  // Make sure actor is loaded for timeline
+            'payment_request',
+            'completion_payments'
+        ]);
+
+        // Add this debug line to check the data
+        \Log::info('Rental Transaction Details:', [
+            'rental_id' => $rental->id,
+            'status' => $rental->status,
+            'has_completion_payments' => $rental->completion_payments->count(),
+            'available_actions' => $rental->available_actions
         ]);
 
         return Inertia::render('Admin/RentalTransactionDetails', [

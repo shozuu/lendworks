@@ -149,12 +149,23 @@ class RentalRequest extends Model
         return $this->hasMany(ReturnSchedule::class);
     }
 
+    public function returnProofs()
+    {
+        return $this->hasMany(ReturnProof::class);
+    }
+
     /**
      * Get the timeline events for the rental request.
      */
     public function timeline_events()
     {
         return $this->hasMany(RentalTimelineEvent::class, 'rental_request_id');
+    }
+
+    // Add this relationship
+    public function completion_payments()
+    {
+        return $this->hasMany(CompletionPayment::class);
     }
 
     // Accessors
@@ -205,6 +216,7 @@ class RentalRequest extends Model
                 (!$this->is_overdue || $this->hasVerifiedOverduePayment()),
             'canSubmitReturn' => $isRenter && $this->status === 'return_scheduled',
             'canConfirmReturn' => $isLender && $this->status === 'pending_return_confirmation',
+            'canFinalizeReturn' => $isLender && $this->status === 'pending_final_confirmation'
         ];
 
         if (!$user) return $actions;
@@ -218,6 +230,33 @@ class RentalRequest extends Model
         $actions['canReceive'] = 
             $this->status === 'pending_proof' && 
             $this->renter_id === $user->id;
+
+        // Add debug logging
+        \Log::info('Completion Payments Status:', [
+            'rental_id' => $this->id,
+            'has_lender_payment' => $this->completion_payments()
+                ->where('type', 'lender_payment')
+                ->exists(),
+            'has_deposit_refund' => $this->completion_payments()
+                ->where('type', 'deposit_refund')
+                ->exists()
+        ]);
+
+        $actions['canProcessLenderPayment'] = !$this->completion_payments()
+            ->where('type', 'lender_payment')
+            ->exists();
+        
+        $actions['canProcessDepositRefund'] = !$this->completion_payments()
+            ->where('type', 'deposit_refund')
+            ->exists();
+
+        $actions['hasLenderPayment'] = $this->completion_payments()
+            ->where('type', 'lender_payment')
+            ->exists();
+
+        $actions['hasDepositRefund'] = $this->completion_payments()
+            ->where('type', 'deposit_refund')
+            ->exists();
 
         return $actions;
     }

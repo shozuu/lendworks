@@ -54,6 +54,36 @@ class RentalTimelineEvent extends Model
             'confirmed_by',
             'confirmation_datetime',
             'is_early_return'
+        ],
+        'return_submitted' => [
+            'proof_path',
+            'submitted_by',
+            'submission_datetime'
+        ],
+        'return_receipt_confirmed' => [
+            'proof_path',
+            'confirmed_by',
+            'confirmation_datetime'
+        ],
+        'rental_completed' => [
+            'completed_by',
+            'completion_datetime',
+            'rental_duration',
+            'actual_return_date'
+        ],
+        'lender_payment_processed' => [
+            'amount',
+            'reference_number',
+            'proof_path',
+            'processed_by',
+            'processed_at'
+        ],
+        'deposit_refund_processed' => [
+            'amount',
+            'reference_number',
+            'proof_path',
+            'processed_by',
+            'processed_at'
         ]
     ];
 

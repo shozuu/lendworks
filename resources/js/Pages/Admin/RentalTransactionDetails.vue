@@ -7,9 +7,11 @@ import { formatNumber, formatDateTime, timeAgo } from "@/lib/formatters";
 import { Separator } from "@/components/ui/separator";
 import RentalTimeline from "@/Components/RentalTimeline.vue";
 import { Link } from "@inertiajs/vue3";
-import { computed } from "vue";
-import {Package, AlertCircle} from "lucide-vue-next";
+import { computed, ref } from "vue";
+import {Package, AlertCircle, CheckCircle2} from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
+import CompletionPaymentDialog from '@/Components/Admin/CompletionPaymentDialog.vue';
+import PaymentProofDialog from '@/Components/PaymentProofDialog.vue'; // Add this import
 
 defineOptions({ layout: AdminLayout });
 
@@ -48,6 +50,52 @@ const totalWithOverdue = computed(() => {
 });
 
 const baseTotal = computed(() => props.rental.total_price);
+
+// Add new refs
+const showLenderPaymentDialog = ref(false);
+const showDepositRefundDialog = ref(false);
+
+// Add computed for completion status - Fix the rental reference
+const needsCompletionPayments = computed(() => {
+    console.log('Rental Status:', props.rental.status);
+    console.log('Available Actions:', props.rental.available_actions);
+    
+    return props.rental.status === 'completed_pending_payments' || 
+           props.rental.status === 'completed_with_payments';
+});
+
+// Fix the lenderPayment computed
+const lenderPayment = computed(() => 
+    props.rental.completion_payments?.find(p => p.type === 'lender_payment')
+);
+
+// Fix the depositRefund computed
+const depositRefund = computed(() => 
+    props.rental.completion_payments?.find(p => p.type === 'deposit_refund')
+);
+
+// Update completion status check to show success state
+const showSuccessStatus = computed(() => {
+    console.log('Checking Success Status:', {
+        status: props.rental.status,
+        hasLenderPayment: props.rental.available_actions.hasLenderPayment,
+        hasDepositRefund: props.rental.available_actions.hasDepositRefund
+    });
+    
+    return props.rental.status === 'completed_with_payments' && 
+           props.rental.available_actions.hasLenderPayment && 
+           props.rental.available_actions.hasDepositRefund;
+});
+
+// Add new refs for payment proof dialog
+const showPaymentProofDialog = ref(false);
+const selectedPayment = ref(null);
+
+// Add showPaymentProof function
+const showPaymentProof = (payment) => {
+  selectedPayment.value = payment;
+  showPaymentProofDialog.value = true;
+};
 </script>
 
 <template>
@@ -339,6 +387,130 @@ const baseTotal = computed(() => props.rental.total_price);
 				</Card>
 			</div>
 		</div>
+
+		<!-- Completion Payments -->
+		<Card v-if="needsCompletionPayments" class="shadow-sm">
+			<CardHeader class="bg-card border-b">
+				<CardTitle>{{ showSuccessStatus ? 'Payment Status' : 'Completion Payments' }}</CardTitle>
+			</CardHeader>
+			<CardContent class="p-6">
+				<!-- Show this when both payments are completed -->
+				<div v-if="showSuccessStatus" class="space-y-6">
+					<div class="flex items-center justify-center text-emerald-500 gap-2">
+						<CheckCircle2 class="w-6 h-6" />
+						<p class="text-lg font-medium">All payments processed successfully</p>
+					</div>
+
+					<!-- Lender Payment Details -->
+					<div class="space-y-3 p-4 bg-muted rounded-lg">
+						<h3 class="font-medium">Lender Payment</h3>
+						<div class="space-y-2 text-sm">
+							<div class="flex justify-between">
+								<span class="text-muted-foreground">Amount:</span>
+								<span class="font-medium">{{ formatNumber(lenderPayment.amount) }}</span>
+							</div>
+							<div class="flex justify-between">
+								<span class="text-muted-foreground">Reference:</span>
+								<span class="font-medium">{{ lenderPayment.reference_number }}</span>
+							</div>
+							<div class="flex justify-between">
+								<span class="text-muted-foreground">Processed on:</span>
+								<span class="font-medium">{{ formatDateTime(lenderPayment.processed_at) }}</span>
+							</div>
+							<Button
+								variant="outline"
+								size="sm"
+								class="mt-2"
+								@click="showPaymentProof(lenderPayment)"
+							>
+								View Payment Proof
+							</Button>
+						</div>
+					</div>
+
+					<!-- Deposit Refund Details -->
+					<div class="space-y-3 p-4 bg-muted rounded-lg">
+						<h3 class="font-medium">Security Deposit Refund</h3>
+						<div class="space-y-2 text-sm">
+							<div class="flex justify-between">
+								<span class="text-muted-foreground">Amount:</span>
+								<span class="font-medium">{{ formatNumber(depositRefund.amount) }}</span>
+							</div>
+							<div class="flex justify-between">
+								<span class="text-muted-foreground">Reference:</span>
+								<span class="font-medium">{{ depositRefund.reference_number }}</span>
+							</div>
+							<div class="flex justify-between">
+								<span class="text-muted-foreground">Processed on:</span>
+								<span class="font-medium">{{ formatDateTime(depositRefund.processed_at) }}</span>
+							</div>
+							<Button
+								variant="outline"
+								size="sm"
+								class="mt-2"
+								@click="showPaymentProof(depositRefund)"
+							>
+								View Payment Proof
+							</Button>
+						</div>
+					</div>
+				</div>
+
+				<!-- Show this when payments are still pending -->
+				<div v-else class="space-y-6">
+					<!-- Lender Payment Section -->
+					<div class="space-y-4">
+						<h3 class="font-medium">Lender Payment</h3>
+						<p class="text-sm text-muted-foreground">
+							Process the payment to be sent to the lender
+						</p>
+							<Button 
+								@click="showLenderPaymentDialog = true"
+								:disabled="!rental.available_actions.canProcessLenderPayment"
+							>
+								{{ rental.available_actions.canProcessLenderPayment ? 'Process Lender Payment' : 'Payment Processed' }}
+							</Button>
+					</div>
+
+					<Separator />
+
+					<!-- Deposit Refund Section -->
+					<div class="space-y-4">
+						<h3 class="font-medium">Security Deposit Refund</h3>
+						<p class="text-sm text-muted-foreground">
+							Process the security deposit refund for the renter
+						</p>
+							<Button 
+								@click="showDepositRefundDialog = true"
+								:disabled="!rental.available_actions.canProcessDepositRefund"
+							>
+								{{ rental.available_actions.canProcessDepositRefund ? 'Process Deposit Refund' : 'Refund Processed' }}
+							</Button>
+					</div>
+				</div>
+			</CardContent>
+		</Card>
+
+		<!-- Add completion payment dialogs -->
+		<CompletionPaymentDialog
+			v-model:show="showLenderPaymentDialog"
+			:rental="rental"
+			type="lender_payment"
+		/>
+
+		<CompletionPaymentDialog
+			v-model:show="showDepositRefundDialog"
+			:rental="rental"
+			type="deposit_refund"
+		/>
+
+		<!-- Add PaymentProofDialog component -->
+		<PaymentProofDialog
+			v-if="selectedPayment"
+			:show="showPaymentProofDialog"
+			:payment="selectedPayment"
+			@update:show="showPaymentProofDialog = $event"
+		/>
 	</div>
 </template>
 
