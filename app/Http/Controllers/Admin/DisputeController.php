@@ -211,6 +211,19 @@ class DisputeController extends Controller
                 ]);
             }
 
+            // After updating dispute record, update rental status
+            $dispute->rental->update([
+                'status' => 'pending_final_confirmation'  // Change status back to allow completion
+            ]);
+
+            // Log the status change
+            \Log::info('Updated rental status after dispute resolution', [
+                'rental_id' => $dispute->rental->id,
+                'old_status' => 'disputed',
+                'new_status' => 'pending_final_confirmation',
+                'dispute_id' => $dispute->id
+            ]);
+
             // Record timeline event
             $dispute->rental->recordTimelineEvent('dispute_resolved', auth()->id(), [
                 'verdict' => $validated['verdict'],

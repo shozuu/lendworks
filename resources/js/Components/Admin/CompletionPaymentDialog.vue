@@ -25,38 +25,40 @@ const props = defineProps({
 
 const emit = defineEmits(['update:show']);
 
-// Simplify earnings computed property
+// Update the earnings computed property to include dispute deductions
 const earnings = computed(() => {
   if (!props.rental) return { base: 0, overdue: 0, total: 0 };
   
   const baseEarnings = props.rental.base_price - props.rental.discount - props.rental.service_fee;
   const overdueFee = props.rental.overdue_fee || 0;
+  const disputeDeduction = props.rental.dispute?.deposit_deduction || 0;
   
   return {
     base: baseEarnings,
     overdue: overdueFee,
-    total: baseEarnings + overdueFee
+    dispute: disputeDeduction,
+    total: baseEarnings + overdueFee + disputeDeduction
   };
 });
 
-// Remove the computed amount and make it a regular property
+// Update the form initialization
 const form = useForm({
   proof_image: null,
   reference_number: '',
   notes: '',
   amount: props.type === 'lender_payment' 
-    ? (props.rental?.base_price - props.rental?.discount - props.rental?.service_fee + (props.rental?.overdue_fee || 0))
-    : props.rental?.deposit_fee || 0
+    ? (earnings.value.total)
+    : (props.rental?.deposit_fee - (props.rental?.dispute?.deposit_deduction || 0)) || 0
 });
 
-// Add a watch to update amount when type or rental changes
+// Add watch to update amount when dispute status changes
 watch(
-  [() => props.type, () => props.rental],
-  ([newType, newRental]) => {
-    if (newType === 'lender_payment') {
-      form.amount = newRental?.base_price - newRental?.discount - newRental?.service_fee + (newRental?.overdue_fee || 0);
+  [() => props.rental?.dispute],
+  ([newDispute]) => {
+    if (props.type === 'lender_payment') {
+      form.amount = earnings.value.total;
     } else {
-      form.amount = newRental?.deposit_fee || 0;
+      form.amount = props.rental?.deposit_fee - (newDispute?.deposit_deduction || 0);
     }
   },
   { immediate: true }
@@ -144,6 +146,11 @@ const description = computed(() =>
                 <span class="text-muted-foreground">Overdue Fee:</span>
                 <span class="text-emerald-500">+ {{ formatNumber(rental.overdue_fee) }}</span>
               </div>
+              <!-- Add dispute deduction if exists -->
+              <div v-if="rental.dispute?.deposit_deduction > 0" class="flex justify-between">
+                <span class="text-muted-foreground">Dispute Deduction:</span>
+                <span class="text-emerald-500">+ {{ formatNumber(rental.dispute.deposit_deduction) }}</span>
+              </div>
               <div class="flex justify-between font-medium pt-2 border-t mt-2">
                 <span>Total Payment:</span>
                 <span>{{ formatNumber(earnings.total) }}</span>
@@ -160,6 +167,11 @@ const description = computed(() =>
               <div class="flex justify-between">
                 <span class="text-muted-foreground">Security Deposit Amount:</span>
                 <span>{{ formatNumber(rental.deposit_fee) }}</span>
+              </div>
+              <!-- Add dispute deduction if exists -->
+              <div v-if="rental.dispute?.deposit_deduction > 0" class="flex justify-between">
+                <span class="text-muted-foreground">Dispute Deduction:</span>
+                <span class="text-destructive">- {{ formatNumber(rental.dispute.deposit_deduction) }}</span>
               </div>
               <div class="flex justify-between font-medium pt-2 border-t mt-2">
                 <span>Total Refund:</span>

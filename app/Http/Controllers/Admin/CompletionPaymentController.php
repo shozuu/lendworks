@@ -38,10 +38,17 @@ class CompletionPaymentController extends Controller
                 'path' => $path
             ]);
 
+            // Calculate total amount including dispute deduction
+            $baseEarnings = $rental->base_price - $rental->discount - $rental->service_fee;
+            $overdueFee = $rental->overdue_payment ? $rental->overdue_payment->amount : 0;
+            $disputeDeduction = $rental->dispute ? $rental->dispute->deposit_deduction : 0;
+            
+            $totalAmount = $baseEarnings + $overdueFee + $disputeDeduction;
+
             $payment = CompletionPayment::create([
                 'rental_request_id' => $rental->id,
                 'type' => 'lender_payment',
-                'amount' => $validated['amount'],
+                'amount' => $totalAmount,
                 'reference_number' => $validated['reference_number'],
                 'proof_path' => $path,
                 'admin_id' => Auth::id(),
@@ -100,10 +107,15 @@ class CompletionPaymentController extends Controller
         DB::transaction(function () use ($rental, $request, $validated) {
             $path = $request->file('proof_image')->store('completion-payments', 'public');
 
+            // Calculate refund amount after deductions
+            $depositAmount = $rental->deposit_fee;
+            $deductionAmount = $rental->dispute ? $rental->dispute->deposit_deduction : 0;
+            $refundAmount = $depositAmount - $deductionAmount;
+
             CompletionPayment::create([
                 'rental_request_id' => $rental->id,
                 'type' => 'deposit_refund',
-                'amount' => $validated['amount'],
+                'amount' => $refundAmount,
                 'proof_path' => $path,
                 'admin_id' => Auth::id(), // Change to admin_id
                 'reference_number' => $validated['reference_number'],

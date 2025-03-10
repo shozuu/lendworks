@@ -231,13 +231,12 @@ class RentalRequest extends Model
         $isRenter = $user && $user->id === $this->renter_id;
         $isLender = $user && $user->id === $this->listing->user_id;
 
-        // Add debug logging to help identify the issue
-        \Log::info('Dispute Button Conditions:', [
+        \Log::info('Action Conditions:', [
             'rental_id' => $this->id,
-            'isLender' => $isLender,
             'status' => $this->status,
-            'hasDispute' => (bool) $this->dispute,
-            'hasDisputeInProgress' => $this->hasDisputeInProgress(),
+            'isLender' => $isLender,
+            'isRenter' => $isRenter,
+            'hasDispute' => (bool) $this->dispute
         ]);
 
         $actions = [
@@ -252,10 +251,22 @@ class RentalRequest extends Model
                 (!$this->is_overdue || $this->hasVerifiedOverduePayment()),
             'canSubmitReturn' => $isRenter && $this->status === 'return_scheduled',
             'canConfirmReturn' => $isLender && $this->status === 'pending_return_confirmation',
-            'canFinalizeReturn' => $isLender && $this->status === 'pending_final_confirmation',
-            'canRaiseDispute' => $isLender && 
-                               $this->status === 'pending_final_confirmation' && 
-                               !$this->dispute,  // Simplified check
+            'canFinalizeReturn' => $isLender && (
+                // Can finalize if pending final confirmation and no dispute exists
+                ($this->status === 'pending_final_confirmation' && !$this->dispute) ||
+                // Or if disputed but resolved with either deduction applied or rejected
+                ($this->status === 'disputed' && 
+                 $this->dispute && 
+                 $this->dispute->status === 'resolved')
+            ),
+            'canRaiseDispute' => $isLender && (
+                // Original dispute conditions remain same
+                ($this->status === 'pending_final_confirmation' && !$this->dispute) ||
+                ($this->status === 'disputed' && 
+                 $this->dispute && 
+                 $this->dispute->resolution_type === 'rejected' && 
+                 $this->dispute->status === 'resolved')
+            )
         ];
 
         if (!$user) return $actions;

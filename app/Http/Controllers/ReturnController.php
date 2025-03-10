@@ -198,24 +198,44 @@ class ReturnController extends Controller
             abort(403);
         }
 
+        // Check if status is valid for finalization
+        if (!in_array($rental->status, ['pending_final_confirmation', 'disputed'])) {
+            return back()->with('error', 'Invalid rental status for finalization.');
+        }
+
+        // For disputed rentals, ensure dispute is resolved
+        if ($rental->status === 'disputed') {
+            if (!$rental->dispute || $rental->dispute->status !== 'resolved') {
+                return back()->with('error', 'Cannot finalize return until dispute is resolved.');
+            }
+        }
+
         DB::transaction(function () use ($rental) {
             $rental->update([
-                'status' => 'completed_pending_payments', // Changed from 'completed'
+                'status' => 'completed_pending_payments',
                 'return_at' => now()
             ]);
 
             $rental->listing->update(['is_rented' => false]);
 
-            $rental->recordTimelineEvent('rental_completed', Auth::id(), [
+            // Add timeline event with dispute resolution info if applicable
+            $metadata = [
                 'completed_by' => 'lender',
                 'completion_datetime' => now()->format('Y-m-d H:i:s'),
                 'rental_duration' => $rental->rental_duration,
-                'actual_return_date' => now()->format('Y-m-d'),
-                'pending_payments' => [
-                    'lender_payment' => $rental->base_price,
-                    'deposit_refund' => $rental->deposit_fee
-                ]
-            ]);
+                'actual_return_date' => now()->format('Y-m-d')
+            ];
+
+            // Add dispute resolution info if applicable
+            if ($rental->dispute) {
+                $metadata['dispute_resolution'] = [
+                    'type' => $rental->dispute->resolution_type,
+                    'deduction_amount' => $rental->dispute->deposit_deduction,
+                    'verdict' => $rental->dispute->verdict
+                ];
+            }
+
+            $rental->recordTimelineEvent('rental_completed', Auth::id(), $metadata);
         });
 
         return back()->with('success', 'Rental completed. Awaiting payment processing.');
