@@ -11,8 +11,10 @@ return new class extends Migration
         Schema::create('payment_requests', function (Blueprint $table) {
             $table->id();
             $table->foreignId('rental_request_id')->constrained()->onDelete('cascade');
+            $table->enum('type', ['rental', 'overdue'])->default('rental');
             $table->string('reference_number');
             $table->string('payment_proof_path');
+            $table->integer('amount')->nullable();
             $table->enum('status', ['pending', 'verified', 'rejected'])->default('pending');
             $table->text('admin_feedback')->nullable();
             $table->foreignId('verified_by')->nullable()->constrained('users');

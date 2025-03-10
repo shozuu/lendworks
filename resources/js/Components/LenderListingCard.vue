@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useForm } from "@inertiajs/vue3";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import HandoverDialog from "@/Components/HandoverDialog.vue";
+import RentalDurationTracker from "@/Components/RentalDurationTracker.vue";
 
 const props = defineProps({
 	data: {
@@ -34,22 +35,56 @@ const listingImage = computed(() => {
 		: "/storage/images/listing/default.png";
 });
 
-const details = computed(() => [
-	{
-		label: "Total",
-		value: formatNumber(props.data.rental_request.total_price),
-	},
-	{
-		label: "Period",
-		value: `${formatRentalDate(
-			props.data.rental_request.start_date
-		)} - ${formatRentalDate(props.data.rental_request.end_date)}`,
-	},
-	{
-		label: "Renter",
-		value: props.data.rental_request.renter.name,
-	},
-]);
+// Add overdue status check
+const isOverdue = computed(() => {
+  if (props.data.rental_request.status !== 'active') return false;
+  return new Date(props.data.rental_request.end_date) < new Date();
+});
+
+// Update isPaidOverdue computed to properly check for verified payment
+const isPaidOverdue = computed(() => {
+  return isOverdue.value && 
+    props.data.rental_request.payment_request?.type === 'overdue' && 
+    props.data.rental_request.payment_request?.status === 'verified';
+});
+
+// Add new computed for pending overdue payment
+const hasPendingOverduePayment = computed(() => {
+  return isOverdue.value &&
+    props.data.rental_request.payment_request?.type === 'overdue' &&
+    props.data.rental_request.payment_request?.status === 'pending';
+});
+
+// Update details computed to include overdue information
+const details = computed(() => {
+  const baseDetails = [
+    {
+      label: "Total",
+      value: formatNumber(props.data.rental_request.total_price),
+    },
+    {
+      label: "Period",
+      value: `${formatRentalDate(props.data.rental_request.start_date)} - ${formatRentalDate(
+        props.data.rental_request.end_date
+      )}`,
+    },
+    {
+      label: "Renter",
+      value: props.data.rental_request.renter.name,
+    },
+  ];
+
+  // Add overdue days if rental is overdue
+  if (isOverdue.value) {
+    baseDetails.push({
+      label: isPaidOverdue.value ? "Paid Overdue Days" : "Overdue Days",
+      value: `${props.data.rental_request.overdue_days} days`,
+      class: isPaidOverdue.value ? 'text-amber-600' : 'text-red-600'
+    });
+  }
+
+  return baseDetails;
+});
 
 const showRejectDialog = ref(false);
 const showAcceptDialog = ref(false);
@@ -107,6 +142,14 @@ const actions = computed(() => props.data.rental_request.available_actions);
 
 // computed property for payment request
 const paymentRequest = computed(() => props.data.rental_request.payment_request);
+
+// Add computed property to check if handover is allowed
+const canShowHandover = computed(() => {
+    if (actions.value.canHandover) {
+        return props.data.rental_request.pickup_schedules?.some(schedule => schedule.is_selected);
+    }
+    return false;
+});
 </script>
 
 <template>
@@ -119,6 +162,31 @@ const paymentRequest = computed(() => props.data.rental_request.payment_request)
 		:details="details"
 		@click="$inertia.visit(route('rental.show', data.rental_request.id))"
 	>
+			<!-- Additional details slot -->
+		<template #additional-details>
+			<RentalDurationTracker 
+				v-if="data.rental_request.status === 'active'" 
+				:rental="data.rental_request"
+				class="mt-4"
+				/>
+			<!-- Update the overdue messages -->
+			<div v-if="isOverdue" class="mt-4" :class="{
+				'text-red-600': !isPaidOverdue && !hasPendingOverduePayment,
+				'text-amber-600': hasPendingOverduePayment,
+				'text-green-600': isPaidOverdue
+			}">
+				<p v-if="isPaidOverdue" class="text-sm font-medium">
+					Overdue fees have been paid. Please proceed with return process.
+				</p>
+				<p v-else-if="hasPendingOverduePayment" class="text-sm font-medium">
+					Overdue payment submitted - awaiting verification.
+				</p>
+				<p v-else class="text-sm font-medium">
+					Rental is overdue. Overdue fees are now being applied.
+				</p>
+			</div>
+		</template>
+
 		<!-- Actions slot -->
 		<template #actions>
 			<div class="sm:justify-end flex flex-wrap gap-2">
@@ -156,6 +224,7 @@ const paymentRequest = computed(() => props.data.rental_request.payment_request)
 					v-if="actions.canHandover"
 					variant="default"
 					size="sm"
+					:disabled="!canShowHandover"
 					@click.stop="showHandoverDialog = true"
 				>
 					Hand Over Item

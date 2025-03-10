@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import StatCard from "@/Components/StatCard.vue";
 import LenderListingCard from "@/Components/LenderListingCard.vue";
+import PickupScheduleManager from "@/Components/PickupScheduleManager.vue";
 import { ref, computed } from "vue";
 import { formatLabel } from "@/lib/formatters";
 
@@ -17,6 +18,7 @@ const props = defineProps({
 	rentalStats: Object,
 	rejectionReasons: Array,
 	cancellationReasons: Array,
+	pickupSchedules: Array,
 });
 console.log(props.groupedListings);
 const selectedTab = ref("pending");
@@ -27,7 +29,12 @@ const tabs = [
 	{ id: "payments", label: "Payments" },
 	{ id: "to_handover", label: "To Handover" },
 	{ id: "active", label: "Active" },
-	{ id: "pending_returns", label: "Pending Returns" },
+	{ id: "overdue", label: "Overdue" },
+	{ id: "paid_overdue", label: "Paid Overdue" },
+	{ id: "pending_return", label: "Return Pending" },
+	{ id: "return_scheduled", label: "Return Scheduled" },
+	{ id: "pending_return_confirmation", label: "Return Confirmation" },
+	{ id: "pending_final_confirmation", label: "Final Confirmation" },
 	{ id: "completed", label: "Completed" },
 	{ id: "rejected", label: "Rejected" },
 	{ id: "cancelled", label: "Cancelled" },
@@ -73,11 +80,19 @@ const groupedListings = computed(() => {
 			/>
 		</div>
 
+		 <!-- Add Pickup Schedule Manager -->
+		<PickupScheduleManager :schedules="pickupSchedules" />
+
 		<!-- Tabs for lg+ screens -->
 		<div class="lg:block hidden">
 			<Tabs v-model="selectedTab" class="w-full" @update:modelValue="handleValueChange">
-				<TabsList class="justify-start w-full">
-					<TabsTrigger v-for="tab in tabs" :key="tab.id" :value="tab.id">
+				<TabsList class="flex flex-wrap items-center gap-2 p-1">
+					<TabsTrigger 
+						v-for="tab in tabs" 
+						:key="tab.id" 
+						:value="tab.id"
+						class="whitespace-nowrap min-w-fit px-3"
+					>
 						{{ tab.label }}
 					</TabsTrigger>
 				</TabsList>
@@ -132,3 +147,15 @@ const groupedListings = computed(() => {
 		</div>
 	</div>
 </template>
+
+<style scoped>
+.TabsList {
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.TabsList::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+</style>

@@ -12,6 +12,10 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RentalRequestController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\HandoverController;
+use App\Http\Controllers\PickupScheduleController;
+use App\Http\Controllers\LenderPickupScheduleController;
+use App\Http\Controllers\ReturnController;
+use App\Http\Controllers\Admin\CompletionPaymentController;  // Add this import at the top
 use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -55,11 +59,53 @@ Route::middleware(['auth', 'verified'])->group(function() {
 
     // payment submission
     Route::post('/rentals/{rental}/submit-payment', [PaymentController::class, 'store'])->name('rentals.submit-payment');
+    Route::post('/rentals/{rental}/submit-overdue-payment', [PaymentController::class, 'storeOverduePayment'])
+        ->name('rentals.submit-overdue-payment');
 });
 
 Route::middleware(['auth'])->group(function () {
     Route::post('/rentals/{rental}/handover', [HandoverController::class, 'submitHandover'])->name('rentals.submit-handover');
     Route::post('/rentals/{rental}/receive', [HandoverController::class, 'submitReceive'])->name('rentals.submit-receive');
+    
+    // Pickup Schedule routes
+    Route::post('/rentals/{rental}/schedules', [PickupScheduleController::class, 'store'])
+        ->name('pickup-schedules.store');
+    Route::patch('/rentals/{rental}/schedules/{lender_schedule}/select', [PickupScheduleController::class, 'select'])
+        ->name('pickup-schedules.select');
+    Route::delete('/rentals/{rental}/schedules/{schedule}', [PickupScheduleController::class, 'destroy'])
+        ->name('pickup-schedules.destroy');
+
+    // Lender pickup schedules
+    Route::post('lender/pickup-schedules', [LenderPickupScheduleController::class, 'store'])
+        ->name('lender.pickup-schedules.store');
+    Route::delete('lender/pickup-schedules/{schedule}', [LenderPickupScheduleController::class, 'destroy'])
+        ->name('lender.pickup-schedules.destroy');
+    Route::patch('/lender/pickup-schedules/{schedule}', [LenderPickupScheduleController::class, 'update'])
+        ->name('lender.pickup-schedules.update');
+
+    // Return routes
+    Route::controller(ReturnController::class)->group(function () {
+        Route::post('/rentals/{rental}/initiate-return', 'initiateReturn')
+            ->name('rentals.initiate-return');
+        Route::post('/rentals/{rental}/return-schedules', 'storeSchedule')
+            ->name('return-schedules.store');
+        Route::patch('/rentals/{rental}/return-schedules/{schedule}/select', 'selectSchedule')
+            ->name('return-schedules.select');
+        Route::patch('/rentals/{rental}/return-schedules/{schedule}/confirm', 'confirmSchedule')
+            ->name('return-schedules.confirm');
+        Route::patch('/rentals/{rental}/return-schedules/confirm', 'confirmSchedule')
+            ->name('return-schedules.confirm');
+        Route::post('/rentals/{rental}/submit-return', 'submitReturn')
+            ->name('rentals.submit-return');
+        Route::post('/rentals/{rental}/confirm-return', 'confirmReturn')
+            ->name('rentals.confirm-return');
+        Route::post('/rentals/{rental}/return-item', 'submitReturn')
+            ->name('rentals.submit-return');
+        Route::post('/rentals/{rental}/confirm-receipt', 'confirmItemReceived')
+            ->name('rentals.confirm-receipt');
+        Route::post('/rentals/{rental}/finalize-return', 'finalizeReturn')
+            ->name('rentals.finalize-return');
+    });
 });
 
 // Admin routes with auth and admin middleware
@@ -85,8 +131,23 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     
     // Payment routes
     Route::get('/payments', [AdminController::class, 'payments'])->name('payments');
-    Route::post('/payments/{payment}/verify', [AdminController::class, 'verifyPayment'])->name('payments.verify');
-    Route::post('/payments/{payment}/reject', [AdminController::class, 'rejectPayment'])->name('payments.reject');
+    
+    // Separate routes for regular and overdue payments
+    Route::post('/payments/{payment}/verify', [PaymentController::class, 'verify'])
+        ->name('payments.verify');
+    
+    Route::post('/payments/{payment}/reject', [PaymentController::class, 'reject'])
+        ->name('payments.reject');
+
+    // Add route for getting payment details if needed
+    Route::get('/payments/{payment}', [PaymentController::class, 'show'])
+        ->name('payments.show');
+
+    // Add routes for completion payments
+    Route::post('/rentals/{rental}/completion-payments/lender', [CompletionPaymentController::class, 'storeLenderPayment'])
+        ->name('completion-payments.store-lender-payment');
+    Route::post('/rentals/{rental}/completion-payments/deposit', [CompletionPaymentController::class, 'storeDepositRefund'])
+        ->name('completion-payments.store-deposit-refund');
 });
 
 Route::get('/', [ListingController::class, 'index'])->name('home');

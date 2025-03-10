@@ -459,13 +459,25 @@ class AdminController extends Controller
 
     public function rentalTransactionDetails(RentalRequest $rental)
     {
+        // Add viewer_id to help with determining actions
+        $rental->viewer_id = Auth::id();
+        
         $rental->load([
             'listing' => fn($q) => $q->with(['images', 'category', 'location', 'user']),
             'renter',
             'latestRejection.rejectionReason',
             'latestCancellation.cancellationReason',
-            'timelineEvents',
-            'payment_request'
+            'timelineEvents.actor',  // Make sure actor is loaded for timeline
+            'payment_request',
+            'completion_payments'
+        ]);
+
+        // Add this debug line to check the data
+        \Log::info('Rental Transaction Details:', [
+            'rental_id' => $rental->id,
+            'status' => $rental->status,
+            'has_completion_payments' => $rental->completion_payments->count(),
+            'available_actions' => $rental->available_actions
         ]);
 
         return Inertia::render('Admin/RentalTransactionDetails', [
@@ -475,6 +487,10 @@ class AdminController extends Controller
 
     public function payments()
     {
+        $payments = PaymentRequest::with(['rentalRequest.listing', 'rentalRequest.renter'])
+            ->latest()
+            ->paginate(10);
+
         $stats = [
             'total' => PaymentRequest::count(),
             'pending' => PaymentRequest::where('status', 'pending')->count(),
@@ -482,106 +498,9 @@ class AdminController extends Controller
             'rejected' => PaymentRequest::where('status', 'rejected')->count(),
         ];
 
-        $payments = PaymentRequest::with([
-            'rentalRequest.renter',
-            'rentalRequest.listing.images',
-            'rentalRequest.listing.user'
-        ])
-            ->latest()
-            ->paginate(10);
-
         return Inertia::render('Admin/PaymentRequests', [
             'payments' => $payments,
             'stats' => $stats
         ]);
-    }
-
-    public function verifyPayment(PaymentRequest $payment)
-    {
-        try {
-            DB::beginTransaction();
-
-            // Update payment status
-            $payment->update(['status' => 'verified']);
-
-            // Update rental request status
-            $payment->rentalRequest->update(['status' => 'to_handover']);
-
-            // Add timeline event with payment request data
-            $payment->rentalRequest->recordTimelineEvent('payment_verified', Auth::id(), [
-                'payment_request_id' => $payment->id,
-                'reference_number' => $payment->reference_number,
-                'verified_by' => Auth::user()->name,
-                'payment_request' => [
-                    'id' => $payment->id,
-                    'reference_number' => $payment->reference_number,
-                    'payment_proof_path' => $payment->payment_proof_path,
-                    'status' => 'verified',
-                    'created_at' => $payment->created_at
-                ]
-            ]);
-
-            DB::commit();
-
-            // Notify users
-            $payment->rentalRequest->renter->notify(new PaymentVerified($payment));
-            $payment->rentalRequest->listing->user->notify(new PaymentVerified($payment));
-
-            return back()->with('success', 'Payment verified successfully');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            report($e);
-            return back()->with('error', 'Failed to verify payment. Please try again.');
-        }
-    }
-
-    public function rejectPayment(Request $request, PaymentRequest $payment)
-    {
-        // Validate the request
-        $validated = $request->validate([
-            'feedback' => ['required', 'string', 'min:10', 'max:500']
-        ]);
-
-        try {
-            DB::beginTransaction();
-
-            // Update payment status
-            $payment->update([
-                'status' => 'rejected',
-                'admin_feedback' => $validated['feedback'],
-                'verified_by' => Auth::id(),
-                'verified_at' => now()
-            ]);
-
-            // Update rental request status back to approved
-            $payment->rentalRequest->update(['status' => 'approved']);
-
-            // Add timeline event with payment request data
-            $payment->rentalRequest->recordTimelineEvent('payment_rejected', Auth::id(), [
-                'payment_request_id' => $payment->id,
-                'reference_number' => $payment->reference_number,
-                'feedback' => $validated['feedback'],
-                'rejected_by' => Auth::user()->name,
-                'payment_request' => [
-                    'id' => $payment->id,
-                    'reference_number' => $payment->reference_number,
-                    'payment_proof_path' => $payment->payment_proof_path,
-                    'status' => 'rejected',
-                    'admin_feedback' => $validated['feedback'],
-                    'created_at' => $payment->created_at
-                ]
-            ]);
-
-            DB::commit();
-
-            // Notify user
-            $payment->rentalRequest->renter->notify(new PaymentRejected($payment));
-
-            return back()->with('success', 'Payment rejected successfully');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            report($e);
-            return back()->with('error', 'Failed to reject payment. Please try again.');
-        }
     }
 }

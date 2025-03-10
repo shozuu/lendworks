@@ -4,30 +4,28 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class PaymentRequest extends Model
+class OverduePayment extends Model
 {
     protected $fillable = [
         'rental_request_id',
+        'amount',
         'reference_number',
-        'payment_proof_path',
-        'status',
-        'admin_feedback',
-        'verified_by',
+        'proof_path',
         'verified_at',
-        'type',    // 'regular' or 'overdue'
-        'amount'   // stores the payment amount
+        'verified_by'
     ];
 
     protected $casts = [
-        'verified_at' => 'datetime'
+        'verified_at' => 'datetime',
+        'amount' => 'decimal:2'
     ];
 
-    public function rentalRequest()
+    public function rental_request()
     {
         return $this->belongsTo(RentalRequest::class);
     }
 
-    public function verifiedByAdmin()
+    public function verifier()
     {
         return $this->belongsTo(User::class, 'verified_by');
     }

@@ -41,6 +41,9 @@ const statusOptions = [
     { value: 'approved', label: 'Owner Approved' },
     { value: 'to_handover', label: 'Ready for Handover' },
     { value: 'active', label: 'Active Rental' },
+    { value: 'pending_return', label: 'Return Pending' },
+    { value: 'return_scheduled', label: 'Return Scheduled' },
+    { value: 'pending_return_confirmation', label: 'Return Confirmation' },
     { value: 'completed', label: 'Completed' },
     { value: 'rejected', label: 'Rejected' },
     { value: 'cancelled', label: 'Cancelled' }
@@ -52,6 +55,9 @@ const getStatusBadge = (status) => {
         approved: { variant: "success", label: "Owner Approved" },
         to_handover: { variant: "info", label: "Ready for Handover" },
         active: { variant: "success", label: "Active Rental" },
+        pending_return: { variant: "warning", label: "Return Pending" },
+        return_scheduled: { variant: "info", label: "Return Scheduled" },
+        pending_return_confirmation: { variant: "warning", label: "Return Confirmation" },
         completed: { variant: "default", label: "Completed" },
         rejected: { variant: "destructive", label: "Rejected" },
         cancelled: { variant: "muted", label: "Cancelled" }
@@ -94,6 +100,9 @@ const handleSearch = (event) => {
                     <Badge variant="success">Approved: {{ stats.approved }}</Badge>
                     <Badge variant="info">To Handover: {{ stats.renter_paid }}</Badge>
                     <Badge variant="success">Active: {{ stats.active }}</Badge>
+                    <Badge variant="warning">Return Pending: {{ stats.pending_return }}</Badge>
+                    <Badge variant="info">Return Scheduled: {{ stats.return_scheduled }}</Badge>
+                    <Badge variant="warning">Return Confirmation: {{ stats.pending_return_confirmation }}</Badge>
                     <Badge variant="default">Completed: {{ stats.completed }}</Badge>
                     <Badge variant="destructive">Rejected: {{ stats.rejected }}</Badge>
                     <Badge variant="muted">Cancelled: {{ stats.cancelled }}</Badge>

@@ -251,12 +251,14 @@ onMounted(() => {
 								<div class="text-muted-foreground">
 									Duration Discount ({{ rentalPrice.discountPercentage }}%)
 								</div>
-								<div>- {{ formatNumber(rentalPrice.discount) }}</div>
+								 <div class="text-emerald-500 font-medium">
+                                    - {{ formatNumber(rentalPrice.discount) }}
+                                </div>
 							</div>
 
 							<div class="flex items-center justify-between">
 								<div class="text-muted-foreground">LendWorks Fee</div>
-								<div>{{ formatNumber(rentalPrice.fee) }}</div>
+                                    {{ formatNumber(rentalPrice.fee) }}
 							</div>
 
 							<div class="flex items-center justify-between">

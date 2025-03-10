@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
+use App\Models\LenderPickupSchedule;
 
 class RentalRequestController extends Controller
 {
@@ -26,7 +27,12 @@ class RentalRequestController extends Controller
             'listing.location',
             'renter',
             'timelineEvents.actor',
-            'payment_request' 
+            'payment_request',
+            'return_schedules' => function($query) {
+                $query->orderBy('created_at', 'desc');
+            },
+            'pickup_schedules',
+            'completion_payments',  // Add this line
         ]);
 
         // Check if the authenticated user is either the renter or the lender
@@ -69,9 +75,15 @@ class RentalRequestController extends Controller
                 })
         ];
 
+        // Add lender schedules for the rental
+        $lenderSchedules = LenderPickupSchedule::where('user_id', $rental->listing->user_id)
+            ->where('is_active', true)
+            ->get();
+
         return Inertia::render('RentalDetails', [
             'rental' => $rental,
             'userRole' => $userRole,
+            'lenderSchedules' => $lenderSchedules,
             ...$reasons
         ]);        
     }

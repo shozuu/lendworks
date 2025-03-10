@@ -41,7 +41,7 @@ const props = defineProps({
 
 const emit = defineEmits(["update:show"]);
 
-const qrCodePath = "/storage/images/payment/QR_Payment.jpg";
+const qrCodePath = "/storage/app/public/images/payment/QR_Payment.jpg";
 
 const formSchema = toTypedSchema(
 	z.object({

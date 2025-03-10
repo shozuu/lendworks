@@ -20,7 +20,9 @@ class RentalRequest extends Model
         'service_fee',
         'deposit_fee',
         'total_price',
-        'status'
+        'status',
+        'handover_at',
+        'return_at'
     ];
 
     protected $casts = [
@@ -36,7 +38,13 @@ class RentalRequest extends Model
     ];
 
     protected $appends = [
-        'available_actions'
+        'available_actions',
+        'rental_duration',
+        'remaining_days',
+        'overdue_days',
+        'is_overdue',
+        'overdue_fee',
+        'total_lender_earnings'  // Add this line
     ];
 
     // Define core rental status constants
@@ -132,6 +140,43 @@ class RentalRequest extends Model
         return $this->hasMany(HandoverProof::class);
     }
 
+    public function pickup_schedules()
+    {
+        return $this->hasMany(PickupSchedule::class);
+    }
+
+    public function return_schedules()
+    {
+        return $this->hasMany(ReturnSchedule::class);
+    }
+
+    public function returnProofs()
+    {
+        return $this->hasMany(ReturnProof::class);
+    }
+
+    /**
+     * Get the timeline events for the rental request.
+     */
+    public function timeline_events()
+    {
+        return $this->hasMany(RentalTimelineEvent::class, 'rental_request_id');
+    }
+
+    // Add this relationship after the other relationship methods
+    public function overdue_payment()
+    {
+        return $this->hasOne(OverduePayment::class)
+            ->select(['id', 'rental_request_id', 'amount', 'verified_at', 'reference_number'])
+            ->latest();
+    }
+
+    // Add this relationship
+    public function completion_payments()
+    {
+        return $this->hasMany(CompletionPayment::class);
+    }
+
     // Accessors
     public function getHasStartedAttribute(): bool
     {
@@ -145,10 +190,11 @@ class RentalRequest extends Model
 
     public function getIsOverdueAttribute(): bool
     {
-        if (!$this->hasStarted || $this->hasEnded) {
+        if ($this->status !== 'active' || !$this->end_date) {
             return false;
         }
-        return now()->greaterThan($this->end_date);
+        
+        return Carbon::now()->startOfDay()->gt(Carbon::parse($this->end_date)->startOfDay());
     }
 
     public function getHasHandoverProofAttribute(): bool
@@ -174,6 +220,12 @@ class RentalRequest extends Model
             'canPayNow' => $isRenter && $this->canPayNow(),
             'canHandover' => false,
             'canReceive' => false,
+            'canInitiateReturn' => $isRenter && 
+                $this->status === 'active' && 
+                (!$this->is_overdue || $this->hasVerifiedOverduePayment()),
+            'canSubmitReturn' => $isRenter && $this->status === 'return_scheduled',
+            'canConfirmReturn' => $isLender && $this->status === 'pending_return_confirmation',
+            'canFinalizeReturn' => $isLender && $this->status === 'pending_final_confirmation'
         ];
 
         if (!$user) return $actions;
@@ -188,7 +240,204 @@ class RentalRequest extends Model
             $this->status === 'pending_proof' && 
             $this->renter_id === $user->id;
 
+        // Add debug logging
+        \Log::info('Completion Payments Status:', [
+            'rental_id' => $this->id,
+            'has_lender_payment' => $this->completion_payments()
+                ->where('type', 'lender_payment')
+                ->exists(),
+            'has_deposit_refund' => $this->completion_payments()
+                ->where('type', 'deposit_refund')
+                ->exists()
+        ]);
+
+        $actions['canProcessLenderPayment'] = !$this->completion_payments()
+            ->where('type', 'lender_payment')
+            ->exists();
+        
+        $actions['canProcessDepositRefund'] = !$this->completion_payments()
+            ->where('type', 'deposit_refund')
+            ->exists();
+
+        $actions['hasLenderPayment'] = $this->completion_payments()
+            ->where('type', 'lender_payment')
+            ->exists();
+
+        $actions['hasDepositRefund'] = $this->completion_payments()
+            ->where('type', 'deposit_refund')
+            ->exists();
+
         return $actions;
+    }
+
+    public function getRentalDurationAttribute()
+    {
+        if (!$this->start_date || !$this->end_date) {
+            return 0;
+        }
+        
+        // Add one day to include both start and end dates
+        return Carbon::parse($this->start_date)->startOfDay()
+            ->diffInDays(Carbon::parse($this->end_date)->startOfDay()) + 1;
+    }
+
+    public function getRemainingDaysAttribute()
+    {
+        if ($this->status !== 'active' || !$this->end_date || !$this->start_date) {
+            return 0;
+        }
+        
+        $now = Carbon::now()->startOfDay();
+        $start = Carbon::parse($this->start_date)->startOfDay();
+        $end = Carbon::parse($this->end_date)->startOfDay();
+        
+        // Return the total duration before rental starts
+        if ($now->lt($start)) {
+            return $start->diffInDays($end) + 1;
+        }
+        
+        // Return 0 if we're past the end date
+        if ($now->gt($end)) {
+            return 0;
+        }
+        
+        // Return remaining days from today
+        return $now->diffInDays($end) + 1;
+    }
+
+    public function getOverdueDaysAttribute()
+    {
+        if ($this->status !== 'active' || !$this->end_date) {
+            return 0;
+        }
+        
+        $now = Carbon::now()->startOfDay();
+        $end = Carbon::parse($this->end_date)->startOfDay();
+        
+        if ($now->gt($end)) {
+            return $now->diffInDays($end);
+        }
+        
+        return 0;
+    }
+
+    public function getOverdueFeeAttribute()
+    {
+        // Always use verified payment amount if it exists
+        $verifiedPayment = $this->overdue_payment()
+            ->whereNotNull('verified_at')
+            ->first();
+            
+        if ($verifiedPayment) {
+            return (float) $verifiedPayment->amount;
+        }
+
+        // Otherwise calculate current overdue fee
+        if (!$this->is_overdue || !$this->listing) {
+            return 0;
+        }
+        
+        $dailyRate = abs((float) $this->listing->price);
+        $overdueDays = abs($this->overdue_days);
+        
+        return $dailyRate * $overdueDays;
+    }
+
+    // Add these new methods
+    // Update this method to ensure overdue fee is included
+    public function getLenderEarningsAttribute()
+    {
+        // Force load the relationships if not already loaded
+        if (!$this->relationLoaded('overdue_payment')) {
+            $this->load('overdue_payment');
+        }
+
+        // Add detailed debug logging
+        \Log::info('Rental Request Details:', [
+            'rental_id' => $this->id,
+            'raw_values' => [
+                'base_price' => $this->base_price,
+                'discount' => $this->discount,
+                'service_fee' => $this->service_fee,
+            ]
+        ]);
+
+        // Cast values to integers and ensure they're not null
+        $basePrice = (int) ($this->base_price ?? 0);
+        $discount = (int) ($this->discount ?? 0);
+        $serviceFee = (int) ($this->service_fee ?? 0);
+
+        // Calculate base earnings
+        $baseEarnings = $basePrice - $discount - $serviceFee;
+
+        // Get verified overdue payment
+        $verifiedPayment = $this->overdue_payment()
+            ->whereNotNull('verified_at')
+            ->first();
+
+        // Cast overdue fee to integer
+        $overdueFee = $verifiedPayment ? (int) $verifiedPayment->amount : 0;
+
+        // Calculate total
+        $totalEarnings = $baseEarnings + $overdueFee;
+
+        // Debug logging for calculations
+        \Log::info('Lender Earnings Calculation:', [
+            'rental_id' => $this->id,
+            'calculations' => [
+                'base_price' => $basePrice,
+                'discount' => $discount,
+                'service_fee' => $serviceFee,
+                'base_earnings' => $baseEarnings,
+                'overdue_fee' => $overdueFee,
+                'total_earnings' => $totalEarnings
+            ]
+        ]);
+
+        return [
+            'base' => max(0, $baseEarnings), // Ensure no negative values
+            'overdue' => $overdueFee,
+            'total' => max(0, $totalEarnings), // Ensure no negative values
+            'hasOverdue' => $overdueFee > 0
+        ];
+    }
+
+    // Fix the hasVerifiedOverduePayment method
+    public function hasVerifiedOverduePayment(): bool
+    {
+        return $this->overdue_payment()
+            ->whereNotNull('verified_at')
+            ->exists();
+    }
+
+    // Add new attribute for overdue status information
+    public function getOverdueStatusAttribute()
+    {
+        if (!$this->is_overdue && !$this->overdue_payment) {
+            return null;
+        }
+
+        $verifiedPayment = $this->overdue_payment()
+            ->whereNotNull('verified_at')
+            ->first();
+
+        return [
+            'is_overdue' => $this->is_overdue,
+            'days_overdue' => $this->overdue_days,
+            'fee_amount' => $this->overdue_fee,
+            'is_paid' => (bool) $verifiedPayment,
+            'payment_details' => $verifiedPayment ? [
+                'verified_at' => $verifiedPayment->verified_at,
+                'reference_number' => $verifiedPayment->reference_number
+            ] : null
+        ];
+    }
+
+    // Add this new method
+    public function getTotalLenderEarningsAttribute()
+    {
+        $earnings = $this->getLenderEarningsAttribute();
+        return $earnings['total'];
     }
 
     // Scopes
@@ -286,6 +535,33 @@ class RentalRequest extends Model
     public function canViewPayment(): bool 
     {
         return $this->payment_request !== null;
+    }
+
+    public function canInitiateReturn(): bool
+    {
+        if ($this->status !== 'active') {
+            return false;
+        }
+
+        // Can't initiate return if overdue and hasn't paid
+        if ($this->is_overdue && !$this->hasVerifiedOverduePayment()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function hasPendingOverduePayment(): bool
+    {
+        return $this->payment_request()
+            ->where('type', 'overdue')
+            ->where('status', 'pending')
+            ->exists();
+    }
+
+    public function isPaidOverdue(): bool
+    {
+        return $this->is_overdue && $this->hasVerifiedOverduePayment();
     }
 
     public function getOverlappingRequests()
