@@ -17,11 +17,15 @@ class RentalDispute extends Model
         'verdict',
         'verdict_notes',
         'resolved_at',
-        'resolved_by'
+        'resolved_by',
+        'deposit_deduction',  // Add this
+        'deposit_deduction_reason',  // Add this
+        'resolution_type'  // Add this: 'deposit_deducted' or 'rejected'
     ];
 
     protected $casts = [
         'resolved_at' => 'datetime',
+        'deposit_deduction' => 'integer',
     ];
 
     public function rental(): BelongsTo

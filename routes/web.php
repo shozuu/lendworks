@@ -155,6 +155,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     // Add dispute routes
     Route::get('/disputes', [DisputeController::class, 'index'])->name('disputes');
     Route::get('/disputes/{dispute}', [DisputeController::class, 'show'])->name('disputes.show');
+    Route::post('/disputes/{dispute}/update-status', [DisputeController::class, 'updateStatus'])->name('disputes.update-status');
     Route::post('/disputes/{dispute}/resolve', [DisputeController::class, 'resolve'])->name('disputes.resolve');
 });
 

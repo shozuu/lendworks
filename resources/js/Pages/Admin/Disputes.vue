@@ -37,7 +37,12 @@ defineProps({
             </CardHeader>
             <CardContent>
                 <div class="space-y-8">
-                    <div v-for="dispute in disputes.data" :key="dispute.id" class="flex gap-4">
+                    <Link
+                        v-for="dispute in disputes.data" 
+                        :key="dispute.id"
+                        :href="route('admin.disputes.show', dispute.id)"
+                        class="flex gap-4 p-4 border rounded-lg hover:bg-muted transition-colors"
+                    >
                         <div class="flex-1 space-y-2">
                             <div class="flex items-center gap-2">
                                 <span class="font-medium">Rental #{{ dispute.rental.id }}</span>
@@ -57,7 +62,7 @@ defineProps({
                         <div class="text-sm text-muted-foreground">
                             {{ formatDateTime(dispute.created_at) }}
                         </div>
-                    </div>
+                    </Link>
                 </div>
             </CardContent>
         </Card>

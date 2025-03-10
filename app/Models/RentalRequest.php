@@ -184,6 +184,16 @@ class RentalRequest extends Model
         return $this->hasOne(RentalDispute::class, 'rental_request_id');
     }
 
+    public function depositDeductions()
+    {
+        return $this->hasMany(DepositDeduction::class);
+    }
+
+    public function lenderEarningsAdjustments()
+    {
+        return $this->hasMany(LenderEarningsAdjustment::class);
+    }
+
     // Accessors
     public function getHasStartedAttribute(): bool
     {
@@ -463,6 +473,12 @@ class RentalRequest extends Model
     {
         $earnings = $this->getLenderEarningsAttribute();
         return $earnings['total'];
+    }
+
+    public function getRemainingDepositAttribute()
+    {
+        $totalDeductions = $this->depositDeductions()->sum('amount');
+        return $this->deposit_fee - $totalDeductions;
     }
 
     // Scopes
