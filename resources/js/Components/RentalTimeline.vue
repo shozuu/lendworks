@@ -9,6 +9,9 @@ import {
 	AlertCircle,
 	PackageCheck,
 	Calendar,
+	DollarSign, // Add this import
+	CheckCircleIcon, // Add this import
+	XCircleIcon, // Add this import
 } from "lucide-vue-next";
 import { ref } from "vue";
 import PaymentDialog from "@/Components/PaymentDialog.vue";
@@ -65,6 +68,12 @@ const getEventIcon = (eventType) => {
 			return PackageCheck;
 		case "pickup_schedule_selected":
 			return Calendar;
+		case "overdue_payment_submitted":
+			return DollarSign;
+		case "overdue_payment_verified":
+			return CheckCircleIcon;
+		case "overdue_payment_rejected":
+			return XCircleIcon;
 		default:
 			return AlertCircle;
 	}
@@ -97,6 +106,12 @@ const getEventColor = (eventType) => {
 			return "text-blue-500";
 		case "return_submitted":
 			return "text-yellow-500";
+		case "overdue_payment_submitted":
+			return "text-yellow-500";
+		case "overdue_payment_verified":
+			return "text-emerald-500";
+		case "overdue_payment_rejected":
+			return "text-destructive";
 		default:
 			return "text-muted-foreground";
 	}
@@ -257,6 +272,26 @@ const formatEventMessage = (event) => {
 				return "Rental completed - item returned successfully";
 			}
 			return `${actorLabel} confirmed the return`;
+
+		case "overdue_payment_submitted":
+			if (isLatest) {
+				return performedByViewer
+					? "You submitted overdue payment - awaiting verification"
+					: `${actorLabel} submitted overdue payment - awaiting verification`;
+			}
+			return `${actorLabel} submitted overdue payment (Reference: ${event.metadata?.reference_number})`;
+
+		case "overdue_payment_verified":
+			if (isLatest) {
+				return "Overdue payment verified - you can now proceed with return process";
+			}
+			return "Overdue payment was verified";
+
+		case "overdue_payment_rejected":
+			if (isLatest) {
+				return "Overdue payment was rejected - new payment required";
+			}
+			return "Overdue payment was rejected";
 
 		default:
 			return `Unknown event by ${actorLabel}`;

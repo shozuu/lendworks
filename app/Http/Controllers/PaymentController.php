@@ -105,15 +105,22 @@ class PaymentController extends Controller
                 'amount' => $rental->overdue_fee
             ]);
 
+            // Add timeline event for overdue payment submission
             $rental->recordTimelineEvent('overdue_payment_submitted', Auth::id(), [
                 'reference_number' => $validated['reference_number'],
                 'payment_request_id' => $paymentRequest->id,
-                'amount' => $rental->overdue_fee
+                'amount' => $rental->overdue_fee,
+                'payment_request' => [
+                    'id' => $paymentRequest->id,
+                    'reference_number' => $paymentRequest->reference_number,
+                    'payment_proof_path' => $paymentRequest->payment_proof_path,
+                    'status' => $paymentRequest->status,
+                    'amount' => $paymentRequest->amount
+                ]
             ]);
 
             DB::commit();
             return back()->with('success', 'Overdue payment submitted successfully!');
-
         } catch (\Exception $e) {
             DB::rollBack();
             if (isset($path)) {
@@ -135,14 +142,19 @@ class PaymentController extends Controller
                 'verified_at' => now()
             ]);
 
-            // Update rental request status
-            $payment->rentalRequest->update(['status' => 'payment_verified']);
-            
-            // Record timeline event
-            $payment->rentalRequest->recordTimelineEvent('payment_verified', Auth::id(), [
-                'payment_request_id' => $payment->id,
-                'verified_by' => Auth::user()->name
-            ]);
+            // Different timeline events based on payment type
+            if ($payment->type === 'overdue') {
+                $payment->rentalRequest->recordTimelineEvent('overdue_payment_verified', Auth::id(), [
+                    'payment_request_id' => $payment->id,
+                    'amount' => $payment->amount,
+                    'verified_by' => Auth::user()->name
+                ]);
+            } else {
+                $payment->rentalRequest->recordTimelineEvent('payment_verified', Auth::id(), [
+                    'payment_request_id' => $payment->id,
+                    'verified_by' => Auth::user()->name
+                ]);
+            }
 
             DB::commit();
 
@@ -171,16 +183,25 @@ class PaymentController extends Controller
                 'verified_at' => now()
             ]);
 
+            // Different timeline events based on payment type
+            if ($payment->type === 'overdue') {
+                $payment->rentalRequest->recordTimelineEvent('overdue_payment_rejected', Auth::id(), [
+                    'payment_request_id' => $payment->id,
+                    'amount' => $payment->amount,
+                    'feedback' => $validated['feedback'],
+                    'rejected_by' => Auth::user()->name
+                ]);
+            } else {
+                $payment->rentalRequest->recordTimelineEvent('payment_rejected', Auth::id(), [
+                    'payment_request_id' => $payment->id,
+                    'feedback' => $validated['feedback'],
+                    'rejected_by' => Auth::user()->name
+                ]);
+            }
+
             // Update rental request status back to approved
             $payment->rentalRequest->update(['status' => 'approved']);
             
-            // Record timeline event
-            $payment->rentalRequest->recordTimelineEvent('payment_rejected', Auth::id(), [
-                'payment_request_id' => $payment->id,
-                'feedback' => $validated['feedback'],
-                'rejected_by' => Auth::user()->name
-            ]);
-
             DB::commit();
 
             return back()->with('success', 'Payment rejected successfully.');

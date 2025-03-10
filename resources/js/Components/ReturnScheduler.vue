@@ -216,6 +216,27 @@ const showWaitingMessage = computed(() => {
 
 // Add ref for overdue payment dialog
 const showOverduePayment = ref(false);
+
+// Add isOverdue computed property
+const isOverdue = computed(() => {
+  if (props.rental.status !== 'active' || !props.rental.end_date) {
+    return false;
+  }
+  return new Date(props.rental.end_date) < new Date();
+});
+
+// Fix references to rental in computed properties
+const hasPendingOverduePayment = computed(() => {
+  return isOverdue.value &&
+    props.rental.payment_request?.type === 'overdue' &&
+    props.rental.payment_request?.status === 'pending';
+});
+
+const hasVerifiedOverduePayment = computed(() => {
+  return isOverdue.value &&
+    props.rental.payment_request?.type === 'overdue' &&
+    props.rental.payment_request?.status === 'verified';
+});
 </script>
 
 <template>
@@ -224,38 +245,72 @@ const showOverduePayment = ref(false);
       <CardTitle>Return Process</CardTitle>
     </CardHeader>
     <CardContent>
-      <!-- Show overdue warning and payment button -->
+      <!-- Show overdue states -->
       <div v-if="rental.is_overdue && rental.status === 'active'" class="space-y-4">
-        <!-- Different views for renter and lender -->
+        <!-- Different views for renter -->
         <template v-if="userRole === 'renter'">
-          <Alert variant="destructive">
-            <AlertDescription class="space-y-2">
-              <p>This rental is overdue. Please pay the overdue fees to proceed with the return process.</p>
-              <p class="font-medium">Overdue Fee: {{ formatNumber(rental.overdue_fee) }}</p>
-            </AlertDescription>
-          </Alert>
-          
-          <div class="flex gap-2">
-            <Button 
-              variant="default" 
-              @click="showOverduePayment = true"
-            >
-              Pay Overdue Fees
-            </Button>
-            <Button 
-              variant="outline" 
-              disabled
-            >
-              Initiate Return
-            </Button>
-          </div>
+          <!-- Unpaid overdue state -->
+          <template v-if="!hasPendingOverduePayment && !hasVerifiedOverduePayment">
+            <Alert variant="destructive">
+              <AlertDescription class="space-y-2">
+                <p>This rental is overdue. Please pay the overdue fees to proceed with the return process.</p>
+                <p class="font-medium">Overdue Fee: {{ formatNumber(rental.overdue_fee) }}</p>
+              </AlertDescription>
+            </Alert>
+            
+            <div class="flex gap-2">
+              <Button 
+                variant="default" 
+                @click="showOverduePayment = true"
+              >
+                Pay Overdue Fees
+              </Button>
+              <Button 
+                variant="outline" 
+                disabled
+              >
+                Initiate Return
+              </Button>
+            </div>
+          </template>
+
+          <!-- Pending verification state -->
+          <template v-else-if="hasPendingOverduePayment">
+            <Alert variant="warning">
+              <AlertDescription class="space-y-2">
+                <p>Overdue payment submitted. Please wait for admin verification to proceed with return process.</p>
+                <p class="font-medium">Overdue Fee: {{ formatNumber(rental.overdue_fee) }}</p>
+              </AlertDescription>
+            </Alert>
+          </template>
+
+          <!-- Payment verified state - show normal return process -->
+          <template v-else-if="hasVerifiedOverduePayment">
+            <div v-if="!rental.return_schedules?.length">
+              <Button 
+                class="w-full" 
+                @click="handleInitiateReturn"
+                :disabled="initiateForm.processing"
+              >
+                Initiate Return Process
+              </Button>
+            </div>
+          </template>
         </template>
 
-        <!-- Lender view for overdue rentals -->
+        <!-- Lender view for overdue states -->
         <template v-else>
-          <Alert variant="warning">
+          <Alert :variant="hasPendingOverduePayment ? 'warning' : hasVerifiedOverduePayment ? 'success' : 'warning'">
             <AlertDescription class="space-y-2">
-              <p>This rental is overdue. Waiting for the renter to pay the overdue fees.</p>
+              <template v-if="hasPendingOverduePayment">
+                <p>Renter has submitted overdue payment. Waiting for admin verification.</p>
+              </template>
+              <template v-else-if="hasVerifiedOverduePayment">
+                <p>Overdue payment has been verified. Waiting for renter to initiate return.</p>
+              </template>
+              <template v-else>
+                <p>This rental is overdue. Waiting for the renter to pay the overdue fees.</p>
+              </template>
               <p class="font-medium">Overdue Fee: {{ formatNumber(rental.overdue_fee) }}</p>
             </AlertDescription>
           </Alert>
@@ -393,9 +448,9 @@ const showOverduePayment = ref(false);
     </CardContent>
   </Card>
 
-  <!-- Only show payment dialog for renters -->
+  <!-- Only show payment dialog for renters and when payment is not pending -->
   <PayOverdueDialog
-    v-if="userRole === 'renter'"
+    v-if="userRole === 'renter' && !hasPendingOverduePayment"
     v-model:show="showOverduePayment"
     :rental="rental"
   />
