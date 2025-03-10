@@ -78,19 +78,30 @@ const isFormValid = computed(() => {
 
 // Add predefined options
 const predefinedVerdicts = [
-    { label: 'Damage Confirmed - Deduction Required', value: 'damage_confirmed' },
+    { label: 'Damage Confirmed - Full Deposit Deduction', value: 'full_damage' },
+    { label: 'Significant Damage - Major Deduction', value: 'major_damage' },
     { label: 'Minor Damage - Partial Deduction', value: 'minor_damage' },
+    { label: 'Normal Wear and Tear - No Deduction', value: 'normal_wear' },
     { label: 'No Damage Found - Dispute Rejected', value: 'no_damage' },
+    { label: 'Evidence Not Clear - Dispute Rejected', value: 'unclear_evidence' },
+    { label: 'Pre-existing Damage - Dispute Rejected', value: 'pre_existing' },
     { label: 'Insufficient Evidence', value: 'insufficient_evidence' },
-    { label: 'Custom Verdict', value: 'custom' }
+    { label: 'Other', value: 'custom' }
 ];
 
 const predefinedReasons = [
-    { label: 'Physical damage to item', value: 'physical_damage' },
-    { label: 'Missing components/parts', value: 'missing_parts' },
-    { label: 'Unauthorized modifications', value: 'unauthorized_mods' },
-    { label: 'Functional issues', value: 'functional_issues' },
-    { label: 'Custom Reason', value: 'custom' }
+    { label: 'Severe physical damage requiring repair/replacement', value: 'severe_damage' },
+    { label: 'Multiple parts damaged or non-functional', value: 'multiple_damage' },
+    { label: 'Critical components missing or damaged', value: 'critical_damage' },
+    { label: 'Unauthorized modifications affecting functionality', value: 'unauthorized_mods' },
+    { label: 'Cosmetic damage beyond normal wear', value: 'cosmetic_damage' },
+    { label: 'Water/liquid damage', value: 'water_damage' },
+    { label: 'Electronic/mechanical malfunction', value: 'malfunction' },
+    { label: 'Missing accessories or components', value: 'missing_parts' },
+    { label: 'Structural integrity compromised', value: 'structural_damage' },
+    { label: 'Software/data tampering', value: 'software_damage' },
+    { label: 'Hygiene issues requiring professional cleaning', value: 'hygiene_issues' },
+    { label: 'Other', value: 'custom' }
 ];
 
 const selectedVerdict = ref('');
@@ -102,17 +113,21 @@ const deductionPercentage = ref(0);
 
 // Watch for predefined verdict changes
 watch(selectedVerdict, (newValue) => {
-    if (newValue && newValue !== 'custom') {
+    if (newValue === 'custom') {
+        updateForm.verdict = '';  // Clear for custom input
+    } else {
         const verdict = predefinedVerdicts.find(v => v.value === newValue);
-        updateForm.verdict = verdict.label;
+        updateForm.verdict = verdict?.label || '';
     }
 });
 
 // Watch for predefined reason changes
 watch(selectedReason, (newValue) => {
-    if (newValue && newValue !== 'custom') {
+    if (newValue === 'custom') {
+        updateForm.deposit_deduction_reason = '';  // Clear for custom input
+    } else {
         const reason = predefinedReasons.find(r => r.value === newValue);
-        updateForm.deposit_deduction_reason = reason.label;
+        updateForm.deposit_deduction_reason = reason?.label || '';
     }
 });
 
@@ -153,6 +168,9 @@ const formattedNumbers = computed(() => {
         currentEarnings: safeNumber(currentEarnings).toLocaleString()
     };
 });
+
+const showCustomVerdict = computed(() => selectedVerdict.value === 'custom');
+const showCustomReason = computed(() => selectedReason.value === 'custom');
 </script>
 
 <template>
@@ -398,10 +416,11 @@ const formattedNumbers = computed(() => {
                                         </SelectContent>
                                     </Select>
                                     <textarea
+                                        v-if="showCustomReason"
                                         v-model="updateForm.deposit_deduction_reason"
                                         rows="2"
-                                        :placeholder="selectedReason === 'custom' ? 'Enter custom reason...' : 'Add additional details to selected reason...'"
                                         class="w-full p-2 border rounded-md bg-background resize-none"
+                                        placeholder="Enter custom reason..."
                                     />
                                 </div>
                             </div>
@@ -412,7 +431,7 @@ const formattedNumbers = computed(() => {
                                     <label class="text-sm font-medium">Verdict</label>
                                     <Select v-model="selectedVerdict" class="mb-2">
                                         <SelectTrigger class="w-full bg-background">
-                                            <SelectValue placeholder="Select or type custom verdict" />
+                                            <SelectValue placeholder="Select verdict" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem 
@@ -425,10 +444,11 @@ const formattedNumbers = computed(() => {
                                         </SelectContent>
                                     </Select>
                                     <textarea
+                                        v-if="showCustomVerdict"
                                         v-model="updateForm.verdict"
                                         rows="3"
-                                        :placeholder="selectedVerdict === 'custom' ? 'Enter custom verdict...' : 'Add additional details to selected verdict...'"
                                         class="w-full p-2 border rounded-md bg-background resize-none"
+                                        placeholder="Enter custom verdict..."
                                     />
                                 </div>
 
@@ -438,7 +458,7 @@ const formattedNumbers = computed(() => {
                                         v-model="updateForm.verdict_notes"
                                         rows="3"
                                         class="w-full p-2 border rounded-md bg-background resize-none"
-                                        placeholder="Add any instructions or additional information..."
+                                        placeholder="Add any clarifications, instructions, or additional information..."
                                     />
                                 </div>
                             </div>
