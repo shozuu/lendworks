@@ -220,4 +220,39 @@ class ReturnController extends Controller
 
         return back()->with('success', 'Rental completed. Awaiting payment processing.');
     }
+
+    public function raiseDispute(Request $request, RentalRequest $rental)
+    {
+        if ($rental->listing->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'reason' => ['required', 'string'],
+            'issue_description' => ['required', 'string'],
+            'proof_image' => ['required', 'image', 'max:5120']
+        ]);
+
+        DB::transaction(function () use ($rental, $request) {
+            $path = $request->file('proof_image')->store('dispute-proofs', 'public');
+
+            $rental->dispute()->create([
+                'reason' => $request->reason,
+                'description' => $request->issue_description,
+                'proof_path' => $path,
+                'status' => 'pending',
+                'raised_by' => Auth::id()
+            ]);
+
+            $rental->update(['status' => 'disputed']);
+            
+            $rental->recordTimelineEvent('dispute_raised', Auth::id(), [
+                'reason' => $request->reason,
+                'description' => $request->issue_description,
+                'proof_path' => $path,
+            ]);
+        });
+
+        return back()->with('success', 'Dispute raised successfully.');
+    }
 }

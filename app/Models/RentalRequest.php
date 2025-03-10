@@ -56,6 +56,7 @@ class RentalRequest extends Model
     const STATUS_CANCELLED = 'cancelled';
     const STATUS_RENTER_PAID = 'renter_paid';
     const STATUS_PENDING_PROOF = 'pending_proof';
+    const STATUS_DISPUTED = 'disputed';  // Add this line
 
     // Update the status display logic
     public function getStatusForDisplayAttribute(): string 
@@ -177,6 +178,12 @@ class RentalRequest extends Model
         return $this->hasMany(CompletionPayment::class);
     }
 
+    // Add this relationship method
+    public function dispute()
+    {
+        return $this->hasOne(RentalDispute::class, 'rental_request_id');
+    }
+
     // Accessors
     public function getHasStartedAttribute(): bool
     {
@@ -213,6 +220,15 @@ class RentalRequest extends Model
         $isRenter = $user && $user->id === $this->renter_id;
         $isLender = $user && $user->id === $this->listing->user_id;
 
+        // Add debug logging to help identify the issue
+        \Log::info('Dispute Button Conditions:', [
+            'rental_id' => $this->id,
+            'isLender' => $isLender,
+            'status' => $this->status,
+            'hasDispute' => (bool) $this->dispute,
+            'hasDisputeInProgress' => $this->hasDisputeInProgress(),
+        ]);
+
         $actions = [
             'canApprove' => !$isRenter && $this->canApprove(),
             'canReject' => !$isRenter && $this->canReject(),
@@ -225,7 +241,10 @@ class RentalRequest extends Model
                 (!$this->is_overdue || $this->hasVerifiedOverduePayment()),
             'canSubmitReturn' => $isRenter && $this->status === 'return_scheduled',
             'canConfirmReturn' => $isLender && $this->status === 'pending_return_confirmation',
-            'canFinalizeReturn' => $isLender && $this->status === 'pending_final_confirmation'
+            'canFinalizeReturn' => $isLender && $this->status === 'pending_final_confirmation',
+            'canRaiseDispute' => $isLender && 
+                               $this->status === 'pending_final_confirmation' && 
+                               !$this->dispute,  // Simplified check
         ];
 
         if (!$user) return $actions;
@@ -268,6 +287,12 @@ class RentalRequest extends Model
             ->exists();
 
         return $actions;
+    }
+
+    // Add this new helper method
+    public function hasDisputeInProgress(): bool
+    {
+        return (bool) $this->dispute;
     }
 
     public function getRentalDurationAttribute()

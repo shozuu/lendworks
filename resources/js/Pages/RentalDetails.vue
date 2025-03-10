@@ -647,7 +647,7 @@ const showOverdueSection = computed(() => {
 
 							 <!-- Add new Dispute Button -->
 							<Button
-								v-if="actions.canFinalizeReturn"
+								v-if="actions.canRaiseDispute"
 								variant="destructive"
 								class="w-full"
 								@click="showDisputeDialog = true"
@@ -812,6 +812,43 @@ const showOverdueSection = computed(() => {
 							<p class="text-muted-foreground text-xs">
 								{{ showOverdueSection ? 'Total earnings including overdue fees' : 'Total earnings after discounts and fees' }}
 							</p>
+						</div>
+					</CardContent>
+				</Card>
+
+				<!-- Add this before the end of the main grid div -->
+				<Card v-if="rental.dispute" class="shadow-sm">
+					<CardHeader class="bg-card border-b">
+						<CardTitle class="text-destructive">Return Dispute</CardTitle>
+					</CardHeader>
+					<CardContent class="p-6">
+						<div class="space-y-4">
+							<div class="space-y-2">
+								<h4 class="font-medium">Dispute Reason</h4>
+								<p class="text-sm">{{ rental.dispute.reason }}</p>
+							</div>
+
+							<div class="space-y-2">
+								<h4 class="font-medium">Description</h4>
+								<p class="text-sm">{{ rental.dispute.description }}</p>
+							</div>
+
+							<div class="space-y-2">
+								<h4 class="font-medium">Status</h4>
+								<p class="text-sm" :class="{
+									'text-muted-foreground': rental.dispute.status === 'pending',
+									'text-primary': rental.dispute.status === 'reviewed',
+									'text-destructive': rental.dispute.status === 'resolved'
+								}">
+									{{ rental.dispute.status.charAt(0).toUpperCase() + rental.dispute.status.slice(1) }}
+								</p>
+							</div>
+
+							<div v-if="rental.dispute.status === 'resolved'" class="space-y-2">
+								<h4 class="font-medium">Admin Verdict</h4>
+								<p class="text-sm">{{ rental.dispute.verdict }}</p>
+								<p class="text-sm text-muted-foreground mt-2">{{ rental.dispute.verdict_notes }}</p>
+							</div>
 						</div>
 					</CardContent>
 				</Card>
