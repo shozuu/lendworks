@@ -226,27 +226,40 @@ const showOverduePayment = ref(false);
     <CardContent>
       <!-- Show overdue warning and payment button -->
       <div v-if="rental.is_overdue && rental.status === 'active'" class="space-y-4">
-        <Alert variant="destructive">
-          <AlertDescription class="space-y-2">
-            <p>This rental is overdue. Please pay the overdue fees to proceed with the return process.</p>
-            <p class="font-medium">Overdue Fee: {{ formatNumber(rental.overdue_fee) }}</p>
-          </AlertDescription>
-        </Alert>
-        
-        <div class="flex gap-2">
-          <Button 
-            variant="default" 
-            @click="showOverduePayment = true"
-          >
-            Pay Overdue Fees
-          </Button>
-          <Button 
-            variant="outline" 
-            disabled
-          >
-            Initiate Return
-          </Button>
-        </div>
+        <!-- Different views for renter and lender -->
+        <template v-if="userRole === 'renter'">
+          <Alert variant="destructive">
+            <AlertDescription class="space-y-2">
+              <p>This rental is overdue. Please pay the overdue fees to proceed with the return process.</p>
+              <p class="font-medium">Overdue Fee: {{ formatNumber(rental.overdue_fee) }}</p>
+            </AlertDescription>
+          </Alert>
+          
+          <div class="flex gap-2">
+            <Button 
+              variant="default" 
+              @click="showOverduePayment = true"
+            >
+              Pay Overdue Fees
+            </Button>
+            <Button 
+              variant="outline" 
+              disabled
+            >
+              Initiate Return
+            </Button>
+          </div>
+        </template>
+
+        <!-- Lender view for overdue rentals -->
+        <template v-else>
+          <Alert variant="warning">
+            <AlertDescription class="space-y-2">
+              <p>This rental is overdue. Waiting for the renter to pay the overdue fees.</p>
+              <p class="font-medium">Overdue Fee: {{ formatNumber(rental.overdue_fee) }}</p>
+            </AlertDescription>
+          </Alert>
+        </template>
       </div>
 
       <!-- Show normal return process if not overdue or if overdue is paid -->
@@ -380,8 +393,9 @@ const showOverduePayment = ref(false);
     </CardContent>
   </Card>
 
-  <!-- Add Overdue Payment Dialog -->
+  <!-- Only show payment dialog for renters -->
   <PayOverdueDialog
+    v-if="userRole === 'renter'"
     v-model:show="showOverduePayment"
     :rental="rental"
   />
