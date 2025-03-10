@@ -144,14 +144,20 @@ const canShowHandover = computed(() => {
     return actions.value.canReceive;
 });
 
-// Fix the totalWithOverdue computed to properly handle numbers
+// Fix the totalWithOverdue computed to properly add numbers
 const totalWithOverdue = computed(() => {
   if (!props.rental.is_overdue) return props.rental.total_price;
-  // Ensure we're working with numbers by using parseInt/parseFloat
-  const baseTotal = parseInt(props.rental.total_price) || 0;
-  const overdueFee = parseInt(props.rental.overdue_fee) || 0;
-  return baseTotal + overdueFee;
+  
+  // Convert to numbers and ensure positive values
+  const total = Math.abs(Number(props.rental.total_price));
+  const overdueFee = Math.abs(Number(props.rental.overdue_fee));
+  
+  // Always add the overdue fee to the total
+  return total + overdueFee;
 });
+
+// Add computed for base total (without overdue)
+const baseTotal = computed(() => props.rental.total_price);
 </script>
 
 <template>
@@ -275,6 +281,7 @@ const totalWithOverdue = computed(() => {
 							<div class="space-y-4">
 								<h4 class="font-medium">Price Details</h4>
 								<div class="space-y-2">
+									<!-- Regular pricing items -->
 									<div class="flex justify-between text-sm">
 										<span class="text-muted-foreground">
 											{{ formatNumber(rental.listing.price) }} × {{ rentalDays }} rental
@@ -296,33 +303,32 @@ const totalWithOverdue = computed(() => {
 									</div>
 
 									<div class="flex justify-between text-sm">
-										<span class="text-muted-foreground"
-											>Security Deposit (Refundable)</span
-										>
-										<span class="text-primary">{{
-											formatNumber(rental.deposit_fee)
-										}}</span>
+										<span class="text-muted-foreground">Security Deposit (Refundable)</span>
+										<span class="text-primary">{{ formatNumber(rental.deposit_fee) }}</span>
 									</div>
 
 									<Separator class="my-2" />
 
-									 <!-- Base total -->
+									<!-- Base total -->
 									<div class="flex justify-between font-medium">
-										<span>Base Total</span>
-										<span>{{ formatNumber(rental.total_price) }}</span>
+										<span>Total Amount</span>
+										<span>{{ formatNumber(baseTotal) }}</span>
 									</div>
 
 									<!-- Add Overdue Fee section if rental is overdue -->
 									<template v-if="rental.is_overdue">
-										<div class="mt-4 pt-4 border-t space-y-2">
-											<div class="flex justify-between text-sm">
-												<span class="text-destructive font-medium">Overdue Fee</span>
-												<span class="text-destructive">{{ formatNumber(rental.overdue_fee) }}</span>
+										<div class="mt-4 pt-4 border-t">
+											<!-- Overdue Fee -->
+											<div class="flex justify-between text-sm text-destructive">
+												<span class="font-medium">Overdue Fee</span>
+												<span>+ {{ formatNumber(rental.overdue_fee) }}</span>
 											</div>
 
-											<!-- Final total including overdue -->
-											<div class="flex justify-between font-medium text-base">
-												<span>Total Due with Overdue Fee</span>
+											<Separator class="my-2" />
+
+											<!-- Final total with overdue -->
+											<div class="flex justify-between font-medium">
+												<span>Total Amount with Overdue Fee</span>
 												<span class="text-destructive">{{ formatNumber(totalWithOverdue) }}</span>
 											</div>
 										</div>

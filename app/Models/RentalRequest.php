@@ -278,9 +278,8 @@ class RentalRequest extends Model
         if (!$this->is_overdue) {
             return 0;
         }
-
-        // Use the regular daily rate (listing price) multiplied by overdue days
-        return $this->listing->price * $this->overdue_days;
+        // Ensure we're returning a positive number
+        return abs($this->listing->price * $this->overdue_days);
     }
 
     // Scopes
