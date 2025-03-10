@@ -92,6 +92,8 @@ Route::middleware(['auth'])->group(function () {
             ->name('return-schedules.select');
         Route::patch('/rentals/{rental}/return-schedules/{schedule}/confirm', 'confirmSchedule')
             ->name('return-schedules.confirm');
+        Route::patch('/rentals/{rental}/return-schedules/confirm', 'confirmSchedule')
+            ->name('return-schedules.confirm');
         Route::post('/rentals/{rental}/submit-return', 'submitReturn')
             ->name('rentals.submit-return');
         Route::post('/rentals/{rental}/confirm-return', 'confirmReturn')

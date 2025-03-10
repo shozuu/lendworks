@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 class ReturnController extends Controller
 {
+    // Simplify initiateReturn to just update status and create timeline event
     public function initiateReturn(RentalRequest $rental)
     {
         if ($rental->renter_id !== Auth::id()) {
@@ -25,11 +26,13 @@ class ReturnController extends Controller
         DB::transaction(function () use ($rental) {
             $rental->update(['status' => 'pending_return']);
             
-            // Add metadata for better context
+            // Enhanced metadata for initiation
             $rental->recordTimelineEvent('return_initiated', Auth::id(), [
                 'rental_end_date' => $rental->end_date->format('Y-m-d'),
+                'is_early_return' => now()->lt($rental->end_date),
+                'initiated_by' => 'renter',
                 'days_from_end' => now()->diffInDays($rental->end_date, false),
-                'initiated_by' => 'renter'
+                'return_reason' => now()->lt($rental->end_date) ? 'early_return' : 'normal_return'
             ]);
         });
 
@@ -38,28 +41,19 @@ class ReturnController extends Controller
 
     public function storeSchedule(Request $request, RentalRequest $rental)
     {
-        \Log::info('=== Return Schedule Store Started ===');
-        \Log::info('Raw request:', $request->all());
-        \Log::info('Request data:', [
-            'return_datetime' => $request->return_datetime,
-            'start_time' => $request->start_time,
-            'end_time' => $request->end_time
-        ]);
-
         if ($rental->renter_id !== Auth::id()) {
             abort(403);
         }
 
+        // Log incoming request data
+        \Log::info('Return Schedule Request:', $request->all());
+
         try {
-            \Log::info('Validating request data...');
-            // Validate the request data
             $validated = $request->validate([
                 'return_datetime' => ['required', 'date', 'after_or_equal:'.$rental->end_date],
                 'start_time' => ['required', 'string'],
                 'end_time' => ['required', 'string']
             ]);
-
-            \Log::info('Validated data:', $validated);
 
             DB::transaction(function () use ($rental, $validated) {
                 // Deselect existing schedules
@@ -74,8 +68,9 @@ class ReturnController extends Controller
                     'is_selected' => true
                 ]);
 
-                // Record timeline event
-                $rental->recordTimelineEvent('return_schedule_proposed', Auth::id(), [
+                \Log::info('Created return schedule:', $schedule->toArray());
+
+                $rental->recordTimelineEvent('return_schedule_selected', Auth::id(), [
                     'datetime' => $schedule->return_datetime,
                     'start_time' => $schedule->start_time,
                     'end_time' => $schedule->end_time,
@@ -83,45 +78,45 @@ class ReturnController extends Controller
                 ]);
             });
 
-            return back()->with('success', 'Return schedule proposed.');
+            return back()->with('success', 'Return schedule selected.');
         } catch (\Exception $e) {
-            \Log::error('Failed to store schedule: ' . json_encode([
+            \Log::error('Failed to store return schedule:', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
-            ]));
+            ]);
             
             return back()->withErrors(['error' => 'Failed to create return schedule.']);
         }
     }
 
-    public function selectSchedule(RentalRequest $rental, ReturnSchedule $schedule)
-    {
-        if ($rental->renter_id !== Auth::id()) {
-            abort(403);
-        }
-
-        $rental->return_schedules()->update(['is_selected' => false]);
-        $schedule->update(['is_selected' => true]);
-
-        $rental->recordTimelineEvent('return_schedule_selected', Auth::id(), [
-            'datetime' => $schedule->return_datetime->format('Y-m-d H:i:s')
-        ]);
-
-        return back()->with('success', 'Return schedule selected.');
-    }
-
-    public function confirmSchedule(RentalRequest $rental, ReturnSchedule $schedule)
+    // Update confirmSchedule to not require schedule parameter
+    public function confirmSchedule(RentalRequest $rental)
     {
         if ($rental->listing->user_id !== Auth::id()) {
             abort(403);
         }
 
-        $schedule->update(['is_confirmed' => true]);
-        $rental->update(['status' => 'return_scheduled']);
+        // Find the selected schedule
+        $schedule = $rental->return_schedules()
+            ->where('is_selected', true)
+            ->firstOrFail();
 
-        $rental->recordTimelineEvent('return_schedule_confirmed', Auth::id(), [
-            'datetime' => $schedule->return_datetime->format('Y-m-d H:i:s')
-        ]);
+        DB::transaction(function () use ($rental, $schedule) {
+            $schedule->update(['is_confirmed' => true]);
+            $rental->update(['status' => 'return_scheduled']);
+            
+            // Enhanced metadata for confirmation
+            $rental->recordTimelineEvent('return_schedule_confirmed', Auth::id(), [
+                'datetime' => $schedule->return_datetime,
+                'day_of_week' => date('l', strtotime($schedule->return_datetime)),
+                'date' => date('M d, Y', strtotime($schedule->return_datetime)),
+                'start_time' => $schedule->start_time,
+                'end_time' => $schedule->end_time,
+                'confirmed_by' => 'lender',
+                'confirmation_datetime' => now()->format('Y-m-d H:i:s'),
+                'is_early_return' => Carbon::parse($schedule->return_datetime)->lt($rental->end_date)
+            ]);
+        });
 
         return back()->with('success', 'Return schedule confirmed.');
     }

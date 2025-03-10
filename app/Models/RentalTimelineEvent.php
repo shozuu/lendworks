@@ -27,6 +27,36 @@ class RentalTimelineEvent extends Model
         'return_confirmed'
     ];
 
+    protected static $metadataStructure = [
+        'return_initiated' => [
+            'rental_end_date',
+            'is_early_return',
+            'initiated_by',
+            'days_from_end',
+            'return_reason'
+        ],
+        'return_schedule_selected' => [
+            'datetime',
+            'day_of_week',
+            'date',
+            'start_time',
+            'end_time',
+            'selected_by',
+            'days_from_end',
+            'is_early_return'
+        ],
+        'return_schedule_confirmed' => [
+            'datetime',
+            'day_of_week',
+            'date',
+            'start_time',
+            'end_time',
+            'confirmed_by',
+            'confirmation_datetime',
+            'is_early_return'
+        ]
+    ];
+
     public static function isValidEventType($type)
     {
         return in_array($type, self::$eventTypes);
