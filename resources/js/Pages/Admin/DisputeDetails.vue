@@ -50,13 +50,48 @@ const handleUpdateStatus = (newStatus) => {
 };
 
 const handleResolve = () => {
+    // Create form data object with all required fields
+    const formData = {
+        verdict: updateForm.verdict,
+        verdict_notes: updateForm.verdict_notes,
+        resolution_type: updateForm.resolution_type,
+        deposit_deduction: 0,
+        deposit_deduction_reason: ''
+    };
+
+    // Add deduction specific data if applicable
+    if (updateForm.resolution_type === 'deposit_deducted') {
+        formData.deposit_deduction = updateForm.deposit_deduction;
+        formData.deposit_deduction_reason = updateForm.deposit_deduction_reason;
+    } else {
+        // For rejection case, ensure we have valid default values
+        formData.deposit_deduction = 0;
+        formData.deposit_deduction_reason = 'Dispute rejected - No deduction applied';
+    }
+
+    updateForm.clearErrors();
     updateForm.post(route('admin.disputes.resolve', props.dispute.id), {
         preserveScroll: true,
+        data: formData,
         onSuccess: () => {
             updateForm.reset();
+            selectedVerdict.value = '';
+            selectedReason.value = '';
+            deductionType.value = 'amount';
+            deductionPercentage.value = 0;
+        },
+        onError: (errors) => {
+            console.error('Submission errors:', errors);
         }
     });
 };
+
+// Add error handling
+watch(() => updateForm.errors, (newErrors) => {
+    if (Object.keys(newErrors).length > 0) {
+        console.error('Form errors:', newErrors);
+    }
+}, { deep: true });
 
 const isDeductionValid = computed(() => {
     if (updateForm.resolution_type !== 'deposit_deducted') return true;
@@ -245,19 +280,7 @@ const showCustomReason = computed(() => selectedReason.value === 'custom');
                                 <p class="text-sm font-medium">Renter</p>
                                 <p class="text-sm">{{ dispute.rental.renter.name }}</p>
                             </div>
-                            <!-- Dispute Raiser -->
-                            <div class="pt-2 border-t">
-                                <p class="text-sm text-muted-foreground">
-                                    Dispute raised by 
-                                    <span class="font-medium" :class="{
-                                        'text-blue-500': dispute.raised_by_user.id === dispute.rental.lender.id,
-                                        'text-emerald-500': dispute.raised_by_user.id === dispute.rental.renter.id
-                                    }">
-                                        {{ dispute.raised_by_user.name }}
-                                        ({{ dispute.raised_by_user.id === dispute.rental.lender.id ? 'Lender' : 'Renter' }})
-                                    </span>
-                                </p>
-                            </div>
+                            
                         </div>
                     </div>
 
@@ -479,6 +502,85 @@ const showCustomReason = computed(() => selectedReason.value === 'custom');
 
             <!-- Reference Information -->
             <div class="space-y-6">
+                <!-- Resolution Details Card -->
+                <Card v-if="dispute.status === 'resolved'" class="shadow-sm">
+                    <CardHeader class="bg-card border-b">
+                        <CardTitle>Dispute Resolution</CardTitle>
+                    </CardHeader>
+                    <CardContent class="p-4">
+                        <div class="space-y-4">
+                            <!-- Dispute Raiser Info -->
+                            <div class="space-y-2">
+                                <h4 class="text-sm font-medium">Dispute Raised By</h4>
+                                <p class="text-sm" :class="{
+                                    'text-blue-500': dispute.raised_by_user.id === dispute.rental.lender.id,
+                                    'text-emerald-500': dispute.raised_by_user.id === dispute.rental.renter.id
+                                }">
+                                    {{ dispute.raised_by_user.name }}
+                                    ({{ dispute.raised_by_user.id === dispute.rental.lender.id ? 'Lender' : 'Renter' }})
+                                </p>
+                            </div>
+
+                            <Separator />
+
+                            <!-- Resolution Details -->
+                            <div class="space-y-2">
+                                <h4 class="text-sm font-medium">Resolution Type</h4>
+                                <p class="text-sm" :class="{
+                                    'text-destructive': dispute.resolution_type === 'rejected',
+                                    'text-primary': dispute.resolution_type === 'deposit_deducted'
+                                }">
+                                    {{ dispute.resolution_type === 'rejected' ? 'Dispute Rejected' : 'Deposit Deduction Applied' }}
+                                </p>
+                            </div>
+
+                            <!-- Admin's Verdict -->
+                            <div class="space-y-2">
+                                <h4 class="text-sm font-medium">Admin's Verdict</h4>
+                                <div class="p-3 bg-muted rounded-lg space-y-3">
+                                    <div>
+                                        <p class="text-sm font-medium">Decision:</p>
+                                        <p class="text-sm">{{ dispute.verdict }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium">Additional Notes:</p>
+                                        <p class="text-sm text-muted-foreground">{{ dispute.verdict_notes }}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Deduction Details -->
+                            <template v-if="dispute.resolution_type === 'deposit_deducted'">
+                                <Separator />
+                                <div class="space-y-2">
+                                    <h4 class="text-sm font-medium">Deduction Details</h4>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm">Amount Deducted:</span>
+                                        <span class="text-destructive">₱{{ formattedNumbers.deductionAmount }}</span>
+                                    </div>
+                                    <h4 class="text-sm font-medium mt-4">Deduction Reason:</h4>
+                                    <p class="text-sm">{{ dispute.deposit_deduction_reason }}</p>
+                                </div>
+                            </template>
+                            <template v-else>
+                                <Separator />
+                                <div class="space-y-2">
+                                    <h4 class="text-sm font-medium">Rejection Reason</h4>
+                                    <p class="text-sm text-destructive">{{ dispute.verdict }}</p>
+                                    <p class="text-sm text-muted-foreground mt-1">{{ dispute.verdict_notes }}</p>
+                                </div>
+                            </template>
+
+                            <!-- Resolution Info -->
+                            <div class="mt-4 p-3 bg-muted rounded-lg">
+                                <p class="text-xs text-muted-foreground">
+                                    Resolved by {{ dispute.resolved_by?.name }} on {{ formatDateTime(dispute.resolved_at) }}
+                                </p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 <!-- Lender Earnings Card -->
                 <Card>
                     <CardHeader>

@@ -82,7 +82,14 @@ const handleSubmit = () => {
 };
 
 const isSubmitDisabled = computed(() => {
-  if (props.type === 'finalize') return form.processing;
+  if (props.type === 'finalize') {
+    // Check both status and dispute status
+    if (props.rental.status === 'disputed') {
+      // Only allow when dispute is resolved
+      return !props.rental.dispute || props.rental.dispute.status !== 'resolved';
+    }
+    return form.processing;
+  }
   return selectedImage.value.length === 0 || form.processing;
 });
 </script>

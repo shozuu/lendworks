@@ -823,16 +823,57 @@ const showOverdueSection = computed(() => {
 					</CardHeader>
 					<CardContent class="p-6">
 						<div class="space-y-4">
-							<div class="space-y-2">
-								<h4 class="font-medium">Dispute Reason</h4>
-								<p class="text-sm">{{ rental.dispute.reason }}</p>
+							 <!-- Rejection Messages -->
+							 <div v-if="rental.dispute.resolution_type === 'rejected'" 
+								class="mb-4 p-4 bg-destructive/10 rounded-lg border border-destructive/20"
+							>
+								<!-- Lender specific message -->
+								<template v-if="userRole === 'lender'">
+									<p class="text-sm text-destructive font-medium">
+										 ⚠️ Your dispute claim has been rejected by the admin
+									</p>
+									<div class="mt-3 space-y-2">
+										<p class="text-sm font-medium">Reason for Rejection:</p>
+										<p class="text-sm">{{ rental.dispute.verdict }}</p>
+										<p class="text-sm text-muted-foreground">{{ rental.dispute.verdict_notes }}</p>
+									</div>
+									<p class="text-sm mt-4">
+										You may raise a new dispute with additional evidence to support your claim.
+									</p>
+								</template>
+								
+								<!-- Renter specific message -->
+								<template v-else>
+									<p class="text-sm text-destructive font-medium">
+										The dispute raised by the lender has been rejected
+									</p>
+									<div class="mt-3 space-y-2">
+										<p class="text-sm font-medium">Admin's Decision:</p>
+										<p class="text-sm">{{ rental.dispute.verdict }}</p>
+										<p class="text-sm text-muted-foreground">{{ rental.dispute.verdict_notes }}</p>
+									</div>
+									<p class="text-sm mt-4">
+										The rental can now proceed to completion.
+									</p>
+								</template>
 							</div>
 
-							<div class="space-y-2">
-								<h4 class="font-medium">Description</h4>
-								<p class="text-sm">{{ rental.dispute.description }}</p>
-							</div>
+							<!-- Only show dispute details if not rejected or if user is admin -->
+							<template v-if="rental.dispute.resolution_type !== 'rejected'">
+								<div class="space-y-2">
+									<h4 class="font-medium">Dispute Reason</h4>
+									<p class="text-sm">{{ rental.dispute.reason }}</p>
+								</div>
+				
+								<div class="space-y-2">
+									<h4 class="font-medium">Description</h4>
+									<p class="text-sm">{{ rental.dispute.description }}</p>
+								</div>
+				
+								<!-- ...rest of the existing dispute details... -->
+							</template>
 
+							<!-- Always show status -->
 							<div class="space-y-2">
 								<h4 class="font-medium">Status</h4>
 								<p class="text-sm" :class="{
@@ -842,68 +883,6 @@ const showOverdueSection = computed(() => {
 								}">
 									{{ rental.dispute.status.charAt(0).toUpperCase() + rental.dispute.status.slice(1) }}
 								</p>
-							</div>
-
-							<div v-if="rental.dispute.status === 'resolved'" class="space-y-4">
-								<h4 class="font-medium">Resolution Details</h4>
-								
-								<!-- Add financial impact section -->
-								<div v-if="rental.dispute.resolution_type === 'deposit_deducted'" 
-									class="mt-4 p-4 bg-muted rounded-lg space-y-3"
-								>
-									<h5 class="font-medium text-sm">Financial Impact</h5>
-									
-									<!-- For Renter -->
-									<div v-if="userRole === 'renter'" class="space-y-2">
-										<div class="flex justify-between text-sm">
-											<span>Original Deposit:</span>
-											<span>₱{{ rental.deposit_fee.toLocaleString() }}</span>
-										</div>
-										<div class="flex justify-between text-sm text-destructive">
-											<span>Deduction Amount:</span>
-											<span>- ₱{{ rental.dispute.deposit_deduction.toLocaleString() }}</span>
-										</div>
-										<Separator class="my-2" />
-										<div class="flex justify-between font-medium">
-											<span>Remaining Deposit:</span>
-											<span>₱{{ (rental.deposit_fee - rental.dispute.deposit_deduction).toLocaleString() }}</span>
-										</div>
-									</div>
-
-									<!-- For Lender -->
-									<div v-if="userRole === 'lender'" class="space-y-2">
-										<div class="flex justify-between text-sm">
-											<span>Base Earnings:</span>
-											<span>₱{{ ((rental.base_price || 0) - (rental.discount || 0) - (rental.service_fee || 0)).toLocaleString() }}</span>
-										</div>
-										<div class="flex justify-between text-sm text-emerald-500">
-											<span>Deposit Deduction Added:</span>
-											<span>+ ₱{{ (rental.dispute.deposit_deduction || 0).toLocaleString() }}</span>
-										</div>
-										<Separator class="my-2" />
-										<div class="flex justify-between font-medium">
-											<span>Total Earnings:</span>
-											<span class="text-emerald-500">
-												₱{{ ((rental.base_price || 0) - (rental.discount || 0) - (rental.service_fee || 0) + (rental.dispute.deposit_deduction || 0)).toLocaleString() }}
-											</span>
-										</div>
-									</div>
-								</div>
-
-								<!-- Verdict and reason -->
-								<div class="space-y-2">
-									<h5 class="text-sm font-medium">Admin Verdict</h5>
-									<p class="text-sm">{{ rental.dispute.verdict || 'No verdict yet' }}</p>
-									<p class="text-sm text-muted-foreground mt-2">
-										{{ rental.dispute.verdict_notes || 'No additional notes' }}
-									</p>
-								</div>
-
-								<!-- Add deduction reason if applicable -->
-								<div v-if="rental.dispute.resolution_type === 'deposit_deducted'" class="space-y-2">
-									<h5 class="text-sm font-medium">Deduction Reason</h5>
-									<p class="text-sm">{{ rental.dispute.deposit_deduction_reason || 'No reason specified' }}</p>
-								</div>
 							</div>
 						</div>
 					</CardContent>

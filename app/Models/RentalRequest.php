@@ -182,7 +182,8 @@ class RentalRequest extends Model
     // Add this relationship method
     public function dispute()
     {
-        return $this->hasOne(RentalDispute::class, 'rental_request_id');
+        return $this->hasOne(RentalDispute::class, 'rental_request_id')
+            ->with(['resolvedBy']);  // Always eager load resolvedBy
     }
 
     public function depositDeductions()
@@ -231,12 +232,13 @@ class RentalRequest extends Model
         $isRenter = $user && $user->id === $this->renter_id;
         $isLender = $user && $user->id === $this->listing->user_id;
 
-        \Log::info('Action Conditions:', [
+        \Log::info('Dispute Action Check:', [
             'rental_id' => $this->id,
             'status' => $this->status,
             'isLender' => $isLender,
-            'isRenter' => $isRenter,
-            'hasDispute' => (bool) $this->dispute
+            'has_dispute' => (bool) $this->dispute,
+            'dispute_status' => $this->dispute?->status,
+            'resolution_type' => $this->dispute?->resolution_type
         ]);
 
         $actions = [
@@ -252,20 +254,19 @@ class RentalRequest extends Model
             'canSubmitReturn' => $isRenter && $this->status === 'return_scheduled',
             'canConfirmReturn' => $isLender && $this->status === 'pending_return_confirmation',
             'canFinalizeReturn' => $isLender && (
-                // Can finalize if pending final confirmation and no dispute exists
-                ($this->status === 'pending_final_confirmation' && !$this->dispute) ||
-                // Or if disputed but resolved with either deduction applied or rejected
-                ($this->status === 'disputed' && 
-                 $this->dispute && 
-                 $this->dispute->status === 'resolved')
+                // Show button for both pending final confirmation and disputed status
+                ($this->status === 'pending_final_confirmation') || 
+                // For disputed status, only enable when dispute is resolved
+                ($this->status === 'disputed' && $this->dispute && $this->dispute->status === 'resolved')
             ),
             'canRaiseDispute' => $isLender && (
-                // Original dispute conditions remain same
-                ($this->status === 'pending_final_confirmation' && !$this->dispute) ||
+                // Can always raise dispute in pending_final_confirmation
+                $this->status === 'pending_final_confirmation' ||
+                // Or when there's a rejected dispute
                 ($this->status === 'disputed' && 
                  $this->dispute && 
-                 $this->dispute->resolution_type === 'rejected' && 
-                 $this->dispute->status === 'resolved')
+                 $this->dispute->status === 'resolved' && 
+                 $this->dispute->resolution_type === 'rejected')
             )
         ];
 
@@ -307,6 +308,16 @@ class RentalRequest extends Model
         $actions['hasDepositRefund'] = $this->completion_payments()
             ->where('type', 'deposit_refund')
             ->exists();
+
+        \Log::info('Dispute Action Detailed Check:', [
+            'rental_id' => $this->id,
+            'status' => $this->status,
+            'dispute_exists' => (bool) $this->dispute,
+            'dispute_status' => $this->dispute?->status,
+            'resolution_type' => $this->dispute?->resolution_type,
+            'verdict' => $this->dispute?->verdict,
+            'resolved_at' => $this->dispute?->resolved_at
+        ]);
 
         return $actions;
     }

@@ -35,7 +35,8 @@ return new class extends Migration
                 'completed_pending_payments',      // completed but pending payments
                 'completed_with_payments',        // completed with all payments done
                 'overdue',                        // Rental is overdue without payment
-                'paid_overdue'                    // Rental is overdue but paid
+                'paid_overdue',
+                'disputed'                    // Rental is overdue but paid
             ])->default('pending');
             $table->timestamp('handover_at')->nullable();
             $table->timestamp('return_at')->nullable();

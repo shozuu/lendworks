@@ -13,14 +13,14 @@ class RentalDispute extends Model
         'description',
         'proof_path',
         'status',
-        'raised_by',
+        'resolution_type',
         'verdict',
         'verdict_notes',
+        'deposit_deduction',
+        'deposit_deduction_reason',
         'resolved_at',
         'resolved_by',
-        'deposit_deduction',  // Add this
-        'deposit_deduction_reason',  // Add this
-        'resolution_type'  // Add this: 'deposit_deducted' or 'rejected'
+        'raised_by'  // Add this line
     ];
 
     protected $casts = [

@@ -247,32 +247,54 @@ class ReturnController extends Controller
             abort(403);
         }
 
-        $validated = $request->validate([
-            'reason' => ['required', 'string'],
-            'issue_description' => ['required', 'string'],
-            'proof_image' => ['required', 'image', 'max:5120']
+        // Add logging for debugging
+        \Log::info('Raising new dispute:', [
+            'rental_id' => $rental->id,
+            'current_status' => $rental->status,
+            'has_dispute' => (bool) $rental->dispute
         ]);
 
-        DB::transaction(function () use ($rental, $request) {
-            $path = $request->file('proof_image')->store('dispute-proofs', 'public');
+        try {
+            DB::transaction(function () use ($rental, $request) {
+                $proofPath = $request->file('proof_image')->store('dispute-proofs', 'public');
 
-            $rental->dispute()->create([
-                'reason' => $request->reason,
-                'description' => $request->issue_description,
-                'proof_path' => $path,
-                'status' => 'pending',
-                'raised_by' => Auth::id()
-            ]);
+                // Clear any existing dispute first
+                if ($rental->dispute) {
+                    $rental->dispute()->delete();
+                }
 
-            $rental->update(['status' => 'disputed']);
-            
-            $rental->recordTimelineEvent('dispute_raised', Auth::id(), [
-                'reason' => $request->reason,
-                'description' => $request->issue_description,
-                'proof_path' => $path,
-            ]);
-        });
+                // Create new dispute record
+                $dispute = $rental->dispute()->create([
+                    'reason' => $request->reason,
+                    'description' => $request->issue_description,
+                    'proof_path' => $proofPath,
+                    'status' => 'pending',
+                    'raised_by' => auth()->id(),
+                    'resolution_type' => null, // Reset resolution
+                    'verdict' => null,        // Reset verdict
+                    'verdict_notes' => null   // Reset notes
+                ]);
 
-        return back()->with('success', 'Dispute raised successfully.');
+                // Update rental status to disputed
+                $rental->update(['status' => 'disputed']);
+
+                // Record timeline event
+                $rental->recordTimelineEvent('dispute_raised', auth()->id(), [
+                    'reason' => $request->reason,
+                    'description' => $request->issue_description,
+                    'is_new_dispute' => true
+                ]);
+
+                \Log::info('Dispute created successfully:', [
+                    'dispute_id' => $dispute->id,
+                    'new_status' => $dispute->status
+                ]);
+            });
+
+            return back()->with('success', 'New dispute has been raised successfully.');
+        } catch (\Exception $e) {
+            report($e);
+            return back()->with('error', 'Failed to raise dispute. Please try again.');
+        }
     }
 }
