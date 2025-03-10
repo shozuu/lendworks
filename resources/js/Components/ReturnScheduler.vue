@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useForm } from "@inertiajs/vue3";
-import { formatDateTime } from "@/lib/formatters";
+import { formatDateTime, formatNumber } from "@/lib/formatters"; // Add formatNumber import
 import { addDays, format } from "date-fns";
 import ReturnProofDialog from '@/Components/ReturnProofDialog.vue';
 import {
@@ -13,6 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert"; // Add Alert components
+import PayOverdueDialog from "@/Components/PayOverdueDialog.vue";
 
 const props = defineProps({
   rental: Object,
@@ -211,139 +213,176 @@ const showSchedulePicker = computed(() => {
 const showWaitingMessage = computed(() => {
   return props.rental.status === 'pending_return' && props.userRole === 'lender';
 });
+
+// Add ref for overdue payment dialog
+const showOverduePayment = ref(false);
 </script>
 
 <template>
-  <Card class="shadow-sm">
-    <CardHeader class="bg-card border-b">
+  <Card v-if="rental.status === 'active' || rental.status === 'pending_return'">
+    <CardHeader>
       <CardTitle>Return Process</CardTitle>
     </CardHeader>
-    <CardContent class="p-6">
-      <div class="space-y-4">
-        <!-- Initiate Return Button -->
-        <div v-if="canInitiateReturn && !rental.return_schedules?.length">
+    <CardContent>
+      <!-- Show overdue warning and payment button -->
+      <div v-if="rental.is_overdue && rental.status === 'active'" class="space-y-4">
+        <Alert variant="destructive">
+          <AlertDescription class="space-y-2">
+            <p>This rental is overdue. Please pay the overdue fees to proceed with the return process.</p>
+            <p class="font-medium">Overdue Fee: {{ formatNumber(rental.overdue_fee) }}</p>
+          </AlertDescription>
+        </Alert>
+        
+        <div class="flex gap-2">
           <Button 
-            class="w-full" 
-            @click="handleInitiateReturn"
-            :disabled="initiateForm.processing"
+            variant="default" 
+            @click="showOverduePayment = true"
           >
-            Initiate Return Process
+            Pay Overdue Fees
+          </Button>
+          <Button 
+            variant="outline" 
+            disabled
+          >
+            Initiate Return
           </Button>
         </div>
+      </div>
 
-        <!-- Return Schedule Selection - Only visible to renter -->
-        <div v-if="showSchedulePicker" class="space-y-4">
-          <div 
-            v-for="schedule in availableSchedules" 
-            :key="schedule.id"
-            class="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-          >
-            <div class="flex items-center justify-between">
-              <div class="space-y-1">
-                <div class="flex items-baseline gap-2">
-                  <p class="text-sm font-medium">{{ schedule.day_of_week }}</p>
-                  <p class="text-xs text-muted-foreground">
-                    {{ format(schedule.scheduleDate, 'MMM d, yyyy') }}
+      <!-- Show normal return process if not overdue or if overdue is paid -->
+      <div v-else>
+        <div class="space-y-4">
+          <!-- Initiate Return Button -->
+          <div v-if="canInitiateReturn && !rental.return_schedules?.length">
+            <Button 
+              class="w-full" 
+              @click="handleInitiateReturn"
+              :disabled="initiateForm.processing"
+            >
+              Initiate Return Process
+            </Button>
+          </div>
+
+          <!-- Return Schedule Selection - Only visible to renter -->
+          <div v-if="showSchedulePicker" class="space-y-4">
+            <div 
+              v-for="schedule in availableSchedules" 
+              :key="schedule.id"
+              class="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+            >
+              <div class="flex items-center justify-between">
+                <div class="space-y-1">
+                  <div class="flex items-baseline gap-2">
+                    <p class="text-sm font-medium">{{ schedule.day_of_week }}</p>
+                    <p class="text-xs text-muted-foreground">
+                      {{ format(schedule.scheduleDate, 'MMM d, yyyy') }}
+                    </p>
+                  </div>
+                  <p class="text-sm text-muted-foreground">
+                    {{ schedule.formattedTime }}
                   </p>
                 </div>
+                <Button
+                  size="sm"
+                  @click="handleScheduleSubmit(schedule)"
+                  :disabled="scheduleForm.processing"
+                >
+                  Select
+                </Button>
+              </div>
+            </div>
+
+            <p 
+              v-if="!availableSchedules.length" 
+              class="text-muted-foreground py-8 text-center text-sm"
+            >
+              No available schedules after the rental end date.
+            </p>
+          </div>
+
+          <!-- Waiting message - Only visible to lender -->
+          <div 
+            v-if="showWaitingMessage" 
+            class="p-4 text-center text-muted-foreground bg-muted/30 rounded-lg"
+          >
+            Waiting for renter to select a return schedule...
+          </div>
+
+          <!-- Selected Schedule Display -->
+          <div v-if="selectedSchedule && !selectedSchedule.is_confirmed" 
+              class="p-4 border rounded-lg"
+          >
+            <div class="space-y-3">
+              <div class="space-y-1">
+                <h3 class="font-medium">Proposed Return Schedule</h3>
+                <div class="flex items-baseline justify-between">
+                  <span class="text-sm">{{ selectedScheduleDetails.dayOfWeek }}</span>
+                  <span class="text-sm text-muted-foreground">
+                    {{ selectedScheduleDetails.date }}
+                  </span>
+                </div>
                 <p class="text-sm text-muted-foreground">
-                  {{ schedule.formattedTime }}
+                  {{ selectedScheduleDetails.timeFrame }}
                 </p>
               </div>
-              <Button
-                size="sm"
-                @click="handleScheduleSubmit(schedule)"
-                :disabled="scheduleForm.processing"
-              >
-                Select
-              </Button>
-            </div>
-          </div>
 
-          <p 
-            v-if="!availableSchedules.length" 
-            class="text-muted-foreground py-8 text-center text-sm"
-          >
-            No available schedules after the rental end date.
-          </p>
-        </div>
-
-        <!-- Waiting message - Only visible to lender -->
-        <div 
-          v-if="showWaitingMessage" 
-          class="p-4 text-center text-muted-foreground bg-muted/30 rounded-lg"
-        >
-          Waiting for renter to select a return schedule...
-        </div>
-
-        <!-- Selected Schedule Display -->
-        <div v-if="selectedSchedule && !selectedSchedule.is_confirmed" 
-             class="p-4 border rounded-lg"
-        >
-          <div class="space-y-3">
-            <div class="space-y-1">
-              <h3 class="font-medium">Proposed Return Schedule</h3>
-              <div class="flex items-baseline justify-between">
-                <span class="text-sm">{{ selectedScheduleDetails.dayOfWeek }}</span>
-                <span class="text-sm text-muted-foreground">
-                  {{ selectedScheduleDetails.date }}
-                </span>
+              <div v-if="userRole === 'lender'" class="pt-2 border-t">
+                <Button 
+                  class="w-full"
+                  @click="handleConfirmSchedule(selectedSchedule)"
+                  :disabled="confirmForm.processing"
+                >
+                  Confirm Return Schedule
+                </Button>
               </div>
-              <p class="text-sm text-muted-foreground">
-                {{ selectedScheduleDetails.timeFrame }}
-              </p>
-            </div>
 
-            <div v-if="userRole === 'lender'" class="pt-2 border-t">
-              <Button 
-                class="w-full"
-                @click="handleConfirmSchedule(selectedSchedule)"
-                :disabled="confirmForm.processing"
-              >
-                Confirm Return Schedule
-              </Button>
-            </div>
-
-            <div v-else class="pt-2 border-t text-center text-sm text-muted-foreground">
-              Waiting for lender to confirm schedule...
+              <div v-else class="pt-2 border-t text-center text-sm text-muted-foreground">
+                Waiting for lender to confirm schedule...
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Confirmed Schedule Display -->
-        <div v-if="confirmedSchedule" class="p-4 border rounded-lg bg-muted/50">
-          <div class="space-y-2">
-            <h3 class="font-medium">Confirmed Return Schedule</h3>
-            <p class="text-sm">{{ formatDateTime(confirmedSchedule.return_datetime) }}</p>
+          <!-- Confirmed Schedule Display -->
+          <div v-if="confirmedSchedule" class="p-4 border rounded-lg bg-muted/50">
+            <div class="space-y-2">
+              <h3 class="font-medium">Confirmed Return Schedule</h3>
+              <p class="text-sm">{{ formatDateTime(confirmedSchedule.return_datetime) }}</p>
+            </div>
           </div>
-        </div>
 
-        <!-- Return Proof Actions -->
-        <div v-if="rental.status === 'return_scheduled' && userRole === 'renter'">
-          <Button 
-            class="w-full" 
-            @click="handleSubmitReturn"
-          >
-            Submit Return Proof
-          </Button>
-        </div>
+          <!-- Return Proof Actions -->
+          <div v-if="rental.status === 'return_scheduled' && userRole === 'renter'">
+            <Button 
+              class="w-full" 
+              @click="handleSubmitReturn"
+            >
+              Submit Return Proof
+            </Button>
+          </div>
 
-        <div v-if="rental.status === 'pending_return_confirmation' && userRole === 'lender'">
-          <Button 
-            class="w-full" 
-            @click="handleConfirmReturn"
-          >
-            Confirm Return Receipt
-          </Button>
-        </div>
+          <div v-if="rental.status === 'pending_return_confirmation' && userRole === 'lender'">
+            <Button 
+              class="w-full" 
+              @click="handleConfirmReturn"
+            >
+              Confirm Return Receipt
+            </Button>
+          </div>
 
-        <!-- Return Proof Dialog -->
-        <ReturnProofDialog
-          v-model:show="showReturnProofDialog"
-          :rental="rental"
-          :type="returnProofType"
-        />
+          <!-- Return Proof Dialog -->
+          <ReturnProofDialog
+            v-model:show="showReturnProofDialog"
+            :rental="rental"
+            :type="returnProofType"
+          />
+        </div>
       </div>
     </CardContent>
   </Card>
+
+  <!-- Add Overdue Payment Dialog -->
+  <PayOverdueDialog
+    v-model:show="showOverduePayment"
+    :rental="rental"
+  />
 </template>

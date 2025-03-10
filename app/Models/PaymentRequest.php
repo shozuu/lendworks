@@ -8,6 +8,8 @@ class PaymentRequest extends Model
 {
     protected $fillable = [
         'rental_request_id',
+        'type',
+        'amount',
         'reference_number',
         'payment_proof_path',
         'status',

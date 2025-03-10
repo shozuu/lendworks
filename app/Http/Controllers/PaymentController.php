@@ -76,6 +76,53 @@ class PaymentController extends Controller
         }
     }
 
+    public function storeOverduePayment(Request $request, RentalRequest $rental)
+    {
+        if ($rental->renter_id !== Auth::id()) {
+            abort(403);
+        }
+
+        if (!$rental->is_overdue) {
+            return back()->with('error', 'This rental is not overdue.');
+        }
+
+        $validated = $request->validate([
+            'reference_number' => ['required', 'string', 'max:255'],
+            'payment_proof' => ['required', 'image', 'max:2048']
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $path = $request->file('payment_proof')->store('images/payment-proofs', 'public');
+
+            $paymentRequest = PaymentRequest::create([
+                'rental_request_id' => $rental->id,
+                'reference_number' => $validated['reference_number'],
+                'payment_proof_path' => $path,
+                'status' => 'pending',
+                'type' => 'overdue',
+                'amount' => $rental->overdue_fee
+            ]);
+
+            $rental->recordTimelineEvent('overdue_payment_submitted', Auth::id(), [
+                'reference_number' => $validated['reference_number'],
+                'payment_request_id' => $paymentRequest->id,
+                'amount' => $rental->overdue_fee
+            ]);
+
+            DB::commit();
+            return back()->with('success', 'Overdue payment submitted successfully!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            if (isset($path)) {
+                Storage::disk('public')->delete($path);
+            }
+            return back()->with('error', 'Failed to submit payment.');
+        }
+    }
+
     public function verify(Request $request, PaymentRequest $payment)
     {
         try {

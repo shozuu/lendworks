@@ -41,10 +41,18 @@ const isOverdue = computed(() => {
   return new Date(props.data.rental_request.end_date) < new Date();
 });
 
+// Update isPaidOverdue computed to properly check for verified payment
 const isPaidOverdue = computed(() => {
   return isOverdue.value && 
-    props.data.rental_request.payment_request && 
-    props.data.rental_request.payment_request.status === 'verified';
+    props.data.rental_request.payment_request?.type === 'overdue' && 
+    props.data.rental_request.payment_request?.status === 'verified';
+});
+
+// Add new computed for pending overdue payment
+const hasPendingOverduePayment = computed(() => {
+  return isOverdue.value &&
+    props.data.rental_request.payment_request?.type === 'overdue' &&
+    props.data.rental_request.payment_request?.status === 'pending';
 });
 
 // Update details computed to include overdue information
@@ -161,11 +169,21 @@ const canShowHandover = computed(() => {
 				:rental="data.rental_request"
 				class="mt-4"
 				/>
-			<div v-if="isOverdue && !isPaidOverdue" class="mt-4 text-red-600 text-sm font-medium">
-				This rental is overdue. Contact the renter to arrange return.
-			</div>
-			<div v-if="isPaidOverdue" class="mt-4 text-amber-600 text-sm font-medium">
-				This rental is overdue but paid. Please arrange return soon.
+			<!-- Update the overdue messages -->
+			<div v-if="isOverdue" class="mt-4" :class="{
+				'text-red-600': !isPaidOverdue && !hasPendingOverduePayment,
+				'text-amber-600': hasPendingOverduePayment,
+				'text-green-600': isPaidOverdue
+			}">
+				<p v-if="isPaidOverdue" class="text-sm font-medium">
+					Overdue fees have been paid. Please proceed with return process.
+				</p>
+				<p v-else-if="hasPendingOverduePayment" class="text-sm font-medium">
+					Overdue payment submitted - awaiting verification.
+				</p>
+				<p v-else class="text-sm font-medium">
+					Rental is overdue. Overdue fees are now being applied.
+				</p>
 			</div>
 		</template>
 

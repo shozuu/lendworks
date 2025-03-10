@@ -42,7 +42,8 @@ class RentalRequest extends Model
         'rental_duration',
         'remaining_days',
         'overdue_days',
-        'is_overdue'
+        'is_overdue',
+        'overdue_fee'
     ];
 
     // Define core rental status constants
@@ -199,7 +200,9 @@ class RentalRequest extends Model
             'canPayNow' => $isRenter && $this->canPayNow(),
             'canHandover' => false,
             'canReceive' => false,
-            'canInitiateReturn' => $isRenter && $this->status === 'active',
+            'canInitiateReturn' => $isRenter && 
+                $this->status === 'active' && 
+                (!$this->is_overdue || $this->hasVerifiedOverduePayment()),
             'canSubmitReturn' => $isRenter && $this->status === 'return_scheduled',
             'canConfirmReturn' => $isLender && $this->status === 'pending_return_confirmation',
         ];
@@ -268,6 +271,17 @@ class RentalRequest extends Model
         }
         
         return 0;
+    }
+
+    public function getOverdueFeeAttribute()
+    {
+        if (!$this->is_overdue) {
+            return 0;
+        }
+
+        // Calculate as 20% of base price per overdue day
+        $dailyFee = $this->listing->price * 0.20;
+        return $this->overdue_days * $dailyFee;
     }
 
     // Scopes
@@ -365,6 +379,33 @@ class RentalRequest extends Model
     public function canViewPayment(): bool 
     {
         return $this->payment_request !== null;
+    }
+
+    public function canInitiateReturn(): bool
+    {
+        if ($this->status !== 'active') {
+            return false;
+        }
+
+        // Can't initiate return if overdue and hasn't paid
+        if ($this->is_overdue && !$this->hasVerifiedOverduePayment()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function hasVerifiedOverduePayment(): bool
+    {
+        return $this->payment_request()
+            ->where('type', 'overdue')
+            ->where('status', 'verified')
+            ->exists();
+    }
+
+    public function isPaidOverdue(): bool
+    {
+        return $this->is_overdue && $this->hasVerifiedOverduePayment();
     }
 
     public function getOverlappingRequests()

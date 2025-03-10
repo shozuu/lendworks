@@ -23,13 +23,14 @@ class LenderDashboardController extends Controller
 
         // Group rentals by status
         $groupedListings = $rentals->groupBy(function ($rental) {
-            // Check for paid overdue rentals first
-            if ($rental->status === 'active' && $rental->end_date < now() && $rental->payment_request && $rental->payment_request->status === 'verified') {
-                return 'paid_overdue';
-            }
-            // Check for unpaid overdue rentals
             if ($rental->status === 'active' && $rental->end_date < now()) {
-                return 'overdue';
+                // Check if there's a verified overdue payment
+                $hasVerifiedOverduePayment = $rental->payment_request()
+                    ->where('type', 'overdue')
+                    ->where('status', 'verified')
+                    ->exists();
+
+                return $hasVerifiedOverduePayment ? 'paid_overdue' : 'overdue';
             }
 
             // Special handling for payments tab
@@ -70,11 +71,19 @@ class LenderDashboardController extends Controller
                 })->count(),
             'overdue' => $rentals->where('status', 'active')
                 ->filter(function ($rental) {
-                    return $rental->end_date < now() && (!$rental->payment_request || $rental->payment_request->status !== 'verified');
+                    return $rental->end_date < now() && 
+                        !$rental->payment_request()
+                            ->where('type', 'overdue')
+                            ->where('status', 'verified')
+                            ->exists();
                 })->count(),
             'paid_overdue' => $rentals->where('status', 'active')
                 ->filter(function ($rental) {
-                    return $rental->end_date < now() && $rental->payment_request && $rental->payment_request->status === 'verified';
+                    return $rental->end_date < now() && 
+                        $rental->payment_request()
+                            ->where('type', 'overdue')
+                            ->where('status', 'verified')
+                            ->exists();
                 })->count(),
             'pending_return' => $rentals->where('status', 'pending_return')->count(),
             'return_scheduled' => $rentals->where('status', 'return_scheduled')->count(),
