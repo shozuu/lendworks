@@ -844,10 +844,66 @@ const showOverdueSection = computed(() => {
 								</p>
 							</div>
 
-							<div v-if="rental.dispute.status === 'resolved'" class="space-y-2">
-								<h4 class="font-medium">Admin Verdict</h4>
-								<p class="text-sm">{{ rental.dispute.verdict }}</p>
-								<p class="text-sm text-muted-foreground mt-2">{{ rental.dispute.verdict_notes }}</p>
+							<div v-if="rental.dispute.status === 'resolved'" class="space-y-4">
+								<h4 class="font-medium">Resolution Details</h4>
+								
+								<!-- Add financial impact section -->
+								<div v-if="rental.dispute.resolution_type === 'deposit_deducted'" 
+									class="mt-4 p-4 bg-muted rounded-lg space-y-3"
+								>
+									<h5 class="font-medium text-sm">Financial Impact</h5>
+									
+									<!-- For Renter -->
+									<div v-if="userRole === 'renter'" class="space-y-2">
+										<div class="flex justify-between text-sm">
+											<span>Original Deposit:</span>
+											<span>₱{{ rental.deposit_fee.toLocaleString() }}</span>
+										</div>
+										<div class="flex justify-between text-sm text-destructive">
+											<span>Deduction Amount:</span>
+											<span>- ₱{{ rental.dispute.deposit_deduction.toLocaleString() }}</span>
+										</div>
+										<Separator class="my-2" />
+										<div class="flex justify-between font-medium">
+											<span>Remaining Deposit:</span>
+											<span>₱{{ (rental.deposit_fee - rental.dispute.deposit_deduction).toLocaleString() }}</span>
+										</div>
+									</div>
+
+									<!-- For Lender -->
+									<div v-if="userRole === 'lender'" class="space-y-2">
+										<div class="flex justify-between text-sm">
+											<span>Base Earnings:</span>
+											<span>₱{{ ((rental.base_price || 0) - (rental.discount || 0) - (rental.service_fee || 0)).toLocaleString() }}</span>
+										</div>
+										<div class="flex justify-between text-sm text-emerald-500">
+											<span>Deposit Deduction Added:</span>
+											<span>+ ₱{{ (rental.dispute.deposit_deduction || 0).toLocaleString() }}</span>
+										</div>
+										<Separator class="my-2" />
+										<div class="flex justify-between font-medium">
+											<span>Total Earnings:</span>
+											<span class="text-emerald-500">
+												₱{{ ((rental.base_price || 0) - (rental.discount || 0) - (rental.service_fee || 0) + (rental.dispute.deposit_deduction || 0)).toLocaleString() }}
+											</span>
+										</div>
+									</div>
+								</div>
+
+								<!-- Verdict and reason -->
+								<div class="space-y-2">
+									<h5 class="text-sm font-medium">Admin Verdict</h5>
+									<p class="text-sm">{{ rental.dispute.verdict || 'No verdict yet' }}</p>
+									<p class="text-sm text-muted-foreground mt-2">
+										{{ rental.dispute.verdict_notes || 'No additional notes' }}
+									</p>
+								</div>
+
+								<!-- Add deduction reason if applicable -->
+								<div v-if="rental.dispute.resolution_type === 'deposit_deducted'" class="space-y-2">
+									<h5 class="text-sm font-medium">Deduction Reason</h5>
+									<p class="text-sm">{{ rental.dispute.deposit_deduction_reason || 'No reason specified' }}</p>
+								</div>
 							</div>
 						</div>
 					</CardContent>

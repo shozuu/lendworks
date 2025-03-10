@@ -38,18 +38,33 @@ class DisputeController extends Controller
             'rental.returnProofs',
             'rental.listing.user', // Add lender info
             'rental.renter',       // Add renter info
+            'rental.depositDeductions',
+            'rental.overdue_payment',
             'raisedBy',
             'resolvedBy'
         ]);
 
-        // Calculate lender earnings
+        // Calculate remaining deposit accurately
         $rental = $dispute->rental;
+        $totalDeductions = $dispute->deposit_deduction ?? 0;
+        $remainingDeposit = $rental->deposit_fee - $totalDeductions;
+
+        // Calculate payment details
         $basePrice = $rental->base_price ?? 0;
         $discount = $rental->discount ?? 0;
         $serviceFee = $rental->service_fee ?? 0;
         $overdueFee = $rental->overdue_fee ?? 0;
+        $depositDeductions = $rental->depositDeductions()->sum('amount') ?? 0;
+        $totalEarnings = $basePrice - $discount - $serviceFee + $overdueFee + $depositDeductions;
 
-        $currentEarnings = $basePrice - $discount - $serviceFee + $overdueFee;
+        \Log::info('Dispute Details - Calculations', [
+            'rental_id' => $rental->id,
+            'deposit_fee' => $rental->deposit_fee,
+            'total_deductions' => $totalDeductions,
+            'remaining_deposit' => $remainingDeposit,
+            'base_price' => $basePrice,
+            'total_earnings' => $totalEarnings
+        ]);
 
         return Inertia::render('Admin/DisputeDetails', [
             'dispute' => [
@@ -74,15 +89,17 @@ class DisputeController extends Controller
                         'name' => $dispute->rental->renter->name,
                         'id' => $dispute->rental->renter->id
                     ],
-                    'deposit_fee' => $dispute->rental->deposit_fee,
-                    'remaining_deposit' => $dispute->rental->remaining_deposit,
-                    'has_deductions' => $dispute->rental->depositDeductions()->exists(),
+                    'deposit_fee' => $rental->deposit_fee,
+                    'remaining_deposit' => max(0, $remainingDeposit),
+                    'has_deductions' => $totalDeductions > 0,
+                    'total_deductions' => $totalDeductions,
                     // Add payment details
                     'base_price' => $basePrice,
                     'discount' => $discount,
                     'service_fee' => $serviceFee,
                     'overdue_fee' => $overdueFee,
-                    'current_earnings' => $currentEarnings
+                    'deposit_deductions' => $depositDeductions,
+                    'current_earnings' => $totalEarnings
                 ]
             ]
         ]);
@@ -115,6 +132,12 @@ class DisputeController extends Controller
             'deposit_deduction_reason' => ['required_if:resolution_type,deposit_deducted', 'string'],
         ]);
 
+        \Log::info('Starting dispute resolution process', [
+            'dispute_id' => $dispute->id,
+            'resolution_type' => $validated['resolution_type'],
+            'deduction_amount' => $validated['deposit_deduction'] ?? 0
+        ]);
+
         DB::transaction(function () use ($dispute, $validated) {
             // Update dispute record
             $dispute->update([
@@ -128,21 +151,63 @@ class DisputeController extends Controller
                 'resolved_by' => auth()->id()
             ]);
 
-            // If deposit is being deducted, create a deduction record
             if ($validated['resolution_type'] === 'deposit_deducted') {
-                $dispute->rental->depositDeductions()->create([
-                    'amount' => $validated['deposit_deduction'],
+                $deductionAmount = $validated['deposit_deduction'];
+
+                // Create deposit deduction record with eager loading
+                $deduction = $dispute->rental->depositDeductions()->create([
+                    'amount' => $deductionAmount,
                     'reason' => $validated['deposit_deduction_reason'],
                     'dispute_id' => $dispute->id,
                     'admin_id' => auth()->id()
                 ]);
 
-                // Add to lender's earnings
-                $dispute->rental->lenderEarningsAdjustments()->create([
-                    'amount' => $validated['deposit_deduction'],
+                // Force refresh rental model to recalculate remaining deposit
+                $dispute->rental->refresh();
+
+                \Log::info('Deposit Deduction Created', [
+                    'rental_id' => $dispute->rental->id,
+                    'deduction_amount' => $deductionAmount,
+                    'remaining_deposit' => $dispute->rental->remaining_deposit
+                ]);
+
+                // Create lender earnings adjustment
+                $adjustment = $dispute->rental->lenderEarningsAdjustments()->create([
                     'type' => 'deposit_deduction',
+                    'amount' => $deductionAmount,
                     'description' => 'Deposit deduction from dispute resolution',
-                    'reference_id' => $dispute->id
+                    'reference_id' => (string) $dispute->id
+                ]);
+
+                \Log::info('Created lender earnings adjustment', [
+                    'adjustment_id' => $adjustment->id,
+                    'amount' => $deductionAmount
+                ]);
+
+                // Update completion payment if it exists
+                $completionPayment = $dispute->rental->completion_payments()
+                    ->where('type', 'lender_payment')
+                    ->first();
+
+                if ($completionPayment) {
+                    $newAmount = $completionPayment->amount + $deductionAmount;
+                    $completionPayment->update(['amount' => $newAmount]);
+
+                    \Log::info('Updated completion payment', [
+                        'payment_id' => $completionPayment->id,
+                        'old_amount' => $completionPayment->amount,
+                        'new_amount' => $newAmount
+                    ]);
+                }
+
+                // Update rental record to reflect new total
+                $dispute->rental->update([
+                    'total_lender_earnings' => DB::raw("total_lender_earnings + {$deductionAmount}")
+                ]);
+
+                \Log::info('Updated rental total lender earnings', [
+                    'rental_id' => $dispute->rental->id,
+                    'deduction_amount' => $deductionAmount
                 ]);
             }
 
@@ -152,12 +217,14 @@ class DisputeController extends Controller
                 'verdict_notes' => $validated['verdict_notes'],
                 'resolution_type' => $validated['resolution_type'],
                 'deposit_deduction' => $validated['deposit_deduction'] ?? null,
-                'deposit_deduction_reason' => $validated['deposit_deduction_reason'] ?? null
+                'deposit_deduction_reason' => $validated['deposit_deduction_reason'] ?? null,
+                'resolved_by' => auth()->user()->name,
+                'resolved_at' => now()->format('Y-m-d H:i:s')
             ]);
 
-            // Notify users
-            $dispute->rental->renter->notify(new DisputeResolved($dispute));
-            $dispute->rental->listing->user->notify(new DisputeResolved($dispute));
+            // Send notifications
+            $dispute->rental->renter->notify(new DisputeResolved($dispute, false));
+            $dispute->rental->listing->user->notify(new DisputeResolved($dispute, true));
         });
 
         return back()->with('success', 'Dispute resolved successfully.');

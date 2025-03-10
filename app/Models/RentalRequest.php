@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class RentalRequest extends Model
 {
@@ -471,14 +472,46 @@ class RentalRequest extends Model
     // Add this new method
     public function getTotalLenderEarningsAttribute()
     {
-        $earnings = $this->getLenderEarningsAttribute();
-        return $earnings['total'];
+        // Get base earnings
+        $baseEarnings = $this->base_price - $this->discount - $this->service_fee;
+        
+        // Add overdue fees if any
+        $overdueFee = $this->overdue_payment ? $this->overdue_payment->amount : 0;
+        
+        // Add deposit deductions
+        $depositDeductions = $this->depositDeductions()->sum('amount');
+        
+        \Log::info('Calculating total lender earnings', [
+            'rental_id' => $this->id,
+            'base_earnings' => $baseEarnings,
+            'overdue_fee' => $overdueFee,
+            'deposit_deductions' => $depositDeductions,
+            'total' => $baseEarnings + $overdueFee + $depositDeductions
+        ]);
+
+        return $baseEarnings + $overdueFee + $depositDeductions;
     }
 
     public function getRemainingDepositAttribute()
     {
-        $totalDeductions = $this->depositDeductions()->sum('amount');
-        return $this->deposit_fee - $totalDeductions;
+        // Use DB facade for direct query to ensure accurate calculation
+        $totalDeductions = DB::table('deposit_deductions')
+            ->where('rental_request_id', $this->id)
+            ->sum('amount') ?? 0;
+
+        $remainingDeposit = $this->deposit_fee - $totalDeductions;
+        
+        \Log::info('Calculating Remaining Deposit', [
+            'rental_id' => $this->id,
+            'original_deposit' => $this->deposit_fee,
+            'total_deductions' => $totalDeductions,
+            'remaining' => $remainingDeposit,
+            'deductions_count' => DB::table('deposit_deductions')
+                ->where('rental_request_id', $this->id)
+                ->count()
+        ]);
+
+        return max(0, $remainingDeposit);
     }
 
     // Scopes
