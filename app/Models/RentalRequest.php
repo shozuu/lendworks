@@ -279,9 +279,8 @@ class RentalRequest extends Model
             return 0;
         }
 
-        // Calculate as 20% of base price per overdue day
-        $dailyFee = $this->listing->price * 0.20;
-        return $this->overdue_days * $dailyFee;
+        // Use the regular daily rate (listing price) multiplied by overdue days
+        return $this->listing->price * $this->overdue_days;
     }
 
     // Scopes
