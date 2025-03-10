@@ -618,23 +618,46 @@ const isConnectionHighlighted = (phase) => {
 		<!-- Phase Timeline -->
 		<div class="relative">
 			<!-- Connector lines container -->
-			<div class="absolute top-6 left-0 right-0 flex justify-between items-center -z-10">
-				<!-- Generate connector lines between nodes -->
-				<template v-for="(phase, index) in orderedPhases" :key="`connector-${phase}`">
-					<div 
-						v-if="index < orderedPhases.length - 1"
-						class="h-[2px] flex-1 mx-2 transition-colors"
-						:class="[
-							isConnectionHighlighted(phase) 
-								? 'bg-emerald-500' 
-								: 'bg-border'
-						]"
-					></div>
-				</template>
+			<div class="absolute top-6 left-0 right-0 z-0">
+				<!-- Progress bars -->
+				<div class="flex justify-between items-center px-6">
+					<template v-for="(phase, index) in orderedPhases" :key="`progress-${phase}`">
+						<!-- Progress line between nodes -->
+						<div 
+							v-if="index < orderedPhases.length - 1"
+							class="h-1 flex-1 transition-all duration-500 relative"
+							:class="[
+								isPhaseCompleted(phase) 
+									? 'bg-emerald-500' 
+									: 'bg-border',
+								// Animate the next line when current phase is active
+								{
+									'animate-pulse': hasEvents(phase) && !isPhaseCompleted(phase)
+								}
+							]"
+						>
+							<!-- Extended line to ensure connection -->
+							<div 
+								class="absolute inset-0 transition-all duration-500"
+								:class="[
+									isPhaseCompleted(phase) 
+										? 'bg-emerald-500' 
+										: 'bg-border',
+									// Adjust line width and position for each segment
+									{
+										'-left-2 -right-1': index === 0,
+										'-left-1 -right-1': index > 0 && index < orderedPhases.length - 2,
+										'-left-1 right-0': index === orderedPhases.length - 2
+									}
+								]"
+							></div>
+						</div>
+					</template>
+				</div>
 			</div>
 
 			<!-- Phase nodes -->
-			<div class="flex justify-between items-center relative">
+			<div class="flex justify-between items-center relative z-10">
 				<div 
 					v-for="phase in orderedPhases" 
 					:key="phase"
@@ -659,23 +682,11 @@ const isConnectionHighlighted = (phase) => {
 						/>
 						<!-- Event Status Indicator -->
 						<div 
-							v-if="hasEvents(phase)"
-							class="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center"
-							:class="[
-								isPhaseCompleted(phase) 
-									? 'bg-emerald-500' 
-									: 'bg-primary text-primary-foreground'
-							]"
+							v-if="hasEvents(phase) && !isPhaseCompleted(phase)"
+							class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center"
 						>
-							<Check 
-								v-if="isPhaseCompleted(phase)" 
-								class="w-3 h-3 text-green-500"
-							/>
-							<span 
-								v-else 
-								class="text-xs"
-							>
-								 {{ getPhaseEvents(phase).length }}
+							<span class="text-[10px] font-medium text-primary-foreground">
+								{{ getPhaseEvents(phase).length }}
 							</span>
 						</div>
 					</button>
@@ -898,7 +909,7 @@ const isConnectionHighlighted = (phase) => {
 </template>
 
 <style scoped>
-/* Add smooth transitions */
+/* Remove the animation classes since they're no longer needed */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.3s ease;
@@ -907,5 +918,22 @@ const isConnectionHighlighted = (phase) => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* Update progress line animation */
+@keyframes pulse {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.2; }
+}
+
+.animate-pulse {
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Update transitions to be smoother */
+.fade-enter-active,
+.fade-leave-active,
+.transition-all {
+  transition: all 0.5s ease;
 }
 </style>
