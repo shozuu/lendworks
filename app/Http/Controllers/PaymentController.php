@@ -105,10 +105,9 @@ class PaymentController extends Controller
                 'amount' => $rental->overdue_fee
             ]);
 
-            // Add timeline event for overdue payment submission
+            // Update timeline event metadata to include reference number
             $rental->recordTimelineEvent('overdue_payment_submitted', Auth::id(), [
                 'reference_number' => $validated['reference_number'],
-                'payment_request_id' => $paymentRequest->id,
                 'amount' => $rental->overdue_fee,
                 'payment_request' => [
                     'id' => $paymentRequest->id,

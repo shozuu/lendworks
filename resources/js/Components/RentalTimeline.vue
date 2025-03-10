@@ -1,5 +1,6 @@
 <script setup>
-import { formatDateTime } from "@/lib/formatters";
+// Update imports to include formatNumber
+import { formatDateTime, formatNumber } from "@/lib/formatters";
 import {
 	CheckCircle2,
 	XCircle,
@@ -396,7 +397,7 @@ const handleHandoverProofClose = () => {
 						<!-- Payment Details -->
 						<template
 							v-if="
-								['payment_submitted', 'payment_verified', 'payment_rejected'].includes(
+								['payment_submitted', 'payment_verified', 'payment_rejected', 'overdue_payment_submitted', 'overdue_payment_verified', 'overdue_payment_rejected'].includes(
 									event.event_type
 								)
 							"
@@ -406,6 +407,10 @@ const handleHandoverProofClose = () => {
 									<p v-if="event.metadata.reference_number" class="text-xs">
 										<span class="font-medium">Reference Number:</span>
 										{{ event.metadata.reference_number }}
+									</p>
+									<p v-if="event.metadata.amount" class="text-xs mt-1">
+										<span class="font-medium">Amount:</span>
+										{{ formatNumber(event.metadata.amount) }}
 									</p>
 								</div>
 							</div>
