@@ -625,29 +625,30 @@ const isConnectionHighlighted = (phase) => {
 						<!-- Progress line between nodes -->
 						<div 
 							v-if="index < orderedPhases.length - 1"
-							class="h-1 flex-1 transition-all duration-500 relative"
+							class="h-1 transition-all duration-500 relative"
 							:class="[
+								'flex-1',
+								// Add shorter class for last segment
+								{ 'flex-[0.85]': index === orderedPhases.length - 2 },
 								isPhaseCompleted(phase) 
 									? 'bg-emerald-500' 
 									: 'bg-border',
-								// Animate the next line when current phase is active
 								{
 									'animate-pulse': hasEvents(phase) && !isPhaseCompleted(phase)
 								}
 							]"
 						>
-							<!-- Extended line to ensure connection -->
+							<!-- Extended line -->
 							<div 
 								class="absolute inset-0 transition-all duration-500"
 								:class="[
 									isPhaseCompleted(phase) 
 										? 'bg-emerald-500' 
 										: 'bg-border',
-									// Adjust line width and position for each segment
 									{
 										'-left-2 -right-1': index === 0,
 										'-left-1 -right-1': index > 0 && index < orderedPhases.length - 2,
-										'-left-1 right-0': index === orderedPhases.length - 2
+										'-left-1': index === orderedPhases.length - 2
 									}
 								]"
 							></div>
