@@ -143,6 +143,15 @@ const canShowHandover = computed(() => {
     }
     return actions.value.canReceive;
 });
+
+// Fix the totalWithOverdue computed to properly handle numbers
+const totalWithOverdue = computed(() => {
+  if (!props.rental.is_overdue) return props.rental.total_price;
+  // Ensure we're working with numbers by using parseInt/parseFloat
+  const baseTotal = parseInt(props.rental.total_price) || 0;
+  const overdueFee = parseInt(props.rental.overdue_fee) || 0;
+  return baseTotal + overdueFee;
+});
 </script>
 
 <template>
@@ -297,19 +306,27 @@ const canShowHandover = computed(() => {
 
 									<Separator class="my-2" />
 
-									<!-- total with deposit -->
+									 <!-- Base total -->
 									<div class="flex justify-between font-medium">
-										<span>{{
-											userRole === "renter" ? "Total Due" : "Total Earnings"
-										}}</span>
-										<span
-											:class="[
-												userRole === 'renter' ? 'text-blue-600' : 'text-emerald-600',
-											]"
-										>
-											{{ formatNumber(rental.total_price) }}
-										</span>
+										<span>Base Total</span>
+										<span>{{ formatNumber(rental.total_price) }}</span>
 									</div>
+
+									<!-- Add Overdue Fee section if rental is overdue -->
+									<template v-if="rental.is_overdue">
+										<div class="mt-4 pt-4 border-t space-y-2">
+											<div class="flex justify-between text-sm">
+												<span class="text-destructive font-medium">Overdue Fee</span>
+												<span class="text-destructive">{{ formatNumber(rental.overdue_fee) }}</span>
+											</div>
+
+											<!-- Final total including overdue -->
+											<div class="flex justify-between font-medium text-base">
+												<span>Total Due with Overdue Fee</span>
+												<span class="text-destructive">{{ formatNumber(totalWithOverdue) }}</span>
+											</div>
+										</div>
+									</template>
 
 									<p class="text-muted-foreground mt-2 text-xs">
 										Note: Security deposit will be refunded after the rental period,
