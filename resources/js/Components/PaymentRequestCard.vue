@@ -1,7 +1,7 @@
 <script setup>
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/lib/formatters";
+import { formatDate, formatDateTime } from "@/lib/formatters";
 
 defineProps({
 	payment: {
@@ -34,6 +34,14 @@ defineProps({
 				"
 			>
 				{{ payment.status.charAt(0).toUpperCase() + payment.status.slice(1) }}
+			</Badge>
+
+			<Badge 
+				v-if="payment.type === 'overdue'"
+				variant="destructive"
+				class="shrink-0"
+			>
+				Overdue Fee
 			</Badge>
 		</div>
 	</Card>

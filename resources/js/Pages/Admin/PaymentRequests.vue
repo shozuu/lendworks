@@ -143,12 +143,24 @@ const handleReject = () => {
 	<Dialog :open="!!selectedPayment" @update:open="closeDialog">
 		<DialogContent class="sm:max-w-xl">
 			<DialogHeader>
-				<DialogTitle>Payment Request Details</DialogTitle>
+				<DialogTitle class="flex items-center gap-2">
+					Payment Request Details
+					<Badge 
+						v-if="selectedPayment?.type === 'overdue'"
+						variant="destructive"
+					>
+						Overdue Fee
+					</Badge>
+				</DialogTitle>
 				<DialogDescription v-if="selectedPayment">
 					Reference #{{ selectedPayment.reference_number }}
 					<p>
 						<span class="font-medium">Submitted:</span>
 						{{ formatDate(selectedPayment.created_at) }}
+					</p>
+					<!-- Add payment type info -->
+					<p v-if="selectedPayment.type === 'overdue'" class="text-destructive mt-1">
+						This is an overdue fee payment for late return
 					</p>
 				</DialogDescription>
 			</DialogHeader>

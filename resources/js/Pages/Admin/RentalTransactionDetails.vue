@@ -38,6 +38,16 @@ const passHistoricalPayment = (event) => {
     }
     return null;
 };
+
+// Add computed properties for price calculations
+const totalWithOverdue = computed(() => {
+  if (!props.rental.is_overdue) return props.rental.total_price;
+  const total = Math.abs(Number(props.rental.total_price));
+  const overdueFee = Math.abs(Number(props.rental.overdue_fee));
+  return total + overdueFee;
+});
+
+const baseTotal = computed(() => props.rental.total_price);
 </script>
 
 <template>
@@ -161,6 +171,7 @@ const passHistoricalPayment = (event) => {
 							<div class="space-y-4">
 								<h4 class="font-medium">Price Details</h4>
 								<div class="space-y-2">
+									<!-- Regular pricing items -->
 									<div class="flex justify-between text-sm">
 										<span class="text-muted-foreground">
 											{{ formatNumber(rental.listing.price) }} × {{ rentalDays }} rental
@@ -188,12 +199,34 @@ const passHistoricalPayment = (event) => {
 
 									<Separator class="my-2" />
 
+									<!-- Base total -->
 									<div class="flex justify-between font-medium">
-										<span>Total Transaction Amount</span>
-										<span class="text-primary">
-											{{ formatNumber(rental.total_price) }}
-										</span>
+										<span>Total Amount</span>
+										<span>{{ formatNumber(baseTotal) }}</span>
 									</div>
+
+									<!-- Add Overdue Fee section if rental is overdue -->
+									<template v-if="rental.is_overdue">
+										<div class="mt-4 pt-4 border-t">
+											<!-- Overdue Fee -->
+											<div class="flex justify-between text-sm text-destructive">
+												<span class="font-medium">Overdue Fee</span>
+												<span>+ {{ formatNumber(rental.overdue_fee) }}</span>
+											</div>
+
+											<Separator class="my-2" />
+
+											<!-- Final total with overdue -->
+											<div class="flex justify-between font-medium">
+												<span>Total Amount with Overdue Fee</span>
+												<span class="text-destructive">{{ formatNumber(totalWithOverdue) }}</span>
+											</div>
+										</div>
+									</template>
+
+									<p class="text-muted-foreground mt-2 text-xs">
+										Note: Security deposit will be refunded after the rental period, subject to item condition
+									</p>
 								</div>
 							</div>
 						</div>
