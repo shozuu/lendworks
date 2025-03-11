@@ -247,19 +247,20 @@ class ReturnController extends Controller
             abort(403);
         }
 
-        // Add logging for debugging
         \Log::info('Raising new dispute:', [
             'rental_id' => $rental->id,
             'current_status' => $rental->status,
-            'has_dispute' => (bool) $rental->dispute
+            'has_dispute' => (bool) $rental->dispute,
+            'dispute_status' => $rental->dispute?->status,
+            'dispute_resolution' => $rental->dispute?->resolution_type
         ]);
 
         try {
             DB::transaction(function () use ($rental, $request) {
                 $proofPath = $request->file('proof_image')->store('dispute-proofs', 'public');
 
-                // Clear any existing dispute first
-                if ($rental->dispute) {
+                // Clear any existing dispute first if it was rejected
+                if ($rental->dispute && $rental->dispute->resolution_type === 'rejected') {
                     $rental->dispute()->delete();
                 }
 
@@ -269,10 +270,7 @@ class ReturnController extends Controller
                     'description' => $request->issue_description,
                     'proof_path' => $proofPath,
                     'status' => 'pending',
-                    'raised_by' => auth()->id(),
-                    'resolution_type' => null, // Reset resolution
-                    'verdict' => null,        // Reset verdict
-                    'verdict_notes' => null   // Reset notes
+                    'raised_by' => auth()->id()
                 ]);
 
                 // Update rental status to disputed
@@ -282,12 +280,13 @@ class ReturnController extends Controller
                 $rental->recordTimelineEvent('dispute_raised', auth()->id(), [
                     'reason' => $request->reason,
                     'description' => $request->issue_description,
-                    'is_new_dispute' => true
+                    'is_new_dispute' => true,
+                    'after_rejection' => (bool) $rental->dispute
                 ]);
 
-                \Log::info('Dispute created successfully:', [
+                \Log::info('New dispute created:', [
                     'dispute_id' => $dispute->id,
-                    'new_status' => $dispute->status
+                    'status' => $dispute->status
                 ]);
             });
 

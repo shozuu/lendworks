@@ -232,13 +232,18 @@ class RentalRequest extends Model
         $isRenter = $user && $user->id === $this->renter_id;
         $isLender = $user && $user->id === $this->listing->user_id;
 
+        // Debug logging for dispute action check
         \Log::info('Dispute Action Check:', [
             'rental_id' => $this->id,
             'status' => $this->status,
             'isLender' => $isLender,
             'has_dispute' => (bool) $this->dispute,
             'dispute_status' => $this->dispute?->status,
-            'resolution_type' => $this->dispute?->resolution_type
+            'resolution_type' => $this->dispute?->resolution_type,
+            'can_raise_dispute' => $isLender && (
+                ($this->status === 'pending_final_confirmation' && !$this->dispute) ||
+                ($this->dispute && $this->dispute->resolution_type === 'rejected')
+            )
         ]);
 
         $actions = [
@@ -260,13 +265,10 @@ class RentalRequest extends Model
                 ($this->status === 'disputed' && $this->dispute && $this->dispute->status === 'resolved')
             ),
             'canRaiseDispute' => $isLender && (
-                // Can always raise dispute in pending_final_confirmation
-                $this->status === 'pending_final_confirmation' ||
-                // Or when there's a rejected dispute
-                ($this->status === 'disputed' && 
-                 $this->dispute && 
-                 $this->dispute->status === 'resolved' && 
-                 $this->dispute->resolution_type === 'rejected')
+                // Initial dispute case
+                ($this->status === 'pending_final_confirmation' && !$this->dispute) ||
+                // Or when previous dispute was rejected
+                ($this->dispute && $this->dispute->resolution_type === 'rejected')
             )
         ];
 
