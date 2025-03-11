@@ -560,7 +560,7 @@ const showCustomReason = computed(() => selectedReason.value === 'custom');
                                         <div class="flex justify-between items-center">
                                             <span class="text-sm text-muted-foreground">Deduction Amount:</span>
                                             <span class="text-sm font-medium text-destructive">
-                                                ₱{{ formatNumber(dispute.deposit_deduction) }}
+                                                {{ formatNumber(dispute.deposit_deduction) }}
                                             </span>
                                         </div>
                                         <Separator class="my-2" />
@@ -573,7 +573,7 @@ const showCustomReason = computed(() => selectedReason.value === 'custom');
                                     </div>
                                     <!-- Add original deposit info -->
                                     <p class="text-xs text-muted-foreground">
-                                        Original Security Deposit: ₱{{ formatNumber(dispute.rental.deposit_fee) }}
+                                        Original Security Deposit: {{ formatNumber(dispute.rental.deposit_fee) }}
                                     </p>
                                 </div>
                             </template>
@@ -600,25 +600,40 @@ const showCustomReason = computed(() => selectedReason.value === 'custom');
                         <div class="space-y-3">
                             <div class="flex justify-between items-center">
                                 <span class="text-sm">Base Rental:</span>
-                                <span>₱{{ formattedNumbers.basePrice }}</span>
+                                <span>{{ formattedNumbers.basePrice }}</span>
                             </div>
                             <div class="flex justify-between items-center text-destructive">
                                 <span class="text-sm">Discounts & Fees:</span>
-                                <span>- ₱{{ formattedNumbers.discount }}</span>
+                                <span>- {{ formattedNumbers.discount }}</span>
                             </div>
                             <div v-if="dispute?.rental?.overdue_fee" class="flex justify-between items-center text-emerald-500">
                                 <span class="text-sm">Overdue Fee:</span>
-                                <span>+ ₱{{ formattedNumbers.overdueFee }}</span>
+                                <span>+ {{ formattedNumbers.overdueFee }}</span>
+                            </div>
+                            <div v-if="dispute.resolution_type === 'deposit_deducted'" 
+                                class="flex justify-between items-center text-emerald-500"
+                            >
+                                <span class="text-sm">Deposit Deduction:</span>
+                                <span>+ {{ formatNumber(dispute.deposit_deduction) }}</span>
                             </div>
                             <Separator />
                             <div class="flex justify-between items-center font-medium">
-                                <span>Current Total:</span>
+                                <span>Total Earnings:</span>
                                 <span class="text-emerald-500">
-                                    ₱{{ formattedNumbers.currentEarnings }}
+                                    {{ formatNumber(
+                                        safeNumber(dispute.rental.base_price) - 
+                                        safeNumber(dispute.rental.discount) - 
+                                        safeNumber(dispute.rental.service_fee) + 
+                                        safeNumber(dispute.rental.overdue_fee) +
+                                        (dispute.resolution_type === 'deposit_deducted' ? safeNumber(dispute.deposit_deduction) : 0)
+                                    ) }}
                                 </span>
                             </div>
-                            <p v-if="updateForm.resolution_type === 'deposit_deducted'" class="text-xs text-muted-foreground">
-                                + ₱{{ formattedNumbers.deductionAmount }} (pending deduction)
+                            <p class="text-xs text-muted-foreground">
+                                {{ dispute.resolution_type === 'deposit_deducted' 
+                                    ? 'Total earnings including deposit deduction' 
+                                    : 'Total earnings after discounts and fees' 
+                                }}
                             </p>
                         </div>
                     </CardContent>
@@ -636,7 +651,7 @@ const showCustomReason = computed(() => selectedReason.value === 'custom');
                         <div class="space-y-3">
                             <div class="flex justify-between items-center">
                                 <span class="text-sm">Original Deposit:</span>
-                                <span>₱{{ formattedNumbers.depositFee }}</span>
+                                <span>{{ formattedNumbers.depositFee }}</span>
                             </div>
                             <div v-if="dispute?.rental?.has_deductions" class="flex justify-between items-center text-destructive">
                                 <span class="text-sm">Previous Deductions:</span>
@@ -646,11 +661,11 @@ const showCustomReason = computed(() => selectedReason.value === 'custom');
                             <div class="flex justify-between items-center font-medium">
                                 <span>Available Deposit:</span>
                                 <span class="text-blue-500">
-                                    ₱{{ formattedNumbers.remainingDeposit }}
+                                    {{ formattedNumbers.remainingDeposit }}
                                 </span>
                             </div>
                             <p v-if="updateForm.resolution_type === 'deposit_deducted'" class="text-xs text-destructive">
-                                - ₱{{ formattedNumbers.deductionAmount }} (pending deduction)
+                                - {{ formattedNumbers.deductionAmount }} (pending deduction)
                             </p>
                         </div>
                     </CardContent>
