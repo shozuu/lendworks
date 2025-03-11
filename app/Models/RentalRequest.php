@@ -259,16 +259,18 @@ class RentalRequest extends Model
             'canSubmitReturn' => $isRenter && $this->status === 'return_scheduled',
             'canConfirmReturn' => $isLender && $this->status === 'pending_return_confirmation',
             'canFinalizeReturn' => $isLender && (
-                // Show button for both pending final confirmation and disputed status
-                ($this->status === 'pending_final_confirmation') || 
-                // For disputed status, only enable when dispute is resolved
+                // Allow finalization when status is pending_final_confirmation regardless of dispute
+                $this->status === 'pending_final_confirmation' ||
+                // Or when dispute is resolved (either accepted or rejected)
                 ($this->status === 'disputed' && $this->dispute && $this->dispute->status === 'resolved')
             ),
             'canRaiseDispute' => $isLender && (
-                // Initial dispute case
+                // Can raise dispute on pending_final_confirmation if no dispute exists
                 ($this->status === 'pending_final_confirmation' && !$this->dispute) ||
-                // Or when previous dispute was rejected
-                ($this->dispute && $this->dispute->resolution_type === 'rejected')
+                // Or after previous dispute was rejected
+                ($this->status === 'pending_final_confirmation' && 
+                 $this->dispute && 
+                 $this->dispute->resolution_type === 'rejected')
             )
         ];
 
