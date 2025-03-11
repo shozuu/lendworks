@@ -141,7 +141,11 @@ const handleConfirmSchedule = () => {
   confirmForm.patch(route('return-schedules.confirm', {
     rental: props.rental.id
   }), {
-    preserveScroll: true
+    preserveScroll: true,
+    onSuccess: () => {
+      // Show success state is handled by template through confirmedSchedule computed
+      console.log('Schedule confirmed successfully');
+    }
   });
 };
 
@@ -230,6 +234,25 @@ const handleConfirmReturn = () => {
   returnProofType.value = 'confirm';
   showReturnProofDialog.value = true;
 };
+
+// Add new computed for schedule confirmation message
+const scheduleConfirmationMessage = computed(() => {
+  if (!confirmedSchedule.value) return null;
+
+  const date = format(new Date(confirmedSchedule.value.return_datetime), 'MMMM d, yyyy');
+  const time = `${formatTimeString(confirmedSchedule.value.start_time)} to ${formatTimeString(confirmedSchedule.value.end_time)}`;
+  
+  if (props.userRole === 'lender') {
+    return {
+      title: 'Return Schedule Confirmed',
+      message: `You have confirmed the return schedule. Please wait for the renter to return the item on ${date} between ${time}.`
+    };
+  }
+  return {
+    title: 'Return Schedule Confirmed',
+    message: `The lender has confirmed your return schedule. Please return the item on ${date} between ${time}.`
+  };
+});
 </script>
 
 <template>
@@ -494,10 +517,40 @@ const handleConfirmReturn = () => {
           </div>
 
           <!-- Confirmed Schedule Display -->
-          <div v-if="confirmedSchedule" class="p-4 border rounded-lg bg-muted/50">
-            <div class="space-y-2">
-              <h3 class="font-medium">Confirmed Return Schedule</h3>
-              <p class="text-sm">{{ formatDateTime(confirmedSchedule.return_datetime) }}</p>
+          <div v-if="confirmedSchedule" class="space-y-4">
+            <Alert variant="success">
+              <AlertDescription class="space-y-2">
+                <h4 class="font-medium">{{ scheduleConfirmationMessage.title }}</h4>
+                <p>{{ scheduleConfirmationMessage.message }}</p>
+              </AlertDescription>
+            </Alert>
+
+            <div class="p-4 border rounded-lg bg-muted/50">
+              <div class="space-y-2">
+                <h3 class="font-medium">Scheduled Return Details</h3>
+                <div class="space-y-1 text-sm">
+                  <p>
+                    <span class="text-muted-foreground">Date:</span> 
+                    {{ format(new Date(confirmedSchedule.return_datetime), 'MMMM d, yyyy') }}
+                  </p>
+                  <p>
+                    <span class="text-muted-foreground">Time:</span>
+                    {{ formatTimeString(confirmedSchedule.start_time) }} to {{ formatTimeString(confirmedSchedule.end_time) }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Role-specific instructions -->
+            <div class="p-4 bg-muted/30 rounded-lg">
+              <p class="text-sm text-muted-foreground text-center">
+                <template v-if="userRole === 'lender'">
+                  Once the renter returns the item, they will submit a return proof for your confirmation.
+                </template>
+                <template v-else>
+                  Please make sure to return the item during the scheduled time. You'll need to submit a return proof after.
+                </template>
+              </p>
             </div>
           </div>
 

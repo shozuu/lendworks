@@ -34,6 +34,7 @@ const tabs = [
 	{ id: "pending_return", label: "Return Pending" },
 	{ id: "return_scheduled", label: "Return Scheduled" },
 	{ id: "pending_return_confirmation", label: "Return Confirmation" },
+	{ id: "pending_final_confirmation", label: "Final Confirmation" },
 	{ id: "completed", label: "Completed" },
 	{ id: "rejected", label: "Rejected" },
 	{ id: "cancelled", label: "Cancelled" },
@@ -85,8 +86,13 @@ const groupedListings = computed(() => {
 		<!-- Tabs for lg+ screens -->
 		<div class="lg:block hidden">
 			<Tabs v-model="selectedTab" class="w-full" @update:modelValue="handleValueChange">
-				<TabsList class="justify-start w-full">
-					<TabsTrigger v-for="tab in tabs" :key="tab.id" :value="tab.id">
+				<TabsList class="flex flex-wrap items-center gap-2 p-1">
+					<TabsTrigger 
+						v-for="tab in tabs" 
+						:key="tab.id" 
+						:value="tab.id"
+						class="whitespace-nowrap min-w-fit px-3"
+					>
 						{{ tab.label }}
 					</TabsTrigger>
 				</TabsList>
@@ -141,3 +147,15 @@ const groupedListings = computed(() => {
 		</div>
 	</div>
 </template>
+
+<style scoped>
+.TabsList {
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.TabsList::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+</style>
