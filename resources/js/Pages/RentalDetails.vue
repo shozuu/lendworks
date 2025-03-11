@@ -919,19 +919,65 @@ const showOverdueSection = computed(() => {
 								</template>
 							</div>
 
-							<!-- Only show dispute details if not rejected or if user is admin -->
+							<!-- Only show dispute details if not rejected or if dispute is resolved -->
 							<template v-if="rental.dispute.resolution_type !== 'rejected'">
-								<div class="space-y-2">
-									<h4 class="font-medium">Dispute Reason</h4>
-									<p class="text-sm">{{ rental.dispute.reason }}</p>
+								<div class="space-y-4">
+									<!-- Resolved with Deduction Message -->
+									<div v-if="rental.dispute.resolution_type === 'deposit_deducted'" 
+										class="mb-4 p-4 bg-primary/10 rounded-lg border border-primary/20"
+									>
+										<div class="space-y-3">
+											<p class="text-sm font-medium text-primary">
+												✓ This dispute has been resolved with deposit deduction
+											</p>
+											
+											<!-- Show amount details -->
+											<div class="space-y-2">
+												<div class="flex justify-between text-sm">
+													<span class="text-muted-foreground">Deduction Amount:</span>
+													<span class="font-medium">{{ formatNumber(rental.dispute.deposit_deduction) }}</span>
+												</div>
+												<Separator />
+												<p class="text-sm font-medium">Reason for Deduction:</p>
+												<p class="text-sm text-muted-foreground">
+													{{ rental.dispute.deposit_deduction_reason }}
+												</p>
+											</div>
+
+											<!-- Different messages for lender and renter -->
+											<div class="mt-2">
+												<p v-if="userRole === 'lender'" class="text-sm text-muted-foreground">
+													The deducted amount has been added to your earnings.
+												</p>
+												<p v-else class="text-sm text-muted-foreground">
+													This amount has been deducted from your security deposit.
+												</p>
+											</div>
+										</div>
+									</div>
+
+									<!-- Original dispute details -->
+									<div class="space-y-2">
+										<h4 class="font-medium">Original Dispute Details</h4>
+										<div class="space-y-2">
+											<p class="text-sm font-medium">Reason:</p>
+											<p class="text-sm text-muted-foreground">{{ rental.dispute.reason }}</p>
+										</div>
+										<div class="space-y-2">
+											<p class="text-sm font-medium">Description:</p>
+											<p class="text-sm text-muted-foreground">{{ rental.dispute.description }}</p>
+										</div>
+									</div>
+
+									<!-- Admin's verdict -->
+									<div class="space-y-2">
+										<h4 class="font-medium">Admin's Decision</h4>
+										<div class="space-y-2">
+											<p class="text-sm">{{ rental.dispute.verdict }}</p>
+											<p class="text-sm text-muted-foreground">{{ rental.dispute.verdict_notes }}</p>
+										</div>
+									</div>
 								</div>
-				
-								<div class="space-y-2">
-									<h4 class="font-medium">Description</h4>
-									<p class="text-sm">{{ rental.dispute.description }}</p>
-								</div>
-				
-								<!-- ...rest of the existing dispute details... -->
 							</template>
 
 							<!-- Always show status -->
