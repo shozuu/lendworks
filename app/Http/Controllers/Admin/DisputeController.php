@@ -44,72 +44,55 @@ class DisputeController extends Controller
             'resolvedBy'  // Ensure resolvedBy relationship is loaded
         ]);
 
-        // Calculate remaining deposit accurately
-        $rental = $dispute->rental;
-        $totalDeductions = $dispute->deposit_deduction ?? 0;
-        $remainingDeposit = $rental->deposit_fee - $totalDeductions;
+        // Simplify the dispute data structure
+        $disputeData = [
+            'id' => $dispute->id,
+            'status' => $dispute->status,
+            'reason' => $dispute->reason,
+            'description' => $dispute->description,
+            'proof_path' => $dispute->proof_path,
+            'created_at' => $dispute->created_at,
+            'resolution_type' => $dispute->resolution_type,
+            'verdict' => $dispute->verdict,
+            'verdict_notes' => $dispute->verdict_notes,
+            'resolved_at' => $dispute->resolved_at,
+            'deposit_deduction' => $dispute->deposit_deduction,  // Add this line
+            'deposit_deduction_reason' => $dispute->deposit_deduction_reason,  // Add this line
+            'resolved_by' => [
+                'name' => $dispute->resolvedBy?->name
+            ],
+            'raised_by_user' => [
+                'name' => $dispute->raisedBy->name,
+                'id' => $dispute->raisedBy->id
+            ]
+        ];
 
-        // Calculate payment details
-        $basePrice = $rental->base_price ?? 0;
-        $discount = $rental->discount ?? 0;
-        $serviceFee = $rental->service_fee ?? 0;
-        $overdueFee = $rental->overdue_fee ?? 0;
-        $depositDeductions = $rental->depositDeductions()->sum('amount') ?? 0;
-        $totalEarnings = $basePrice - $discount - $serviceFee + $overdueFee + $depositDeductions;
+        // Simplify rental data
+        $rentalData = [
+            'id' => $dispute->rental->id,
+            'handover_proofs' => $dispute->rental->handoverProofs,
+            'return_proofs' => $dispute->rental->returnProofs,
+            'lender' => [
+                'name' => $dispute->rental->listing->user->name,
+                'id' => $dispute->rental->listing->user->id
+            ],
+            'renter' => [
+                'name' => $dispute->rental->renter->name,
+                'id' => $dispute->rental->renter->id
+            ],
+            'deposit_fee' => $dispute->rental->deposit_fee,
+            'remaining_deposit' => max(0, $dispute->rental->deposit_fee - ($dispute->rental->depositDeductions->sum('amount') ?? 0)),
+            'has_deductions' => $dispute->rental->depositDeductions->isNotEmpty(),
+            'base_price' => $dispute->rental->base_price,
+            'discount' => $dispute->rental->discount,
+            'service_fee' => $dispute->rental->service_fee,
+            'overdue_fee' => $dispute->rental->overdue_fee,
+        ];
 
-        \Log::info('Dispute Details - Calculations', [
-            'rental_id' => $rental->id,
-            'deposit_fee' => $rental->deposit_fee,
-            'total_deductions' => $totalDeductions,
-            'remaining_deposit' => $remainingDeposit,
-            'base_price' => $basePrice,
-            'total_earnings' => $totalEarnings
-        ]);
+        $disputeData['rental'] = $rentalData;
 
         return Inertia::render('Admin/DisputeDetails', [
-            'dispute' => [
-                'id' => $dispute->id,
-                'status' => $dispute->status,
-                'reason' => $dispute->reason,
-                'description' => $dispute->description,
-                'proof_path' => $dispute->proof_path,
-                'created_at' => $dispute->created_at,
-                'resolution_type' => $dispute->resolution_type,  // Add this line
-                'verdict' => $dispute->verdict,           // Add this
-                'verdict_notes' => $dispute->verdict_notes, // Add this
-                'resolved_at' => $dispute->resolved_at,   // Add this
-                'resolved_by' => [                        // Add this
-                    'name' => $dispute->resolvedBy?->name
-                ],
-                'raised_by_user' => [
-                    'name' => $dispute->raisedBy->name,
-                    'id' => $dispute->raisedBy->id       // Add this
-                ],
-                'rental' => [
-                    'id' => $dispute->rental->id,
-                    'handover_proofs' => $dispute->rental->handoverProofs,
-                    'return_proofs' => $dispute->rental->returnProofs,
-                    'lender' => [
-                        'name' => $dispute->rental->listing->user->name,
-                        'id' => $dispute->rental->listing->user->id
-                    ],
-                    'renter' => [
-                        'name' => $dispute->rental->renter->name,
-                        'id' => $dispute->rental->renter->id
-                    ],
-                    'deposit_fee' => $rental->deposit_fee,
-                    'remaining_deposit' => max(0, $remainingDeposit),
-                    'has_deductions' => $totalDeductions > 0,
-                    'total_deductions' => $totalDeductions,
-                    // Add payment details
-                    'base_price' => $basePrice,
-                    'discount' => $discount,
-                    'service_fee' => $serviceFee,
-                    'overdue_fee' => $overdueFee,
-                    'deposit_deductions' => $depositDeductions,
-                    'current_earnings' => $totalEarnings
-                ]
-            ]
+            'dispute' => $disputeData
         ]);
     }
 

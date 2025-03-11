@@ -4,7 +4,8 @@ import { Head, Link } from "@inertiajs/vue3";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { formatDateTime } from "@/lib/formatters";
+// Update this line to import formatNumber
+import { formatDateTime, formatNumber } from "@/lib/formatters";
 import { useForm } from "@inertiajs/vue3";
 import { ref, computed, watch } from "vue";
 import ProofImageViewer from "@/Components/ProofImageViewer.vue";
@@ -193,14 +194,14 @@ const formattedNumbers = computed(() => {
         (rental.base_price - rental.discount - rental.service_fee + (rental.overdue_fee || 0));
 
     return {
-        basePrice: safeNumber(rental.base_price).toLocaleString(),
-        discount: safeNumber(rental.discount).toLocaleString(),
-        serviceFee: safeNumber(rental.service_fee).toLocaleString(),
-        overdueFee: safeNumber(rental.overdue_fee).toLocaleString(),
-        depositFee: safeNumber(rental.deposit_fee).toLocaleString(),
-        remainingDeposit: safeNumber(rental.remaining_deposit).toLocaleString(),
-        deductionAmount: safeNumber(updateForm.deposit_deduction).toLocaleString(),
-        currentEarnings: safeNumber(currentEarnings).toLocaleString()
+        basePrice: formatNumber(rental.base_price),
+        discount: formatNumber(rental.discount),
+        serviceFee: formatNumber(rental.service_fee),
+        overdueFee: formatNumber(rental.overdue_fee),
+        depositFee: formatNumber(rental.deposit_fee),
+        remainingDeposit: formatNumber(rental.remaining_deposit),
+        deductionAmount: formatNumber(updateForm.deposit_deduction),
+        currentEarnings: formatNumber(currentEarnings)
     };
 });
 
@@ -549,25 +550,31 @@ const showCustomReason = computed(() => selectedReason.value === 'custom');
                                 </div>
                             </div>
 
-                            <!-- Deduction Details -->
+                            <!-- Update Deduction Details section -->
                             <template v-if="dispute.resolution_type === 'deposit_deducted'">
                                 <Separator />
-                                <div class="space-y-2">
+                                <div class="space-y-3">
                                     <h4 class="text-sm font-medium">Deduction Details</h4>
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-sm">Amount Deducted:</span>
-                                        <span class="text-destructive">₱{{ formattedNumbers.deductionAmount }}</span>
+                                    <!-- Add Amount Display -->
+                                    <div class="p-3 bg-muted rounded-lg space-y-3">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-sm text-muted-foreground">Deduction Amount:</span>
+                                            <span class="text-sm font-medium text-destructive">
+                                                ₱{{ formatNumber(dispute.deposit_deduction) }}
+                                            </span>
+                                        </div>
+                                        <Separator class="my-2" />
+                                        <div class="space-y-2">
+                                            <p class="text-sm font-medium">Deduction Reason:</p>
+                                            <p class="text-sm text-muted-foreground">
+                                                {{ dispute.deposit_deduction_reason }}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <h4 class="text-sm font-medium mt-4">Deduction Reason:</h4>
-                                    <p class="text-sm">{{ dispute.deposit_deduction_reason }}</p>
-                                </div>
-                            </template>
-                            <template v-else>
-                                <Separator />
-                                <div class="space-y-2">
-                                    <h4 class="text-sm font-medium">Rejection Reason</h4>
-                                    <p class="text-sm text-destructive">{{ dispute.verdict }}</p>
-                                    <p class="text-sm text-muted-foreground mt-1">{{ dispute.verdict_notes }}</p>
+                                    <!-- Add original deposit info -->
+                                    <p class="text-xs text-muted-foreground">
+                                        Original Security Deposit: ₱{{ formatNumber(dispute.rental.deposit_fee) }}
+                                    </p>
                                 </div>
                             </template>
 
