@@ -79,6 +79,7 @@ class MyRentalsController extends Controller
             'return_scheduled' => $rentals->where('status', 'return_scheduled')->count(),
             'pending_return_confirmation' => $rentals->where('status', 'pending_return_confirmation')->count(),
             'pending_final_confirmation' => $rentals->where('status', 'pending_final_confirmation')->count(),
+            'disputed' => $rentals->where('status', 'disputed')->count(),
             'completed' => $rentals->filter(function ($rental) {
                 return in_array($rental->status, [
                     'completed',

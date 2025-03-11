@@ -547,6 +547,67 @@ const showOverdueSection = computed(() => {
 
 			<!-- Right Column -->
 			<div class="space-y-8">
+				 <!-- Add this inside the main content area, before the Actions Card -->
+				<Card v-if="userRole === 'renter' && (
+					rental.status === 'pending_return_confirmation' || 
+					rental.status === 'pending_final_confirmation' ||
+					rental.status === 'disputed'
+				)" class="shadow-sm">
+					<CardHeader class="bg-card border-b">
+						<CardTitle>Status Update</CardTitle>
+					</CardHeader>
+					<CardContent class="p-6">
+						<div class="space-y-4">
+							<!-- Different messages based on status -->
+							<template v-if="rental.status === 'pending_return_confirmation'">
+								<p class="text-sm">
+									Waiting for the lender to confirm receipt of the item. You will be notified once they review the return proof.
+								</p>
+								 <div v-if="rental.return_proofs?.length > 0" class="flex items-center gap-2 p-4 bg-muted rounded-lg">
+									<Clock class="w-4 h-4 text-muted-foreground" />
+									<p class="text-sm text-muted-foreground">
+										Return proof submitted on {{ formatDateTime(rental.return_proofs[0].created_at) }}
+									</p>
+								</div>
+							</template>
+
+							<template v-else-if="rental.status === 'pending_final_confirmation'">
+								<p class="text-sm">
+									The lender is performing final checks on the item. You will be notified once they complete the transaction.
+								</p>
+								<div class="flex items-center gap-2 p-4 bg-muted rounded-lg">
+									<Clock class="w-4 h-4 text-muted-foreground" />
+									<p class="text-sm text-muted-foreground">
+										Return confirmed on {{ formatDateTime(rental.return_at) }}
+									</p>
+								</div>
+							</template>
+
+							<template v-else-if="rental.status === 'disputed'">
+								<div class="space-y-4">
+									<p class="text-sm text-destructive font-medium">
+										 ⚠️ The lender has raised a dispute regarding the returned item
+									</p>
+									<div class="p-4 bg-muted rounded-lg space-y-2">
+										<p class="text-sm font-medium">Dispute Reason:</p>
+										<p class="text-sm text-muted-foreground">{{ rental.dispute.reason }}</p>
+										<p class="text-sm text-muted-foreground mt-2">
+											The admin team will review this case and notify you of the outcome.
+										</p>
+									</div>
+								</div>
+							</template>
+
+							<!-- Estimated processing time -->
+							<div class="mt-4 border-t pt-4">
+								<p class="text-xs text-muted-foreground">
+									Estimated processing time: 1-2 business days
+								</p>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
+
 				<!-- Actions Card -->
 				<Card class="shadow-sm">
 					<CardHeader class="bg-card border-b">
