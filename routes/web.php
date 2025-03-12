@@ -16,6 +16,7 @@ use App\Http\Controllers\PickupScheduleController;
 use App\Http\Controllers\LenderPickupScheduleController;
 use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\Admin\CompletionPaymentController;  // Add this import at the top
+use App\Http\Controllers\Admin\DisputeController;
 use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -105,6 +106,8 @@ Route::middleware(['auth'])->group(function () {
             ->name('rentals.confirm-receipt');
         Route::post('/rentals/{rental}/finalize-return', 'finalizeReturn')
             ->name('rentals.finalize-return');
+        Route::post('/rentals/{rental}/raise-dispute', 'raiseDispute')
+            ->name('rentals.raise-dispute');
     });
 });
 
@@ -148,6 +151,12 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
         ->name('completion-payments.store-lender-payment');
     Route::post('/rentals/{rental}/completion-payments/deposit', [CompletionPaymentController::class, 'storeDepositRefund'])
         ->name('completion-payments.store-deposit-refund');
+
+    // Add dispute routes
+    Route::get('/disputes', [DisputeController::class, 'index'])->name('disputes');
+    Route::get('/disputes/{dispute}', [DisputeController::class, 'show'])->name('disputes.show');
+    Route::post('/disputes/{dispute}/update-status', [DisputeController::class, 'updateStatus'])->name('disputes.update-status');
+    Route::post('/disputes/{dispute}/resolve', [DisputeController::class, 'resolve'])->name('disputes.resolve');
 });
 
 Route::get('/', [ListingController::class, 'index'])->name('home');

@@ -33,6 +33,7 @@ const tabs = [
     { id: "return_scheduled", label: "Return Scheduled" },
     { id: "pending_return_confirmation", label: "Return Confirmation" },
     { id: "pending_final_confirmation", label: "Final Confirmation" },
+    { id: "disputed", label: "In Dispute" }, // Add this line
     { id: "completed", label: "Completed" },
     { id: "rejected", label: "Rejected" },
     { id: "cancelled", label: "Cancelled" },

@@ -198,26 +198,102 @@ class ReturnController extends Controller
             abort(403);
         }
 
+        // Check if status is valid for finalization
+        if (!in_array($rental->status, ['pending_final_confirmation', 'disputed'])) {
+            return back()->with('error', 'Invalid rental status for finalization.');
+        }
+
+        // For disputed rentals, ensure dispute is resolved
+        if ($rental->status === 'disputed') {
+            if (!$rental->dispute || $rental->dispute->status !== 'resolved') {
+                return back()->with('error', 'Cannot finalize return until dispute is resolved.');
+            }
+        }
+
         DB::transaction(function () use ($rental) {
             $rental->update([
-                'status' => 'completed_pending_payments', // Changed from 'completed'
+                'status' => 'completed_pending_payments',
                 'return_at' => now()
             ]);
 
             $rental->listing->update(['is_rented' => false]);
 
-            $rental->recordTimelineEvent('rental_completed', Auth::id(), [
+            // Add timeline event with dispute resolution info if applicable
+            $metadata = [
                 'completed_by' => 'lender',
                 'completion_datetime' => now()->format('Y-m-d H:i:s'),
                 'rental_duration' => $rental->rental_duration,
-                'actual_return_date' => now()->format('Y-m-d'),
-                'pending_payments' => [
-                    'lender_payment' => $rental->base_price,
-                    'deposit_refund' => $rental->deposit_fee
-                ]
-            ]);
+                'actual_return_date' => now()->format('Y-m-d')
+            ];
+
+            // Add dispute resolution info if applicable
+            if ($rental->dispute) {
+                $metadata['dispute_resolution'] = [
+                    'type' => $rental->dispute->resolution_type,
+                    'deduction_amount' => $rental->dispute->deposit_deduction,
+                    'verdict' => $rental->dispute->verdict
+                ];
+            }
+
+            $rental->recordTimelineEvent('rental_completed', Auth::id(), $metadata);
         });
 
         return back()->with('success', 'Rental completed. Awaiting payment processing.');
+    }
+
+    public function raiseDispute(Request $request, RentalRequest $rental)
+    {
+        if ($rental->listing->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        \Log::info('Raising new dispute:', [
+            'rental_id' => $rental->id,
+            'current_status' => $rental->status,
+            'has_dispute' => (bool) $rental->dispute,
+            'dispute_status' => $rental->dispute?->status,
+            'dispute_resolution' => $rental->dispute?->resolution_type
+        ]);
+
+        try {
+            DB::transaction(function () use ($rental, $request) {
+                $proofPath = $request->file('proof_image')->store('dispute-proofs', 'public');
+
+                // Clear any existing dispute first if it was rejected
+                if ($rental->dispute && $rental->dispute->resolution_type === 'rejected') {
+                    $rental->dispute()->delete();
+                }
+
+                // Create new dispute record
+                $dispute = $rental->dispute()->create([
+                    'reason' => $request->reason,
+                    'description' => $request->issue_description,
+                    'proof_path' => $proofPath,
+                    'status' => 'pending',
+                    'raised_by' => auth()->id()
+                ]);
+
+                // Update rental status to disputed
+                $rental->update(['status' => 'disputed']);
+
+                // Record timeline event
+                $rental->recordTimelineEvent('dispute_raised', auth()->id(), [
+                    'reason' => $request->reason,
+                    'description' => $request->issue_description,
+                    'is_new_dispute' => true,
+                    'after_rejection' => (bool) $rental->dispute
+                ]);
+
+                \Log::info('New dispute created:', [
+                    'dispute_id' => $dispute->id,
+                    'status' => $dispute->status
+                ]);
+            });
+
+            return back()->with('success', 'New dispute has been raised successfully.');
+        } catch (\Exception $e) {
+            report($e);
+            return back()->with('error', 'Failed to raise dispute. Please try again.');
+        }
     }
 }

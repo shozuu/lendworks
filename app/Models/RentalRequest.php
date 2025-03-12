@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class RentalRequest extends Model
 {
@@ -56,6 +57,7 @@ class RentalRequest extends Model
     const STATUS_CANCELLED = 'cancelled';
     const STATUS_RENTER_PAID = 'renter_paid';
     const STATUS_PENDING_PROOF = 'pending_proof';
+    const STATUS_DISPUTED = 'disputed';  // Add this line
 
     // Update the status display logic
     public function getStatusForDisplayAttribute(): string 
@@ -177,6 +179,23 @@ class RentalRequest extends Model
         return $this->hasMany(CompletionPayment::class);
     }
 
+    // Add this relationship method
+    public function dispute()
+    {
+        return $this->hasOne(RentalDispute::class, 'rental_request_id')
+            ->with(['resolvedBy']);  // Always eager load resolvedBy
+    }
+
+    public function depositDeductions()
+    {
+        return $this->hasMany(DepositDeduction::class);
+    }
+
+    public function lenderEarningsAdjustments()
+    {
+        return $this->hasMany(LenderEarningsAdjustment::class);
+    }
+
     // Accessors
     public function getHasStartedAttribute(): bool
     {
@@ -213,6 +232,20 @@ class RentalRequest extends Model
         $isRenter = $user && $user->id === $this->renter_id;
         $isLender = $user && $user->id === $this->listing->user_id;
 
+        // Debug logging for dispute action check
+        \Log::info('Dispute Action Check:', [
+            'rental_id' => $this->id,
+            'status' => $this->status,
+            'isLender' => $isLender,
+            'has_dispute' => (bool) $this->dispute,
+            'dispute_status' => $this->dispute?->status,
+            'resolution_type' => $this->dispute?->resolution_type,
+            'can_raise_dispute' => $isLender && (
+                ($this->status === 'pending_final_confirmation' && !$this->dispute) ||
+                ($this->dispute && $this->dispute->resolution_type === 'rejected')
+            )
+        ]);
+
         $actions = [
             'canApprove' => !$isRenter && $this->canApprove(),
             'canReject' => !$isRenter && $this->canReject(),
@@ -225,7 +258,20 @@ class RentalRequest extends Model
                 (!$this->is_overdue || $this->hasVerifiedOverduePayment()),
             'canSubmitReturn' => $isRenter && $this->status === 'return_scheduled',
             'canConfirmReturn' => $isLender && $this->status === 'pending_return_confirmation',
-            'canFinalizeReturn' => $isLender && $this->status === 'pending_final_confirmation'
+            'canFinalizeReturn' => $isLender && (
+                // Allow finalization when status is pending_final_confirmation regardless of dispute
+                $this->status === 'pending_final_confirmation' ||
+                // Or when dispute is resolved (either accepted or rejected)
+                ($this->status === 'disputed' && $this->dispute && $this->dispute->status === 'resolved')
+            ),
+            'canRaiseDispute' => $isLender && (
+                // Can raise dispute on pending_final_confirmation if no dispute exists
+                ($this->status === 'pending_final_confirmation' && !$this->dispute) ||
+                // Or after previous dispute was rejected
+                ($this->status === 'pending_final_confirmation' && 
+                 $this->dispute && 
+                 $this->dispute->resolution_type === 'rejected')
+            )
         ];
 
         if (!$user) return $actions;
@@ -267,7 +313,23 @@ class RentalRequest extends Model
             ->where('type', 'deposit_refund')
             ->exists();
 
+        \Log::info('Dispute Action Detailed Check:', [
+            'rental_id' => $this->id,
+            'status' => $this->status,
+            'dispute_exists' => (bool) $this->dispute,
+            'dispute_status' => $this->dispute?->status,
+            'resolution_type' => $this->dispute?->resolution_type,
+            'verdict' => $this->dispute?->verdict,
+            'resolved_at' => $this->dispute?->resolved_at
+        ]);
+
         return $actions;
+    }
+
+    // Add this new helper method
+    public function hasDisputeInProgress(): bool
+    {
+        return (bool) $this->dispute;
     }
 
     public function getRentalDurationAttribute()
@@ -436,8 +498,46 @@ class RentalRequest extends Model
     // Add this new method
     public function getTotalLenderEarningsAttribute()
     {
-        $earnings = $this->getLenderEarningsAttribute();
-        return $earnings['total'];
+        // Get base earnings
+        $baseEarnings = $this->base_price - $this->discount - $this->service_fee;
+        
+        // Add overdue fees if any
+        $overdueFee = $this->overdue_payment ? $this->overdue_payment->amount : 0;
+        
+        // Add deposit deductions
+        $depositDeductions = $this->depositDeductions()->sum('amount');
+        
+        \Log::info('Calculating total lender earnings', [
+            'rental_id' => $this->id,
+            'base_earnings' => $baseEarnings,
+            'overdue_fee' => $overdueFee,
+            'deposit_deductions' => $depositDeductions,
+            'total' => $baseEarnings + $overdueFee + $depositDeductions
+        ]);
+
+        return $baseEarnings + $overdueFee + $depositDeductions;
+    }
+
+    public function getRemainingDepositAttribute()
+    {
+        // Use DB facade for direct query to ensure accurate calculation
+        $totalDeductions = DB::table('deposit_deductions')
+            ->where('rental_request_id', $this->id)
+            ->sum('amount') ?? 0;
+
+        $remainingDeposit = $this->deposit_fee - $totalDeductions;
+        
+        \Log::info('Calculating Remaining Deposit', [
+            'rental_id' => $this->id,
+            'original_deposit' => $this->deposit_fee,
+            'total_deductions' => $totalDeductions,
+            'remaining' => $remainingDeposit,
+            'deductions_count' => DB::table('deposit_deductions')
+                ->where('rental_request_id', $this->id)
+                ->count()
+        ]);
+
+        return max(0, $remainingDeposit);
     }
 
     // Scopes

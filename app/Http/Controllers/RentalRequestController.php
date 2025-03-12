@@ -33,6 +33,23 @@ class RentalRequestController extends Controller
             },
             'pickup_schedules',
             'completion_payments',  // Add this line
+            'dispute' => function($query) {
+                $query->select([
+                    'id',
+                    'rental_request_id',
+                    'reason',
+                    'description',
+                    'status',
+                    'resolution_type',  // Add this line
+                    'verdict',
+                    'verdict_notes',
+                    'deposit_deduction',
+                    'deposit_deduction_reason',
+                    'resolved_at',  // Add this
+                    'resolved_by'   // Add this
+                ]);
+            },
+            'dispute.resolvedBy',  // Add this to load resolver info
         ]);
 
         // Check if the authenticated user is either the renter or the lender

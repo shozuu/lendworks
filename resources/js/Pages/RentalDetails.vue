@@ -20,6 +20,7 @@ import RentalDurationTracker from "@/Components/RentalDurationTracker.vue";
 import ReturnScheduler from '@/Components/ReturnScheduler.vue';
 import ReturnConfirmationDialog from '@/Components/ReturnConfirmationDialog.vue';
 import PaymentProofDialog from '@/Components/PaymentProofDialog.vue';
+import DisputeDialog from '@/Components/DisputeDialog.vue';
 
 const props = defineProps({
 	rental: Object,
@@ -68,6 +69,7 @@ const showAcceptDialog = ref(false);
 const showHandoverDialog = ref(false);
 const showReturnDialog = ref(false);
 const returnDialogType = ref('submit');
+const showDisputeDialog = ref(false);
 
 // Forms
 const approveForm = useForm({});
@@ -545,6 +547,67 @@ const showOverdueSection = computed(() => {
 
 			<!-- Right Column -->
 			<div class="space-y-8">
+				 <!-- Add this inside the main content area, before the Actions Card -->
+				<Card v-if="userRole === 'renter' && (
+					rental.status === 'pending_return_confirmation' || 
+					rental.status === 'pending_final_confirmation' ||
+					rental.status === 'disputed'
+				)" class="shadow-sm">
+					<CardHeader class="bg-card border-b">
+						<CardTitle>Status Update</CardTitle>
+					</CardHeader>
+					<CardContent class="p-6">
+						<div class="space-y-4">
+							<!-- Different messages based on status -->
+							<template v-if="rental.status === 'pending_return_confirmation'">
+								<p class="text-sm">
+									Waiting for the lender to confirm receipt of the item. You will be notified once they review the return proof.
+								</p>
+								 <div v-if="rental.return_proofs?.length > 0" class="flex items-center gap-2 p-4 bg-muted rounded-lg">
+									<Clock class="w-4 h-4 text-muted-foreground" />
+									<p class="text-sm text-muted-foreground">
+										Return proof submitted on {{ formatDateTime(rental.return_proofs[0].created_at) }}
+									</p>
+								</div>
+							</template>
+
+							<template v-else-if="rental.status === 'pending_final_confirmation'">
+								<p class="text-sm">
+									The lender is performing final checks on the item. You will be notified once they complete the transaction.
+								</p>
+								<div class="flex items-center gap-2 p-4 bg-muted rounded-lg">
+									<Clock class="w-4 h-4 text-muted-foreground" />
+									<p class="text-sm text-muted-foreground">
+										Return confirmed on {{ formatDateTime(rental.return_at) }}
+									</p>
+								</div>
+							</template>
+
+							<template v-else-if="rental.status === 'disputed'">
+								<div class="space-y-4">
+									<p class="text-sm text-destructive font-medium">
+										 ⚠️ The lender has raised a dispute regarding the returned item
+									</p>
+									<div class="p-4 bg-muted rounded-lg space-y-2">
+										<p class="text-sm font-medium">Dispute Reason:</p>
+										<p class="text-sm text-muted-foreground">{{ rental.dispute.reason }}</p>
+										<p class="text-sm text-muted-foreground mt-2">
+											The admin team will review this case and notify you of the outcome.
+										</p>
+									</div>
+								</div>
+							</template>
+
+							<!-- Estimated processing time -->
+							<div class="mt-4 border-t pt-4">
+								<p class="text-xs text-muted-foreground">
+									Estimated processing time: 1-2 business days
+								</p>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
+
 				<!-- Actions Card -->
 				<Card class="shadow-sm">
 					<CardHeader class="bg-card border-b">
@@ -641,6 +704,16 @@ const showOverdueSection = computed(() => {
 								}"
 							>
 								Complete Transaction
+							</Button>
+
+							 <!-- Add new Dispute Button -->
+							<Button
+								v-if="actions.canRaiseDispute"
+								variant="destructive"
+								class="w-full"
+								@click="showDisputeDialog = true"
+							>
+								Raise Dispute
 							</Button>
 
 							<!-- No Actions Message -->
@@ -803,6 +876,124 @@ const showOverdueSection = computed(() => {
 						</div>
 					</CardContent>
 				</Card>
+
+				<!-- Add this before the end of the main grid div -->
+				<Card v-if="rental.dispute" class="shadow-sm">
+					<CardHeader class="bg-card border-b">
+						<CardTitle class="text-destructive">Return Dispute</CardTitle>
+					</CardHeader>
+					<CardContent class="p-6">
+						<div class="space-y-4">
+							 <!-- Rejection Messages -->
+							 <div v-if="rental.dispute.resolution_type === 'rejected'" 
+								class="mb-4 p-4 bg-destructive/10 rounded-lg border border-destructive/20"
+							>
+								<!-- Lender specific message -->
+								<template v-if="userRole === 'lender'">
+									<p class="text-sm text-destructive font-medium">
+										 ⚠️ Your dispute claim has been rejected by the admin
+									</p>
+									<div class="mt-3 space-y-2">
+										<p class="text-sm font-medium">Reason for Rejection:</p>
+										<p class="text-sm">{{ rental.dispute.verdict }}</p>
+										<p class="text-sm text-muted-foreground">{{ rental.dispute.verdict_notes }}</p>
+									</div>
+									<p class="text-sm mt-4">
+										You may raise a new dispute with additional evidence to support your claim.
+									</p>
+								</template>
+								
+								<!-- Renter specific message -->
+								<template v-else>
+									<p class="text-sm text-destructive font-medium">
+										The dispute raised by the lender has been rejected
+									</p>
+									<div class="mt-3 space-y-2">
+										<p class="text-sm font-medium">Admin's Decision:</p>
+										<p class="text-sm">{{ rental.dispute.verdict }}</p>
+										<p class="text-sm text-muted-foreground">{{ rental.dispute.verdict_notes }}</p>
+									</div>
+									<p class="text-sm mt-4">
+										The rental can now proceed to completion.
+									</p>
+								</template>
+							</div>
+
+							<!-- Only show dispute details if not rejected or if dispute is resolved -->
+							<template v-if="rental.dispute.resolution_type !== 'rejected'">
+								<div class="space-y-4">
+									<!-- Resolved with Deduction Message -->
+									<div v-if="rental.dispute.resolution_type === 'deposit_deducted'" 
+										class="mb-4 p-4 bg-primary/10 rounded-lg border border-primary/20"
+									>
+										<div class="space-y-3">
+											<p class="text-sm font-medium text-primary">
+												✓ This dispute has been resolved with deposit deduction
+											</p>
+											
+											<!-- Show amount details -->
+											<div class="space-y-2">
+												<div class="flex justify-between text-sm">
+													<span class="text-muted-foreground">Deduction Amount:</span>
+													<span class="font-medium">{{ formatNumber(rental.dispute.deposit_deduction) }}</span>
+												</div>
+												<Separator />
+												<p class="text-sm font-medium">Reason for Deduction:</p>
+												<p class="text-sm text-muted-foreground">
+													{{ rental.dispute.deposit_deduction_reason }}
+												</p>
+											</div>
+
+											<!-- Different messages for lender and renter -->
+											<div class="mt-2">
+												<p v-if="userRole === 'lender'" class="text-sm text-muted-foreground">
+													The deducted amount has been added to your earnings.
+												</p>
+												<p v-else class="text-sm text-muted-foreground">
+													This amount has been deducted from your security deposit.
+												</p>
+											</div>
+										</div>
+									</div>
+
+									<!-- Original dispute details -->
+									<div class="space-y-2">
+										<h4 class="font-medium">Original Dispute Details</h4>
+										<div class="space-y-2">
+											<p class="text-sm font-medium">Reason:</p>
+											<p class="text-sm text-muted-foreground">{{ rental.dispute.reason }}</p>
+										</div>
+										<div class="space-y-2">
+											<p class="text-sm font-medium">Description:</p>
+											<p class="text-sm text-muted-foreground">{{ rental.dispute.description }}</p>
+										</div>
+									</div>
+
+									<!-- Admin's verdict -->
+									<div class="space-y-2">
+										<h4 class="font-medium">Admin's Decision</h4>
+										<div class="space-y-2">
+											<p class="text-sm">{{ rental.dispute.verdict }}</p>
+											<p class="text-sm text-muted-foreground">{{ rental.dispute.verdict_notes }}</p>
+										</div>
+									</div>
+								</div>
+							</template>
+
+							<!-- Always show status -->
+							<div class="space-y-2">
+								<h4 class="font-medium">Status</h4>
+								<p class="text-sm" :class="{
+									'text-muted-foreground': rental.dispute.status === 'pending',
+									'text-primary': rental.dispute.status === 'reviewed',
+									'text-destructive': rental.dispute.status === 'resolved'
+								}">
+									{{ rental.dispute.status.charAt(0).toUpperCase() + rental.dispute.status.slice(1) }}
+								</p>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
 			</div>
 		</div>
 	</div>
@@ -898,5 +1089,11 @@ const showOverdueSection = computed(() => {
 		:show="showPaymentProofDialog"
 		:payment="selectedPayment"
 		@update:show="showPaymentProofDialog = $event"
+	/>
+
+	<!-- Add new DisputeDialog component before the end of template -->
+	<DisputeDialog
+		v-model:show="showDisputeDialog"
+		:rental="rental"
 	/>
 </template>

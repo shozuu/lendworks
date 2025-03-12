@@ -8,6 +8,7 @@ import {
     PackageSearch,
     ClipboardList,
     Receipt,
+    AlertTriangle,
 } from "lucide-vue-next";
 
 const theme = ref(document.body.getAttribute("data-theme"));
@@ -33,6 +34,7 @@ const navigation = [
     { name: "Listings", href: route("admin.listings"), component: "Admin/Listings", icon: PackageSearch },
     { name: "Rental Transactions", href: route("admin.rental-transactions"), component: "Admin/RentalTransactions", icon: ClipboardList },
     { name: "Payments", href: route("admin.payments"), component: "Admin/Payments/Index", icon: Receipt },
+    { name: "Disputes", href: route("admin.disputes"), component: "Admin/Disputes", icon: AlertTriangle },
 ];
 </script>
 
