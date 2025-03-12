@@ -52,6 +52,7 @@ const formSchema = toTypedSchema(
 				.refine((val) => Number.isInteger(val), {
 					message: "Deposit fee must be a whole number (no decimals).",
 				}),
+			quantity: z.number().int().min(1).max(100),
 			images: z.preprocess(
 				(value) => {
 					if (Array.isArray(value) && value.length > 0) {
@@ -145,6 +146,7 @@ const form = useVeeForm({
 		value: props.listing.value,
 		price: props.listing.price,
 		deposit_fee: props.listing.deposit_fee,
+		quantity: props.listing.quantity,
 		images: [], // to be populated by ImageUpload component
 		location: String(props.listing.location.id),
 	},
@@ -157,6 +159,7 @@ const inertiaForm = useInertiaForm({
 	value: "",
 	price: "",
 	deposit_fee: "",
+	quantity: "",
 	images: [],
 	_method: "PATCH", // simulate PATCH request
 	location_id: "",
@@ -175,6 +178,7 @@ const onSubmit = form.handleSubmit((values) => {
 	inertiaForm.value = Number(values.value);
 	inertiaForm.price = Number(values.price);
 	inertiaForm.deposit_fee = Number(values.deposit_fee);
+	inertiaForm.quantity = Number(values.quantity);
 	inertiaForm.images = values.images;
 
 	if (values.location === "new") {
@@ -292,7 +296,8 @@ watchEffect(() => {
 			<FormItem v-auto-animate>
 				<FormLabel>Security Deposit</FormLabel>
 				<FormDescription>
-					Set the security deposit amount renters must pay. This helps protect your item against damage or loss.
+					Set the security deposit amount renters must pay. This helps protect your item
+					against damage or loss.
 				</FormDescription>
 				<FormControl>
 					<Input type="number" v-bind="componentField" />
@@ -300,7 +305,8 @@ watchEffect(() => {
 				<FormMessage />
 				<FormDescription v-if="form.values.value > 0">
 					We suggest a security deposit between
-					{{ formatNumber(depositFee.minRate) }} and {{ formatNumber(depositFee.maxRate) }}
+					{{ formatNumber(depositFee.minRate) }} and
+					{{ formatNumber(depositFee.maxRate) }}
 					based on your item's value
 				</FormDescription>
 			</FormItem>

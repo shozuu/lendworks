@@ -53,6 +53,7 @@ const formSchema = toTypedSchema(
 				.refine((val) => Number.isInteger(val), {
 					message: "Deposit fee must be a whole number (no decimals).",
 				}),
+			quantity: z.number().int().min(1).max(100),
 			images: z.preprocess(
 				(value) => {
 					if (Array.isArray(value) && value.length > 0) {
@@ -133,6 +134,9 @@ const formSchema = toTypedSchema(
 
 const form = useVeeForm({
 	validationSchema: formSchema,
+	initialValues: {
+		quantity: 1,
+	},
 });
 
 const inertiaForm = useInertiaForm({
@@ -142,6 +146,7 @@ const inertiaForm = useInertiaForm({
 	value: "",
 	price: "",
 	deposit_fee: "",
+	quantity: 1,
 	images: [],
 	location_id: "",
 	new_location: false,
@@ -159,6 +164,7 @@ const onSubmit = form.handleSubmit((values) => {
 	inertiaForm.value = values.value;
 	inertiaForm.price = values.price;
 	inertiaForm.deposit_fee = values.deposit_fee;
+	inertiaForm.quantity = values.quantity;
 	inertiaForm.images = values.images;
 	if (values.location === "new") {
 		inertiaForm.new_location = true;
@@ -276,11 +282,25 @@ watchEffect(() => {
 			</FormItem>
 		</FormField>
 
+		<FormField v-slot="{ componentField }" name="quantity">
+			<FormItem v-auto-animate>
+				<FormLabel>Quantity Available</FormLabel>
+				<FormDescription
+					>How many of this item do you have available for rent?</FormDescription
+				>
+				<FormControl>
+					<Input type="number" min="1" max="100" v-bind="componentField" />
+				</FormControl>
+				<FormMessage />
+			</FormItem>
+		</FormField>
+
 		<FormField v-slot="{ componentField }" name="deposit_fee">
 			<FormItem v-auto-animate>
 				<FormLabel>Security Deposit</FormLabel>
 				<FormDescription>
-					Set the security deposit amount renters must pay. This helps protect your item against damage or loss.
+					Set the security deposit amount renters must pay. This helps protect your item
+					against damage or loss.
 				</FormDescription>
 				<FormControl>
 					<Input type="number" v-bind="componentField" />
@@ -288,7 +308,8 @@ watchEffect(() => {
 				<FormMessage />
 				<FormDescription v-if="form.values.value > 0">
 					We suggest a security deposit between
-					{{ formatNumber(depositFee.minRate) }} and {{ formatNumber(depositFee.maxRate) }}
+					{{ formatNumber(depositFee.minRate) }} and
+					{{ formatNumber(depositFee.maxRate) }}
 					based on your item's value
 				</FormDescription>
 			</FormItem>

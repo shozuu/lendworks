@@ -327,6 +327,7 @@ class ListingController extends Controller
             'location_id' => ['required_if:new_location,false', 'nullable', 'exists:locations,id'],
             'value' => ['required', 'integer', 'gt:0'],
             'price' => ['required', 'integer', 'gt:0'],
+            'quantity' => ['required', 'integer', 'min:1', 'max:100'],
             'images' => ['required', 'array', 'min:1'], 
             'images.*' => ['required', 'image', 'file', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
             // new location fields if creating new location

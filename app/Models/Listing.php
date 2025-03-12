@@ -22,13 +22,17 @@ class Listing extends Model
         'category_id',
         'user_id',
         'location_id',
-        'deposit_fee'
+        'deposit_fee',
+        'quantity',           
+        'available_quantity' 
     ];
 
     protected $casts = [
         'is_available' => 'boolean',
         'is_rented' => 'boolean',
-        'status' => 'string'
+        'status' => 'string',
+        'quantity' => 'integer',          
+        'available_quantity' => 'integer'  
     ];
 
     // Relationships
