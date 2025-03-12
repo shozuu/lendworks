@@ -207,6 +207,11 @@ const handleDelete = () => {
 						Security Deposit (Refundable):
 						<span class="font-medium">{{ formatNumber(listing.deposit_fee) }}</span>
 					</p>
+					<!-- Add quantity information -->
+					<p>
+						Available Units:
+						<span class="font-medium">{{ listing.quantity }}</span>
+					</p>
 					<p class="text-xs">
 						* The security deposit will be refunded after the rental period, subject to
 						item condition

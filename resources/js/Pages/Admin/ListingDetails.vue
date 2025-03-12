@@ -252,6 +252,24 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 				<div class="space-y-1">
 					<h2 class="text-lg font-semibold tracking-tight">Details</h2>
 					<div class="text-muted-foreground">{{ listing.desc }}</div>
+
+					<!-- Add quantity information -->
+					<div class="mt-10 p-4 bg-muted/50 rounded-lg">
+						<div class="space-y-2">
+							<div class="flex justify-between items-center">
+								<span class="text-sm font-medium">Total Units:</span>
+								<span>{{ listing.availability_details.total_quantity }}</span>
+							</div>
+							<div class="flex justify-between items-center">
+								<span class="text-sm font-medium">Currently Rented:</span>
+								<span>{{ listing.availability_details.rented_quantity }}</span>
+							</div>
+							<div class="flex justify-between items-center">
+								<span class="text-sm font-medium">Available Units:</span>
+								<span>{{ listing.availability_details.available_quantity }}</span>
+							</div>
+						</div>
+					</div>
 				</div>
 
 				<Separator class="my-4" />

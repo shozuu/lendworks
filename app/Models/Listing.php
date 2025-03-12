@@ -35,6 +35,10 @@ class Listing extends Model
         'available_quantity' => 'integer'  
     ];
 
+    protected $appends = [
+        'availability_details'
+    ];
+
     // Relationships
     public function user() {
         return $this->belongsTo(User::class);
@@ -137,6 +141,25 @@ class Listing extends Model
             'description' => $takedown->takedownReason->description,
             'feedback' => $takedown->custom_feedback,
             'date' => $takedown->created_at
+        ];
+    }
+
+    // calculate the quantity of the listing that is currently rented
+    public function getCurrentlyRentedQuantity()
+    {
+        return $this->rentalRequests()
+            ->whereIn('status', ['active', 'approved'])
+            ->sum('quantity_requested');
+    }
+
+    public function getAvailabilityDetailsAttribute()
+    {
+        $rentedQuantity = $this->getCurrentlyRentedQuantity();
+        
+        return [
+            'total_quantity' => $this->quantity,
+            'rented_quantity' => $rentedQuantity,
+            'available_quantity' => $this->quantity - $rentedQuantity
         ];
     }
 

@@ -75,6 +75,9 @@ class ListingController extends Controller
             ]);
             $fields['location_id'] = $location->id;
         }
+        
+        // Set available_quantity equal to quantity when creating a new listing
+        $fields['available_quantity'] = $fields['quantity'];
 
         $listing = $request->user()->listings()->create($fields);
 
@@ -230,6 +233,15 @@ class ListingController extends Controller
 
         $fields = $this->validateListing($request);
 
+        // If quantity is changing, update available_quantity 
+        if (isset($fields['quantity']) && $fields['quantity'] != $listing->quantity) {
+            // Calculate the change in quantity
+            $quantityDifference = $fields['quantity'] - $listing->quantity;
+            
+            // Adjust available_quantity by the same amount
+            $fields['available_quantity'] = max(0, $listing->available_quantity + $quantityDifference);
+        }
+
         // Store the previous status
         $wasRejected = $listing->status === 'rejected';
 
@@ -238,8 +250,7 @@ class ListingController extends Controller
             $fields['status'] = 'pending';
         }
 
-        $listing->update($fields);
-
+        // Create new location if requested
         if ($request->new_location) {
             $location = $request->user()->locations()->create([
                 'name' => $request->location_name,
@@ -249,11 +260,6 @@ class ListingController extends Controller
                 'postal_code' => $request->postal_code,
             ]);
             $fields['location_id'] = $location->id;
-        }
-
-        // set status to pending when updating an approved listing
-        if ($listing->status === 'approved') {
-            $fields['status'] = 'pending';
         }
 
         $listing->update($fields);
