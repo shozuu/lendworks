@@ -39,25 +39,32 @@ export function calculateDiscountPercentage(rentalDays, itemValue) {
         : rates[category].weekly;
 }
 
-export function calculateRentalPrice(dailyRate, itemValue, rentalDays, depositFee = 0) {
+export function calculateRentalPrice(dailyRate, itemValue, rentalDays, depositFee = 0, quantity = 1) {
     if (!dailyRate || !itemValue || !rentalDays || dailyRate < 0 || itemValue < 0 || rentalDays < 1) {
         throw new Error('Invalid input parameters');
     }
 
-    const basePrice = Math.round(dailyRate * rentalDays);
+    // Calculate base price with quantity
+    const basePrice = Math.round(dailyRate * rentalDays * quantity);
     const category = getValueCategory(itemValue);
     const discountRate = getDiscountRate(category, rentalDays);
     
+    // Apply discount to total base price
     const discount = Math.round(basePrice * discountRate);
     const discountedPrice = basePrice - discount;
+    
+    // Calculate service fee based on discounted price
     const fee = Math.round(discountedPrice * 0.10);
+    
+    // Calculate total deposit based on quantity
+    const totalDeposit = depositFee * quantity;
     
     return {
         basePrice,
         fee,
         discount,
         discountPercentage: Math.round(discountRate * 100),
-        deposit: depositFee,
-        totalPrice: discountedPrice + fee + depositFee  // Rental cost with deposit
+        deposit: totalDeposit,
+        totalPrice: discountedPrice + fee + totalDeposit
     };
 }
