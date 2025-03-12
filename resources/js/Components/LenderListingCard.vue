@@ -37,60 +37,66 @@ const listingImage = computed(() => {
 
 // Add overdue status check
 const isOverdue = computed(() => {
-  if (props.data.rental_request.status !== 'active') return false;
-  return new Date(props.data.rental_request.end_date) < new Date();
+	if (props.data.rental_request.status !== "active") return false;
+	return new Date(props.data.rental_request.end_date) < new Date();
 });
 
 // Update isPaidOverdue computed to properly check for verified payment
 const isPaidOverdue = computed(() => {
-  return isOverdue.value && 
-    props.data.rental_request.payment_request?.type === 'overdue' && 
-    props.data.rental_request.payment_request?.status === 'verified';
+	return (
+		isOverdue.value &&
+		props.data.rental_request.payment_request?.type === "overdue" &&
+		props.data.rental_request.payment_request?.status === "verified"
+	);
 });
 
 // Add new computed for pending overdue payment
 const hasPendingOverduePayment = computed(() => {
-  return isOverdue.value &&
-    props.data.rental_request.payment_request?.type === 'overdue' &&
-    props.data.rental_request.payment_request?.status === 'pending';
+	return (
+		isOverdue.value &&
+		props.data.rental_request.payment_request?.type === "overdue" &&
+		props.data.rental_request.payment_request?.status === "pending"
+	);
 });
 
 // Update details computed to include overdue information
 const details = computed(() => {
-  const baseDetails = [
-    {
-      label: "Total",
-      value: formatNumber(props.data.rental_request.total_price),
-    },
-    {
-      label: "Period",
-      value: `${formatRentalDate(props.data.rental_request.start_date)} - ${formatRentalDate(
-        props.data.rental_request.end_date
-      )}`,
-    },
-    {
-      label: "Renter",
-      value: props.data.rental_request.renter.name,
-    },
-  ];
+	const baseDetails = [
+		{
+			label: "Total",
+			value: formatNumber(props.data.rental_request.total_price),
+		},
+		{
+			label: "Period",
+			value: `${formatRentalDate(
+				props.data.rental_request.start_date
+			)} - ${formatRentalDate(props.data.rental_request.end_date)}`,
+		},
+		{
+			label: "Renter",
+			value: props.data.rental_request.renter.name,
+		},
+	];
 
-  // Add overdue days if rental is overdue
-  if (isOverdue.value) {
-    baseDetails.push({
-      label: isPaidOverdue.value ? "Paid Overdue Days" : "Overdue Days",
-      value: `${props.data.rental_request.overdue_days} days`,
-      class: isPaidOverdue.value ? 'text-amber-600' : 'text-red-600'
-    });
-  }
+	// Add overdue days if rental is overdue
+	if (isOverdue.value) {
+		baseDetails.push({
+			label: isPaidOverdue.value ? "Paid Overdue Days" : "Overdue Days",
+			value: `${props.data.rental_request.overdue_days} days`,
+			class: isPaidOverdue.value ? "text-amber-600" : "text-red-600",
+		});
+	}
 
-  return baseDetails;
+	return baseDetails;
 });
 
 const showRejectDialog = ref(false);
 const showAcceptDialog = ref(false);
 const showCancelDialog = ref(false);
 const showHandoverDialog = ref(false);
-const approveForm = useForm({});
+const approveForm = useForm({
+	quantity_approved: 1,
+});
 const rejectForm = useForm({
 	rejection_reason_id: "",
 	custom_feedback: "",
@@ -107,11 +113,17 @@ const isOtherReason = computed(() => {
 	return cancelForm.cancellation_reason_id === "other";
 });
 
+// Add computed for max allowed quantity
+const maxApproveQuantity = computed(() =>
+	Math.min(props.data.rental_request.quantity_requested, props.data.listing.quantity)
+);
+
 const handleApprove = () => {
 	approveForm.patch(route("rental-request.approve", props.data.rental_request.id), {
 		preserveScroll: true,
 		onSuccess: () => {
 			showAcceptDialog.value = false;
+			approveForm.quantity_approved = 1;
 		},
 	});
 };
@@ -145,10 +157,12 @@ const paymentRequest = computed(() => props.data.rental_request.payment_request)
 
 // Add computed property to check if handover is allowed
 const canShowHandover = computed(() => {
-    if (actions.value.canHandover) {
-        return props.data.rental_request.pickup_schedules?.some(schedule => schedule.is_selected);
-    }
-    return false;
+	if (actions.value.canHandover) {
+		return props.data.rental_request.pickup_schedules?.some(
+			(schedule) => schedule.is_selected
+		);
+	}
+	return false;
 });
 </script>
 
@@ -162,19 +176,23 @@ const canShowHandover = computed(() => {
 		:details="details"
 		@click="$inertia.visit(route('rental.show', data.rental_request.id))"
 	>
-			<!-- Additional details slot -->
+		<!-- Additional details slot -->
 		<template #additional-details>
-			<RentalDurationTracker 
-				v-if="data.rental_request.status === 'active'" 
+			<RentalDurationTracker
+				v-if="data.rental_request.status === 'active'"
 				:rental="data.rental_request"
 				class="mt-4"
-				/>
+			/>
 			<!-- Update the overdue messages -->
-			<div v-if="isOverdue" class="mt-4" :class="{
-				'text-red-600': !isPaidOverdue && !hasPendingOverduePayment,
-				'text-amber-600': hasPendingOverduePayment,
-				'text-green-600': isPaidOverdue
-			}">
+			<div
+				v-if="isOverdue"
+				class="mt-4"
+				:class="{
+					'text-red-600': !isPaidOverdue && !hasPendingOverduePayment,
+					'text-amber-600': hasPendingOverduePayment,
+					'text-green-600': isPaidOverdue,
+				}"
+			>
 				<p v-if="isPaidOverdue" class="text-sm font-medium">
 					Overdue fees have been paid. Please proceed with return process.
 				</p>
@@ -237,11 +255,15 @@ const canShowHandover = computed(() => {
 	<ConfirmDialog
 		:show="showAcceptDialog"
 		title="Approve Rental Request"
-		description="Are you sure you want to approve this rental request? This will mark your item as rented and reject all other pending requests."
+		:description="`Renter requested ${data.rental_request.quantity_requested} unit(s). Please specify how many units you want to approve.`"
 		confirmLabel="Approve Request"
 		confirmVariant="default"
 		:processing="approveForm.processing"
+		:showQuantity="true"
+		:quantityValue="approveForm.quantity_approved"
+		:maxQuantity="maxApproveQuantity"
 		@update:show="showAcceptDialog = $event"
+		@update:quantityValue="approveForm.quantity_approved = $event"
 		@confirm="handleApprove"
 		@cancel="showAcceptDialog = false"
 	/>

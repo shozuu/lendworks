@@ -68,6 +68,18 @@ const props = defineProps({
 		type: Boolean,
 		default: false,
 	},
+	showQuantity: {
+		type: Boolean,
+		default: false,
+	},
+	quantityValue: {
+		type: Number,
+		default: 1,
+	},
+	maxQuantity: {
+		type: Number,
+		default: 1,
+	},
 });
 
 const emits = defineEmits([
@@ -77,6 +89,7 @@ const emits = defineEmits([
 	"cancel",
 	"update:selectValue",
 	"keydown",
+	"update:quantityValue",
 ]);
 
 const handleConfirm = async () => {
@@ -144,6 +157,27 @@ const shouldShowTextarea = computed(() => {
 	if (!props.showSelect) return props.showTextarea;
 	return isSelectReasonOther.value;
 });
+
+const incrementQuantity = () => {
+	if (props.quantityValue < props.maxQuantity) {
+		emits("update:quantityValue", props.quantityValue + 1);
+	}
+};
+
+const decrementQuantity = () => {
+	if (props.quantityValue > 1) {
+		emits("update:quantityValue", props.quantityValue - 1);
+	}
+};
+
+const handleQuantityInput = (event) => {
+	const value = parseInt(event.target.value);
+	if (isNaN(value)) return;
+
+	// Clamp value between 1 and maxQuantity
+	const clampedValue = Math.min(Math.max(1, value), props.maxQuantity);
+	emits("update:quantityValue", clampedValue);
+};
 </script>
 
 <template>
@@ -167,6 +201,50 @@ const shouldShowTextarea = computed(() => {
 
 			<!-- Scrollable Content Area -->
 			<div class="sm:px-6 flex-1 px-4">
+				<!-- Enhanced quantity input -->
+				<div v-if="showQuantity" class="space-y-3 mb-4">
+					<div class="flex items-center justify-between">
+						<label class="text-sm font-medium">Quantity to Approve</label>
+						<span class="text-xs text-muted-foreground">
+							Maximum: {{ maxQuantity }} unit(s)
+						</span>
+					</div>
+
+					<div class="flex items-center gap-3">
+						<Button
+							type="button"
+							variant="outline"
+							size="icon"
+							class="h-8 w-8"
+							:disabled="quantityValue <= 1"
+							@click="decrementQuantity"
+						>
+							-
+						</Button>
+
+						<div class="relative flex-1">
+							<input
+								type="number"
+								:value="quantityValue"
+								@input="handleQuantityInput"
+								min="1"
+								:max="maxQuantity"
+								class="w-full h-8 px-3 text-center border rounded-md"
+							/>
+						</div>
+
+						<Button
+							type="button"
+							variant="outline"
+							size="icon"
+							class="h-8 w-8"
+							:disabled="quantityValue >= maxQuantity"
+							@click="incrementQuantity"
+						>
+							+
+						</Button>
+					</div>
+				</div>
 				<!-- Select input -->
 				<div v-if="showSelect" class="mb-4 space-y-2">
 					<!-- Select input -->
@@ -316,5 +394,15 @@ textarea::-webkit-scrollbar-thumb {
 textarea {
 	min-height: 120px;
 	max-height: 300px;
+}
+
+input[type="number"] {
+	-moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
 }
 </style>
