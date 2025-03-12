@@ -23,7 +23,9 @@ class RentalRequest extends Model
         'total_price',
         'status',
         'handover_at',
-        'return_at'
+        'return_at',
+        'quantity_requested',  
+        'quantity_approved'    
     ];
 
     protected $casts = [
@@ -45,7 +47,7 @@ class RentalRequest extends Model
         'overdue_days',
         'is_overdue',
         'overdue_fee',
-        'total_lender_earnings'  // Add this line
+        'total_lender_earnings'  
     ];
 
     // Define core rental status constants
@@ -57,7 +59,7 @@ class RentalRequest extends Model
     const STATUS_CANCELLED = 'cancelled';
     const STATUS_RENTER_PAID = 'renter_paid';
     const STATUS_PENDING_PROOF = 'pending_proof';
-    const STATUS_DISPUTED = 'disputed';  // Add this line
+    const STATUS_DISPUTED = 'disputed';  
 
     // Update the status display logic
     public function getStatusForDisplayAttribute(): string 
@@ -232,20 +234,6 @@ class RentalRequest extends Model
         $isRenter = $user && $user->id === $this->renter_id;
         $isLender = $user && $user->id === $this->listing->user_id;
 
-        // Debug logging for dispute action check
-        \Log::info('Dispute Action Check:', [
-            'rental_id' => $this->id,
-            'status' => $this->status,
-            'isLender' => $isLender,
-            'has_dispute' => (bool) $this->dispute,
-            'dispute_status' => $this->dispute?->status,
-            'resolution_type' => $this->dispute?->resolution_type,
-            'can_raise_dispute' => $isLender && (
-                ($this->status === 'pending_final_confirmation' && !$this->dispute) ||
-                ($this->dispute && $this->dispute->resolution_type === 'rejected')
-            )
-        ]);
-
         $actions = [
             'canApprove' => !$isRenter && $this->canApprove(),
             'canReject' => !$isRenter && $this->canReject(),
@@ -286,17 +274,6 @@ class RentalRequest extends Model
             $this->status === 'pending_proof' && 
             $this->renter_id === $user->id;
 
-        // Add debug logging
-        \Log::info('Completion Payments Status:', [
-            'rental_id' => $this->id,
-            'has_lender_payment' => $this->completion_payments()
-                ->where('type', 'lender_payment')
-                ->exists(),
-            'has_deposit_refund' => $this->completion_payments()
-                ->where('type', 'deposit_refund')
-                ->exists()
-        ]);
-
         $actions['canProcessLenderPayment'] = !$this->completion_payments()
             ->where('type', 'lender_payment')
             ->exists();
@@ -312,16 +289,6 @@ class RentalRequest extends Model
         $actions['hasDepositRefund'] = $this->completion_payments()
             ->where('type', 'deposit_refund')
             ->exists();
-
-        \Log::info('Dispute Action Detailed Check:', [
-            'rental_id' => $this->id,
-            'status' => $this->status,
-            'dispute_exists' => (bool) $this->dispute,
-            'dispute_status' => $this->dispute?->status,
-            'resolution_type' => $this->dispute?->resolution_type,
-            'verdict' => $this->dispute?->verdict,
-            'resolved_at' => $this->dispute?->resolved_at
-        ]);
 
         return $actions;
     }
@@ -414,16 +381,6 @@ class RentalRequest extends Model
             $this->load('overdue_payment');
         }
 
-        // Add detailed debug logging
-        \Log::info('Rental Request Details:', [
-            'rental_id' => $this->id,
-            'raw_values' => [
-                'base_price' => $this->base_price,
-                'discount' => $this->discount,
-                'service_fee' => $this->service_fee,
-            ]
-        ]);
-
         // Cast values to integers and ensure they're not null
         $basePrice = (int) ($this->base_price ?? 0);
         $discount = (int) ($this->discount ?? 0);
@@ -442,19 +399,6 @@ class RentalRequest extends Model
 
         // Calculate total
         $totalEarnings = $baseEarnings + $overdueFee;
-
-        // Debug logging for calculations
-        \Log::info('Lender Earnings Calculation:', [
-            'rental_id' => $this->id,
-            'calculations' => [
-                'base_price' => $basePrice,
-                'discount' => $discount,
-                'service_fee' => $serviceFee,
-                'base_earnings' => $baseEarnings,
-                'overdue_fee' => $overdueFee,
-                'total_earnings' => $totalEarnings
-            ]
-        ]);
 
         return [
             'base' => max(0, $baseEarnings), // Ensure no negative values
@@ -507,13 +451,7 @@ class RentalRequest extends Model
         // Add deposit deductions
         $depositDeductions = $this->depositDeductions()->sum('amount');
         
-        \Log::info('Calculating total lender earnings', [
-            'rental_id' => $this->id,
-            'base_earnings' => $baseEarnings,
-            'overdue_fee' => $overdueFee,
-            'deposit_deductions' => $depositDeductions,
-            'total' => $baseEarnings + $overdueFee + $depositDeductions
-        ]);
+
 
         return $baseEarnings + $overdueFee + $depositDeductions;
     }
@@ -526,16 +464,6 @@ class RentalRequest extends Model
             ->sum('amount') ?? 0;
 
         $remainingDeposit = $this->deposit_fee - $totalDeductions;
-        
-        \Log::info('Calculating Remaining Deposit', [
-            'rental_id' => $this->id,
-            'original_deposit' => $this->deposit_fee,
-            'total_deductions' => $totalDeductions,
-            'remaining' => $remainingDeposit,
-            'deductions_count' => DB::table('deposit_deductions')
-                ->where('rental_request_id', $this->id)
-                ->count()
-        ]);
 
         return max(0, $remainingDeposit);
     }
@@ -696,5 +624,23 @@ class RentalRequest extends Model
             ->where('renter_id', $renterId)
             ->whereIn('status', ['pending', 'approved', 'active'])
             ->first();
+    }
+
+    public function recalculatePrices()
+    {
+        // Get price per unit
+        $perUnitBasePrice = $this->base_price / $this->quantity_requested;
+        $perUnitDiscount = $this->discount / $this->quantity_requested;
+        $perUnitServiceFee = $this->service_fee / $this->quantity_requested;
+        $perUnitDepositFee = $this->deposit_fee / $this->quantity_requested;
+        
+        // Calculate new totals based on approved quantity
+        $this->base_price = $perUnitBasePrice * $this->quantity_approved;
+        $this->discount = $perUnitDiscount * $this->quantity_approved;
+        $this->service_fee = $perUnitServiceFee * $this->quantity_approved;
+        $this->deposit_fee = $perUnitDepositFee * $this->quantity_approved;
+        $this->total_price = ($this->base_price - $this->discount + $this->service_fee + $this->deposit_fee);
+        
+        return $this;
     }
 }

@@ -121,9 +121,15 @@ class RentalRequestController extends Controller
                 'service_fee' => ['required', 'numeric', 'min:0'],
                 'deposit_fee' => ['required', 'numeric', 'min:0'], 
                 'total_price' => ['required', 'numeric', 'min:0'],
+                'quantity_requested' => ['required', 'integer', 'min:1'], // Add this line
             ]);
 
             $listing = Listing::with('user')->findOrFail($validated['listing_id']);
+
+            // Validate quantity
+            if ($validated['quantity_requested'] > $listing->quantity) {
+                throw new \Exception('Requested quantity exceeds available units.');
+            }
 
             // logic checks for duplicates
             if (RentalRequest::hasExistingRequest($listing->id, Auth::id())) {
@@ -159,7 +165,8 @@ class RentalRequestController extends Controller
                     'renter_id' => Auth::id(),
                     'start_date' => $dates['start'],
                     'end_date' => $dates['end'],
-                    'status' => 'pending'
+                    'status' => 'pending',
+                    'quantity_approved' => null // Add this line
                 ]);
 
                 $rentalRequest->save();
@@ -201,27 +208,47 @@ class RentalRequestController extends Controller
         ];
     }
 
-    public function approve(RentalRequest $rentalRequest)
+    public function approve(Request $request, RentalRequest $rentalRequest)
     {
         if ($rentalRequest->listing->user_id !== Auth::id()) {
             abort(403);
         }
+
+        // Validate the approved quantity
+        $validated = $request->validate([
+            'quantity_approved' => [
+                'required',
+                'integer',
+                'min:1',
+                'max:' . min($rentalRequest->quantity_requested, $rentalRequest->listing->quantity)
+            ]
+        ]);
+
         if ($rentalRequest->listing->is_rented) {
             return back()->with('error', 'This item is currently rented.');
         }
 
         try {
-            DB::transaction(function () use ($rentalRequest) {
-                // 1. Approve the current request
-                $rentalRequest->update(['status' => 'approved']);
-                $rentalRequest->recordTimelineEvent('approved', Auth::id());
+            DB::transaction(function () use ($rentalRequest, $validated) {
+                // Update approved quantity and recalculate prices
+                $rentalRequest->quantity_approved = $validated['quantity_approved'];
+                $rentalRequest->recalculatePrices()->save();
                 
-                // 2. Mark listing as rented and unavailable
-                $rentalRequest->listing->update([
-                    'is_rented' => true, 
+                // Update status and create timeline event with quantity info
+                $rentalRequest->update(['status' => 'approved']);
+                $rentalRequest->recordTimelineEvent('approved', Auth::id(), [
+                    'quantity_requested' => $rentalRequest->quantity_requested,
+                    'quantity_approved' => $rentalRequest->quantity_approved,
+                    'original_total' => $rentalRequest->getOriginal('total_price'),
+                    'adjusted_total' => $rentalRequest->total_price
                 ]);
                 
-                // 3. Find all overlapping pending requests
+                // Mark listing as partially or fully rented
+                $rentalRequest->listing->update([
+                    'is_rented' => true
+                ]);
+                
+                // Process overlapping requests as before
                 $overlappingRequests = $rentalRequest->getOverlappingRequests();
                 
                 // 4. Get the rejection reason for unavailability
@@ -261,7 +288,7 @@ class RentalRequestController extends Controller
                 }
             });
 
-            // 6. Notify approved renter
+            // Notify approved renter with quantity information
             $rentalRequest->renter->notify(new RentalRequestApproved($rentalRequest));
 
             return back()->with('success', 'Rental request approved successfully.');
