@@ -56,53 +56,63 @@ const listingImage = computed(() => {
 
 // Add overdue status check
 const isOverdue = computed(() => {
-  if (props.rental.status !== 'active') return false;
-  return new Date(props.rental.end_date) < new Date();
+	if (props.rental.status !== "active") return false;
+	return new Date(props.rental.end_date) < new Date();
 });
 
 // Update isPaidOverdue computed to properly check for verified payment
 const isPaidOverdue = computed(() => {
-  return isOverdue.value && 
-    props.rental.payment_request?.type === 'overdue' && 
-    props.rental.payment_request?.status === 'verified';
+	return (
+		isOverdue.value &&
+		props.rental.payment_request?.type === "overdue" &&
+		props.rental.payment_request?.status === "verified"
+	);
 });
 
 // Add new computed for pending overdue payment
 const hasPendingOverduePayment = computed(() => {
-  return isOverdue.value &&
-    props.rental.payment_request?.type === 'overdue' &&
-    props.rental.payment_request?.status === 'pending';
+	return (
+		isOverdue.value &&
+		props.rental.payment_request?.type === "overdue" &&
+		props.rental.payment_request?.status === "pending"
+	);
 });
 
-// Update the details computed to include overdue information
+// Update the details computed to include quantity and overdue information
 const details = computed(() => {
-  const baseDetails = [
-    {
-      label: "Total",
-      value: formatNumber(props.rental.total_price),
-    },
-    {
-      label: "Period",
-      value: `${formatRentalDate(props.rental.start_date)} - ${formatRentalDate(
-        props.rental.end_date
-      )}`,
-    },
-    {
-      label: "Owner",
-      value: props.rental.listing.user.name,
-    },
-  ];
+	const baseDetails = [
+		{
+			label: "Total",
+			value: formatNumber(props.rental.total_price),
+		},
+		{
+			label: "Quantity",
+			value: props.rental.quantity_approved
+				? `${props.rental.quantity_approved} unit(s)`
+				: `${props.rental.quantity_requested} requested`,
+		},
+		{
+			label: "Period",
+			value: `${formatRentalDate(props.rental.start_date)} - ${formatRentalDate(
+				props.rental.end_date
+			)}`,
+		},
+		{
+			label: "Owner",
+			value: props.rental.listing.user.name,
+		},
+	];
 
-  // Add overdue days if rental is overdue
-  if (isOverdue.value) {
-    baseDetails.push({
-      label: isPaidOverdue.value ? "Paid Overdue Days" : "Overdue Days",
-      value: `${props.rental.overdue_days} days`,
-      class: isPaidOverdue.value ? 'text-amber-600' : 'text-red-600'
-    });
-  }
+	// Add overdue days if rental is overdue
+	if (isOverdue.value) {
+		baseDetails.push({
+			label: isPaidOverdue.value ? "Paid Overdue Days" : "Overdue Days",
+			value: `${props.rental.overdue_days} days`,
+			class: isPaidOverdue.value ? "text-amber-600" : "text-red-600",
+		});
+	}
 
-  return baseDetails;
+	return baseDetails;
 });
 
 // computed property to check if rental has payment
@@ -122,19 +132,23 @@ const actions = computed(() => props.rental.available_actions);
 		:details="details"
 		@click="$inertia.visit(route('rental.show', rental.id))"
 	>
-			<!-- Additional details slot -->
+		<!-- Additional details slot -->
 		<template #additional-details>
-			<RentalDurationTracker 
-				v-if="rental.status === 'active'" 
+			<RentalDurationTracker
+				v-if="rental.status === 'active'"
 				:rental="rental"
 				class="mt-4"
-				/>
+			/>
 			<!-- Update the overdue messages -->
-			<div v-if="isOverdue" class="mt-4" :class="{
-				'text-red-600': !isPaidOverdue && !hasPendingOverduePayment,
-				'text-amber-600': hasPendingOverduePayment,
-				'text-green-600': isPaidOverdue
-			}">
+			<div
+				v-if="isOverdue"
+				class="mt-4"
+				:class="{
+					'text-red-600': !isPaidOverdue && !hasPendingOverduePayment,
+					'text-amber-600': hasPendingOverduePayment,
+					'text-green-600': isPaidOverdue,
+				}"
+			>
 				<p v-if="isPaidOverdue" class="text-sm font-medium">
 					Overdue fees have been paid. You can now proceed with return process.
 				</p>

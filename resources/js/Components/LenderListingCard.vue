@@ -67,6 +67,12 @@ const details = computed(() => {
 			value: formatNumber(props.data.rental_request.total_price),
 		},
 		{
+			label: "Quantity",
+			value: props.data.rental_request.quantity_approved
+				? `${props.data.rental_request.quantity_approved} approved (${props.data.rental_request.quantity_requested} requested)`
+				: `${props.data.rental_request.quantity_requested} unit(s) requested`,
+		},
+		{
 			label: "Period",
 			value: `${formatRentalDate(
 				props.data.rental_request.start_date
@@ -113,9 +119,12 @@ const isOtherReason = computed(() => {
 	return cancelForm.cancellation_reason_id === "other";
 });
 
-// Add computed for max allowed quantity
+// maxApproveQuantity computed property
 const maxApproveQuantity = computed(() =>
-	Math.min(props.data.rental_request.quantity_requested, props.data.listing.quantity)
+	Math.min(
+		props.data.rental_request.quantity_requested,
+		props.data.listing.available_quantity
+	)
 );
 
 const handleApprove = () => {
