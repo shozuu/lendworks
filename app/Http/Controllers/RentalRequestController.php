@@ -220,7 +220,7 @@ class RentalRequestController extends Controller
                 'required',
                 'integer',
                 'min:1',
-                'max:' . min($rentalRequest->quantity_requested, $rentalRequest->listing->quantity)
+                'max:' . min($rentalRequest->quantity_requested, $rentalRequest->listing->available_quantity)
             ]
         ]);
 
@@ -239,11 +239,11 @@ class RentalRequestController extends Controller
                     'adjusted_total' => $rentalRequest->total_price
                 ]);
                 
-                // Update listing's available quantity
-                $rentalRequest->listing->decrement('quantity', $validated['quantity_approved']);
+                // Update listing's available quantity 
+                $rentalRequest->listing->decrement('available_quantity', $validated['quantity_approved']);
 
-                // If no more items available, update listing status
-                if ($rentalRequest->listing->quantity <= 0) {
+                // Update listing's rental status based on available_quantity
+                if ($rentalRequest->listing->available_quantity <= 0) {
                     $rentalRequest->listing->update(['is_rented' => true]);
                     
                     // Only reject overlapping requests when no quantities are left
@@ -365,29 +365,28 @@ class RentalRequestController extends Controller
                     'custom_feedback' => $validated['custom_feedback']
                 ]);
 
-                // Restore listing quantity if this was an approved request
-                if ($rentalRequest->status === 'approved' && $rentalRequest->quantity_approved) {
-                    $rentalRequest->listing()->increment('quantity', $rentalRequest->quantity_approved);
+                // Restore listing available_quantity if this was an approved request
+                if ($rentalRequest->quantity_approved) {
+                    $listing = $rentalRequest->listing;
+                    
+                    // Increment available quantity
+                    $listing->increment('available_quantity', $rentalRequest->quantity_approved);
+
+                    // set back to false since we now have available quantity
+                    $listing->update(['is_rented' => false]);
                 }
 
-                // Always update listing status when cancelling
-                $rentalRequest->listing->update([
-                    'is_rented' => false,
-                ]);
-
-                // Record timeline event with role-specific metadata
+                // Record timeline event
                 $rentalRequest->recordTimelineEvent('cancelled', $user->id, [
                     'reason' => $cancellationReason->description,
                     'label' => $cancellationReason->label,
                     'feedback' => $validated['custom_feedback'],
                     'cancelled_by' => $isRenter ? 'renter' : 'lender',
                     'canceller_name' => $user->name,
-                    'role' => $cancellationReason->role
+                    'role' => $cancellationReason->role,
+                    'restored_quantity' => $rentalRequest->quantity_approved
                 ]);
             });
-
-            // Reload the model with the proper relationship structure
-            $rentalRequest->load(['latestCancellation.cancellationReason']);
 
             return back()->with('success', 'Rental request cancelled successfully.');
         } catch (\Exception $e) {

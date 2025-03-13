@@ -149,7 +149,7 @@ class Listing extends Model
     {
         return $this->rentalRequests()
             ->whereIn('status', ['active', 'approved'])
-            ->sum('quantity_requested');
+            ->sum('quantity_approved');
     }
 
     public function getAvailabilityDetailsAttribute()
@@ -157,9 +157,9 @@ class Listing extends Model
         $rentedQuantity = $this->getCurrentlyRentedQuantity();
         
         return [
-            'total_quantity' => $this->quantity,
-            'rented_quantity' => $rentedQuantity,
-            'available_quantity' => $this->quantity - $rentedQuantity
+            'total_quantity' => $this->quantity,  // Total owned quantity
+            'rented_quantity' => $rentedQuantity, // Currently rented (approved) quantity
+            'available_quantity' => $this->available_quantity // Available for rent
         ];
     }
 

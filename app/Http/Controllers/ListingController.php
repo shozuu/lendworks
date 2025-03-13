@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use App\Traits\ChecksSuspendedUsers;
+use Illuminate\Support\Facades\DB;
 
 class ListingController extends Controller
 {
@@ -76,21 +77,32 @@ class ListingController extends Controller
             $fields['location_id'] = $location->id;
         }
         
-        // Set available_quantity equal to quantity when creating a new listing
-        $fields['available_quantity'] = $fields['quantity'];
-
-        $listing = $request->user()->listings()->create($fields);
-
-        if ($request->hasFile('images')) {
-            foreach ($request->images as $index => $image) {
-                $path = $image->store('images/listing', 'public'); 
-
-                // save image details to the database
-                $listing->images()->create([
-                    'image_path' => $path,
-                    'order' => $index,
+        try {
+            DB::transaction(function () use ($request, $fields) {
+                // Set initial available_quantity equal to quantity
+                $fields['available_quantity'] = $fields['quantity'];
+                
+                // Create listing
+                $listing = Listing::create([
+                    ...$fields,
+                    'user_id' => Auth::id(),
+                    'status' => 'pending'
                 ]);
-            }
+
+                if ($request->hasFile('images')) {
+                    foreach ($request->images as $index => $image) {
+                        $path = $image->store('images/listing', 'public'); 
+
+                        // save image details to the database
+                        $listing->images()->create([
+                            'image_path' => $path,
+                            'order' => $index,
+                        ]);
+                    }
+                }
+            });
+        } catch (Exception $e) {
+            return redirect()->route('my-listings')->with('status', 'Listing creation failed.');
         }
 
         return redirect()->route('my-listings')->with('status', 'Listing created successfully.');
@@ -238,7 +250,7 @@ class ListingController extends Controller
             // Calculate the change in quantity
             $quantityDifference = $fields['quantity'] - $listing->quantity;
             
-            // Adjust available_quantity by the same amount
+            // adjust available_quantity by the same amount
             $fields['available_quantity'] = max(0, $listing->available_quantity + $quantityDifference);
         }
 
