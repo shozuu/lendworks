@@ -55,7 +55,7 @@ const rentalDays = computed(() => {
 	const diffTime = Math.abs(end.getTime() - start.getTime());
 
 	// Add 1 to include both start and end dates
-	return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+	return Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
 });
 
 const discountPercentage = computed(() =>
@@ -252,7 +252,7 @@ const showOverdueSection = computed(() => {
 
 // Add computed for max allowed quantity
 const maxApproveQuantity = computed(() =>
-	Math.min(props.rental.quantity_requested, props.rental.listing.quantity)
+	Math.min(props.rental.quantity_requested, props.rental.listing.available_quantity)
 );
 </script>
 

@@ -269,6 +269,7 @@ const hasRejectionHistory = computed(() => props.listing.rejection_reasons?.leng
 								<span>{{ listing.availability_details.available_quantity }}</span>
 							</div>
 						</div>
+						{{ console.log(listing) }}
 					</div>
 				</div>
 
