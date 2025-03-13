@@ -77,12 +77,12 @@ Route::middleware(['auth'])->group(function () {
         ->name('pickup-schedules.destroy');
 
     // Lender pickup schedules
-    Route::post('lender/pickup-schedules', [LenderPickupScheduleController::class, 'store'])
-        ->name('lender.pickup-schedules.store');
     Route::delete('lender/pickup-schedules/{schedule}', [LenderPickupScheduleController::class, 'destroy'])
         ->name('lender.pickup-schedules.destroy');
     Route::patch('/lender/pickup-schedules/{schedule}', [LenderPickupScheduleController::class, 'update'])
         ->name('lender.pickup-schedules.update');
+    Route::post('lender/pickup-schedules/bulk', [LenderPickupScheduleController::class, 'storeBulk'])
+        ->name('lender.pickup-schedules.store-bulk');
 
     // Return routes
     Route::controller(ReturnController::class)->group(function () {
