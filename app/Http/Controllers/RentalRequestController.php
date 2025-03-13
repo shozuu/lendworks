@@ -224,17 +224,13 @@ class RentalRequestController extends Controller
             ]
         ]);
 
-        if ($rentalRequest->listing->is_rented) {
-            return back()->with('error', 'This item is currently rented.');
-        }
-
         try {
             DB::transaction(function () use ($rentalRequest, $validated) {
                 // Update approved quantity and recalculate prices
                 $rentalRequest->quantity_approved = $validated['quantity_approved'];
                 $rentalRequest->recalculatePrices()->save();
                 
-                // Update status and create timeline event with quantity info
+                // Update status and create timeline event
                 $rentalRequest->update(['status' => 'approved']);
                 $rentalRequest->recordTimelineEvent('approved', Auth::id(), [
                     'quantity_requested' => $rentalRequest->quantity_requested,
@@ -243,52 +239,42 @@ class RentalRequestController extends Controller
                     'adjusted_total' => $rentalRequest->total_price
                 ]);
                 
-                // Mark listing as partially or fully rented
-                $rentalRequest->listing->update([
-                    'is_rented' => true
-                ]);
-                
-                // Process overlapping requests as before
-                $overlappingRequests = $rentalRequest->getOverlappingRequests();
-                
-                // 4. Get the rejection reason for unavailability
-                $unavailableReason = RentalRejectionReason::where('code', 'unavailable')->first();
-                
-                // 5. Reject all overlapping requests
-                foreach ($overlappingRequests as $request) {
-                    // Mark as rejected
-                    $request->update(['status' => 'rejected']);
-                    
-                    // Format dates for the message
-                    $periodMessage = sprintf(
-                        'This item has been rented to another user for the period of %s to %s.',
-                        $rentalRequest->start_date->format('M d, Y'),
-                        $rentalRequest->end_date->format('M d, Y')
-                    );
-                    
-                    // Add rejection reason
-                    $request->rejectionReasons()->attach($unavailableReason->id, [
-                        'custom_feedback' => $periodMessage,
-                        'lender_id' => Auth::id()
-                    ]);
+                // Update listing's available quantity
+                $rentalRequest->listing->decrement('quantity', $validated['quantity_approved']);
 
-                    // Record timeline event with metadata using the rejection reason data
-                    $request->recordTimelineEvent('rejected', Auth::id(), [
-                        'reason' => $unavailableReason->description,
-                        'action_needed' => $unavailableReason->action_needed,
-                        'label' => $unavailableReason->label,
-                        'feedback' => $periodMessage,
-                        'auto_rejected' => true,
-                        'approved_request_id' => $rentalRequest->id
-                    ]);
+                // If no more items available, update listing status
+                if ($rentalRequest->listing->quantity <= 0) {
+                    $rentalRequest->listing->update(['is_rented' => true]);
                     
-                    // Notify rejected renters
-                    $request->load('latestRejection.rejectionReason');
-                    $request->renter->notify(new RentalRequestRejected($request));
+                    // Only reject overlapping requests when no quantities are left
+                    $overlappingRequests = $rentalRequest->getOverlappingRequests();
+                    $unavailableReason = RentalRejectionReason::where('code', 'unavailable')->first();
+                    
+                    foreach ($overlappingRequests as $request) {
+                        $request->update(['status' => 'rejected']);
+                        
+                        $periodMessage = 'All units of this item have been rented out for your requested period.';
+                        
+                        $request->rejectionReasons()->attach($unavailableReason->id, [
+                            'custom_feedback' => $periodMessage,
+                            'lender_id' => Auth::id()
+                        ]);
+
+                        $request->recordTimelineEvent('rejected', Auth::id(), [
+                            'reason' => $unavailableReason->description,
+                            'action_needed' => $unavailableReason->action_needed,
+                            'label' => $unavailableReason->label,
+                            'feedback' => $periodMessage,
+                            'auto_rejected' => true,
+                            'approved_request_id' => $rentalRequest->id
+                        ]);
+                        
+                        $request->renter->notify(new RentalRequestRejected($request));
+                    }
                 }
             });
 
-            // Notify approved renter with quantity information
+            // Notify approved renter
             $rentalRequest->renter->notify(new RentalRequestApproved($rentalRequest));
 
             return back()->with('success', 'Rental request approved successfully.');
@@ -378,6 +364,11 @@ class RentalRequestController extends Controller
                 $rentalRequest->cancellationReasons()->attach($validated['cancellation_reason_id'], [
                     'custom_feedback' => $validated['custom_feedback']
                 ]);
+
+                // Restore listing quantity if this was an approved request
+                if ($rentalRequest->status === 'approved' && $rentalRequest->quantity_approved) {
+                    $rentalRequest->listing()->increment('quantity', $rentalRequest->quantity_approved);
+                }
 
                 // Always update listing status when cancelling
                 $rentalRequest->listing->update([
