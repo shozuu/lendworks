@@ -252,14 +252,14 @@ onMounted(() => {
 							<Button
 								variant="outline"
 								size="sm"
-								:disabled="quantity >= listing.quantity"
+								:disabled="quantity >= listing.available_quantity"
 								@click="quantity++"
 							>
 								+
 							</Button>
 						</div>
 						<p class="text-muted-foreground text-xs">
-							{{ listing.quantity }} units available
+							{{ listing.available_quantity }} units available for rent
 						</p>
 					</div>
 
