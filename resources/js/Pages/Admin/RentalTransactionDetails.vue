@@ -295,88 +295,100 @@ const showOverdueSection = computed(() => {
 								</div>
 							</div>
 
-							<!-- Price Breakdown -->
+							<!-- Replace Price Breakdown and Rental Details sections with new layout -->
 							<div class="space-y-4">
-								<h4 class="font-medium">Price Details</h4>
-								<div class="space-y-2">
-									<!-- Regular pricing items -->
-									<div class="flex justify-between text-sm">
-										<span class="text-muted-foreground">
-											{{ formatNumber(rental.listing.price) }} × {{ rentalDays }} rental
-											days
-										</span>
-										<span>{{ formatNumber(rental.base_price) }}</span>
+								<h4 class="font-medium">Rental Summary</h4>
+								<div>
+									<!-- Quantity Info -->
+									<div class="grid gap-4 pb-4 border-b">
+										<div class="text-sm">
+											<div class="flex justify-between font-medium">
+												<span>Quantity</span>
+												<span>{{ rental.quantity_approved }} unit(s)</span>
+											</div>
+											<div
+												v-if="rental.quantity_approved < rental.quantity_requested"
+												class="mt-1"
+											>
+												<p class="text-muted-foreground text-xs">
+													Owner approved {{ rental.quantity_approved }} out of
+													{{ rental.quantity_requested }} requested units
+												</p>
+											</div>
+										</div>
+
+										<div class="text-sm">
+											<div class="flex justify-between">
+												<span class="text-muted-foreground">Duration</span>
+												<span>{{ rentalDays }} days</span>
+											</div>
+											<div class="flex justify-between">
+												<span class="text-muted-foreground">Daily Rate</span>
+												<span>{{ formatNumber(rental.listing.price) }} per unit</span>
+											</div>
+										</div>
 									</div>
 
-									<div class="flex justify-between text-sm">
-										<span class="text-muted-foreground">Duration Discount</span>
-										<span>-{{ formatNumber(rental.discount) }}</span>
-									</div>
+									<!-- Price Breakdown -->
+									<div class="pt-4 space-y-2 text-sm">
+										<div class="flex justify-between">
+											<span class="text-muted-foreground">
+												{{ formatNumber(rental.listing.price) }} ×
+												{{ rental.quantity_approved }} unit(s) × {{ rentalDays }} days
+											</span>
+											<span>{{ formatNumber(rental.base_price) }}</span>
+										</div>
 
-									<div class="flex justify-between text-sm">
-										<span class="text-muted-foreground">LendWorks Fee</span>
-										<span>{{ formatNumber(rental.service_fee) }}</span>
-									</div>
+										<div class="flex justify-between">
+											<span class="text-muted-foreground">Duration Discount</span>
+											<span class="text-emerald-500"
+												>-{{ formatNumber(rental.discount) }}</span
+											>
+										</div>
 
-									<div class="flex justify-between text-sm">
-										<span class="text-muted-foreground"
-											>Security Deposit (Refundable)</span
-										>
-										<span>{{ formatNumber(rental.deposit_fee) }}</span>
-									</div>
+										<div class="flex justify-between">
+											<span class="text-muted-foreground">Platform Fee</span>
+											<span class="text-emerald-500">{{
+												formatNumber(rental.service_fee)
+											}}</span>
+										</div>
 
-									<Separator class="my-2" />
+										<div class="flex justify-between">
+											<span class="text-muted-foreground">
+												Security Deposit ({{
+													formatNumber(rental.deposit_fee / rental.quantity_approved)
+												}}
+												per unit)
+											</span>
+											<span>{{ formatNumber(rental.deposit_fee) }}</span>
+										</div>
 
-									<!-- Base total -->
-									<div class="flex justify-between font-medium">
-										<span>Total Amount</span>
-										<span>{{ formatNumber(baseTotal) }}</span>
-									</div>
-
-									<!-- Replace the Overdue Fee section in the template -->
-									<template v-if="rental.is_overdue">
-										<div class="mt-4 pt-4 border-t">
-											<div class="flex justify-between text-sm text-destructive">
+										<div v-if="rental.is_overdue" class="pt-2 mt-2 border-t">
+											<div class="text-destructive flex justify-between">
 												<span class="font-medium">Overdue Fee</span>
 												<span>{{ formatNumber(rental.overdue_fee) }}</span>
 											</div>
-
-											<!-- Add Overdue Payment Status -->
-											<div v-if="rental.overdue_payment" class="mt-2 text-sm">
-												<div class="flex justify-between text-emerald-500">
+											<div v-if="rental.overdue_payment" class="mt-1">
+												<div class="text-emerald-500 flex justify-between text-xs">
 													<span>Payment Verified</span>
 													<span>{{
 														formatDateTime(rental.overdue_payment.verified_at)
 													}}</span>
 												</div>
-												<p class="text-xs text-muted-foreground mt-1">
-													Overdue fees will be added to lender's earnings
-												</p>
 											</div>
 										</div>
-									</template>
 
-									<p class="text-muted-foreground mt-2 text-xs">
-										Note: Security deposit will be refunded after the rental period,
-										subject to item condition
-									</p>
-								</div>
-							</div>
+										<Separator class="my-2" />
 
-							<div class="space-y-4">
-								<h3 class="font-semibold">Rental Details</h3>
-								<div class="grid gap-2">
-									<div class="flex justify-between text-sm">
-										<span class="text-muted-foreground">Quantity:</span>
-										<span>{{ rental.quantity_requested }} unit(s)</span>
-									</div>
-									<div class="flex justify-between text-sm">
-										<span class="text-muted-foreground">Daily Rate:</span>
-										<span>{{ formatNumber(rental.listing.price) }}</span>
-									</div>
-									<div class="flex justify-between text-sm">
-										<span class="text-muted-foreground">Duration:</span>
-										<span>{{ rentalDays }} days</span>
+										<div class="flex justify-between font-medium">
+											<span>Total Amount</span>
+											<span class="text-primary">{{ formatNumber(baseTotal) }}</span>
+										</div>
+
+										<p class="text-muted-foreground mt-2 text-xs">
+											Security deposit will be refunded after the rental period, subject
+											to item condition
+										</p>
 									</div>
 								</div>
 							</div>
@@ -394,17 +406,17 @@ const showOverdueSection = computed(() => {
 					<CardContent class="p-6">
 						<!-- Show this when both payments are completed -->
 						<div v-if="showSuccessStatus" class="space-y-6">
-							<div class="flex items-center justify-center text-emerald-500 gap-2">
+							<div class="text-emerald-500 flex items-center justify-center gap-2">
 								<CheckCircle2 class="w-6 h-6" />
 								<p class="text-lg font-medium">All payments processed successfully</p>
 							</div>
 
 							<!-- Lender Payment Details -->
-							<div class="space-y-3 p-4 bg-muted rounded-lg">
+							<div class="bg-muted p-4 space-y-3 rounded-lg">
 								<h3 class="font-medium">Lender Payment</h3>
 								<div class="space-y-2 text-sm">
 									<!-- Add breakdown of lender payment -->
-									<div class="space-y-1 pb-2 border-b">
+									<div class="pb-2 space-y-1 border-b">
 										<div class="flex justify-between">
 											<span class="text-muted-foreground">Base Rental Price:</span>
 											<span>{{ formatNumber(rental.base_price) }}</span>
@@ -434,7 +446,7 @@ const showOverdueSection = computed(() => {
 									</div>
 
 									<!-- Rest of the payment details -->
-									<div v-if="lenderPayment" class="pt-2 border-t mt-2">
+									<div v-if="lenderPayment" class="pt-2 mt-2 border-t">
 										<div class="flex justify-between">
 											<span class="text-muted-foreground">Reference:</span>
 											<span class="font-medium">{{
@@ -460,7 +472,7 @@ const showOverdueSection = computed(() => {
 							</div>
 
 							<!-- Deposit Refund Details -->
-							<div class="space-y-3 p-4 bg-muted rounded-lg">
+							<div class="bg-muted p-4 space-y-3 rounded-lg">
 								<h3 class="font-medium">Security Deposit Refund</h3>
 								<div class="space-y-2 text-sm">
 									<div class="flex justify-between">
@@ -496,7 +508,7 @@ const showOverdueSection = computed(() => {
 							<!-- Lender Payment Section -->
 							<div class="space-y-4">
 								<h3 class="font-medium">Lender Payment</h3>
-								<p class="text-sm text-muted-foreground">
+								<p class="text-muted-foreground text-sm">
 									Process the payment to be sent to the lender
 								</p>
 								<Button
@@ -516,7 +528,7 @@ const showOverdueSection = computed(() => {
 							<!-- Deposit Refund Section -->
 							<div class="space-y-4">
 								<h3 class="font-medium">Security Deposit Refund</h3>
-								<p class="text-sm text-muted-foreground">
+								<p class="text-muted-foreground text-sm">
 									Process the security deposit refund for the renter
 								</p>
 								<Button
@@ -538,7 +550,7 @@ const showOverdueSection = computed(() => {
 				<Card v-if="showOverdueSection" class="shadow-sm">
 					<CardHeader class="bg-card border-b">
 						<CardTitle class="flex items-center gap-2">
-							<Clock class="w-4 h-4 text-destructive" />
+							<Clock class="text-destructive w-4 h-4" />
 							Overdue Details
 						</CardTitle>
 					</CardHeader>
@@ -546,7 +558,7 @@ const showOverdueSection = computed(() => {
 						<div class="space-y-6">
 							<!-- Overdue Period Info -->
 							<div class="space-y-4">
-								<div class="grid sm:grid-cols-2 gap-4">
+								<div class="sm:grid-cols-2 grid gap-4">
 									<div>
 										<p class="text-muted-foreground text-sm">Original End Date</p>
 										<p class="font-medium">
@@ -555,7 +567,7 @@ const showOverdueSection = computed(() => {
 									</div>
 									<div>
 										<p class="text-muted-foreground text-sm">Days Overdue</p>
-										<p class="font-medium text-destructive">
+										<p class="text-destructive font-medium">
 											{{ rental.overdue_days }} days
 										</p>
 									</div>
@@ -590,8 +602,8 @@ const showOverdueSection = computed(() => {
 							<div class="space-y-3">
 								<!-- Verified Payment -->
 								<div v-if="rental.overdue_payment?.verified_at" class="space-y-3">
-									<h3 class="font-medium text-emerald-500">Payment Verified</h3>
-									<div class="space-y-2 p-4 bg-muted rounded-lg text-sm">
+									<h3 class="text-emerald-500 font-medium">Payment Verified</h3>
+									<div class="bg-muted p-4 space-y-2 text-sm rounded-lg">
 										<div class="flex justify-between">
 											<span class="text-muted-foreground">Amount:</span>
 											<span>{{ formatNumber(rental.overdue_payment.amount) }}</span>
@@ -629,7 +641,7 @@ const showOverdueSection = computed(() => {
 									<h3 class="font-medium text-yellow-500">
 										Payment Pending Verification
 									</h3>
-									<div class="space-y-2 p-4 bg-muted rounded-lg text-sm">
+									<div class="bg-muted p-4 space-y-2 text-sm rounded-lg">
 										<div class="flex justify-between">
 											<span class="text-muted-foreground">Amount:</span>
 											<span>{{ formatNumber(rental.overdue_fee) }}</span>
@@ -657,8 +669,8 @@ const showOverdueSection = computed(() => {
 									"
 									class="space-y-3"
 								>
-									<h3 class="font-medium text-destructive">Payment Rejected</h3>
-									<div class="space-y-2 p-4 bg-muted rounded-lg text-sm">
+									<h3 class="text-destructive font-medium">Payment Rejected</h3>
+									<div class="bg-muted p-4 space-y-2 text-sm rounded-lg">
 										<div class="flex justify-between">
 											<span class="text-muted-foreground">Reference:</span>
 											<span>{{ rental.payment_request.reference_number }}</span>
@@ -667,7 +679,7 @@ const showOverdueSection = computed(() => {
 											<span class="text-muted-foreground">Rejected On:</span>
 											<span>{{ formatDateTime(rental.payment_request.updated_at) }}</span>
 										</div>
-										<p class="text-destructive/80 text-xs mt-2">
+										<p class="text-destructive/80 mt-2 text-xs">
 											Waiting for renter to submit new payment proof
 										</p>
 									</div>
@@ -676,7 +688,7 @@ const showOverdueSection = computed(() => {
 								<!-- No Payment -->
 								<div
 									v-else-if="!rental.overdue_payment"
-									class="text-sm text-muted-foreground text-center p-4 bg-muted/30 rounded-lg"
+									class="text-muted-foreground bg-muted/30 p-4 text-sm text-center rounded-lg"
 								>
 									Waiting for renter to submit overdue payment
 								</div>
@@ -751,30 +763,27 @@ const showOverdueSection = computed(() => {
 				<!-- Replace the existing lender earnings card with this simpler version -->
 				<Card class="shadow-sm">
 					<CardHeader class="bg-card border-b">
-						<CardTitle class="flex items-center gap-2">
-							<DollarSign class="w-4 h-4 text-emerald-500" />
-							Total Lender Earnings
-						</CardTitle>
+						<CardTitle> Total Lender Earnings </CardTitle>
 					</CardHeader>
 					<CardContent class="p-4">
 						<div class="space-y-3">
-							<div class="flex justify-between items-center">
+							<div class="flex items-center justify-between">
 								<span class="font-medium">Base Rental:</span>
 								<span>{{ formatNumber(rental.base_price) }}</span>
 							</div>
-							<div class="flex justify-between items-center text-destructive">
+							<div class="text-destructive flex items-center justify-between">
 								<span class="font-medium">Discounts & Fees:</span>
 								<span>- {{ formatNumber(rental.discount + rental.service_fee) }}</span>
 							</div>
 							<div
 								v-if="showOverdueSection"
-								class="flex justify-between items-center text-emerald-500"
+								class="text-emerald-500 flex items-center justify-between"
 							>
 								<span class="font-medium">Overdue Fee:</span>
 								<span>+ {{ formatNumber(rental.overdue_fee) }}</span>
 							</div>
 							<Separator />
-							<div class="flex justify-between items-center">
+							<div class="flex items-center justify-between">
 								<span class="font-medium">Total Earnings:</span>
 								<span class="text-emerald-500 text-lg">
 									{{
@@ -801,24 +810,21 @@ const showOverdueSection = computed(() => {
 				<!-- Platform Earnings Card - Moved and Restyled -->
 				<Card class="shadow-sm">
 					<CardHeader class="bg-card border-b">
-						<CardTitle class="flex items-center gap-2">
-							<Wallet class="w-4 h-4 text-primary" />
-							Platform Earnings
-						</CardTitle>
+						<CardTitle> Platform Earnings </CardTitle>
 					</CardHeader>
 					<CardContent class="p-4">
 						<div class="space-y-3">
 							<div class="grid gap-2 text-sm">
-								<div class="flex justify-between items-center">
+								<div class="flex items-center justify-between">
 									<span class="text-muted-foreground">Renter Fee:</span>
 									<span>{{ formatNumber(platformEarnings.renterFee) }}</span>
 								</div>
-								<div class="flex justify-between items-center">
+								<div class="flex items-center justify-between">
 									<span class="text-muted-foreground">Lender Fee:</span>
 									<span>{{ formatNumber(platformEarnings.lenderFee) }}</span>
 								</div>
 								<Separator class="my-1" />
-								<div class="flex justify-between items-center font-medium">
+								<div class="flex items-center justify-between font-medium">
 									<span>Total:</span>
 									<span class="text-primary">{{
 										formatNumber(platformEarnings.total)
