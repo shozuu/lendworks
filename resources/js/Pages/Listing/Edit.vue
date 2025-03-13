@@ -312,6 +312,20 @@ watchEffect(() => {
 			</FormItem>
 		</FormField>
 
+		<!-- Add Quantity Field -->
+		<FormField v-slot="{ componentField }" name="quantity">
+			<FormItem v-auto-animate>
+				<FormLabel>Quantity Available</FormLabel>
+				<FormDescription
+					>How many units of this item do you have available for rent?</FormDescription
+				>
+				<FormControl>
+					<Input type="number" min="1" max="100" v-bind="componentField" />
+				</FormControl>
+				<FormMessage />
+			</FormItem>
+		</FormField>
+
 		<FormField v-slot="{ componentField }" name="images">
 			<FormItem v-auto-animate>
 				<FormLabel>Images</FormLabel>
