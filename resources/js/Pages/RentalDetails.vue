@@ -21,6 +21,7 @@ import ReturnConfirmationDialog from "@/Components/ReturnConfirmationDialog.vue"
 import PaymentProofDialog from "@/Components/PaymentProofDialog.vue";
 import DisputeDialog from "@/Components/DisputeDialog.vue";
 import PickupScheduleDialog from "@/Components/PickupScheduleDialog.vue";
+import { format } from "date-fns";
 
 const props = defineProps({
 	rental: Object,
@@ -205,6 +206,35 @@ const showOverdueSection = computed(() => {
 const maxApproveQuantity = computed(() =>
 	Math.min(props.rental.quantity_requested, props.rental.listing.available_quantity)
 );
+
+// Add computed for pickup schedule
+const pickupSchedule = computed(() => {
+	return props.rental.pickup_schedules?.find((s) => s.is_selected);
+});
+
+const pickupScheduleDetails = computed(() => {
+	if (!pickupSchedule.value) return null;
+
+	const pickupDate = new Date(pickupSchedule.value.pickup_datetime);
+	return {
+		dayOfWeek: format(pickupDate, "EEEE"),
+		date: format(pickupDate, "MMMM d, yyyy"),
+		timeFrame: `${formatTime(pickupSchedule.value.start_time)} to ${formatTime(
+			pickupSchedule.value.end_time
+		)}`,
+	};
+});
+
+const formatTime = (timeStr) => {
+	const [hours, minutes] = timeStr.split(":");
+	const date = new Date();
+	date.setHours(parseInt(hours), parseInt(minutes));
+	return date.toLocaleTimeString("en-US", {
+		hour: "numeric",
+		minute: "2-digit",
+		hour12: true,
+	});
+};
 </script>
 
 <template>
@@ -275,29 +305,16 @@ const maxApproveQuantity = computed(() =>
 										:alt="rental.listing.title"
 									/>
 								</Link>
-								<div class="space-y-4">
-									<div>
-										<Link
-											:href="route('listing.show', rental.listing.id)"
-											class="hover:text-primary transition-colors"
-										>
-											<h3 class="text-lg font-semibold">{{ rental.listing.title }}</h3>
-										</Link>
-										<p class="text-muted-foreground text-sm">
-											Category: {{ rental.listing.category.name }}
-										</p>
-									</div>
-									<div class="space-y-2">
-										<h4 class="font-medium">Meetup Location</h4>
-										<div class="space-y-1">
-											<p class="text-sm">{{ rental.listing.location.address }}</p>
-											<p class="text-muted-foreground text-sm">
-												{{ rental.listing.location.city }},
-												{{ rental.listing.location.province }}
-												{{ rental.listing.location.postal_code }}
-											</p>
-										</div>
-									</div>
+								<div>
+									<Link
+										:href="route('listing.show', rental.listing.id)"
+										class="hover:text-primary transition-colors"
+									>
+										<h3 class="text-lg font-semibold">{{ rental.listing.title }}</h3>
+									</Link>
+									<p class="text-muted-foreground text-sm">
+										Category: {{ rental.listing.category.name }}
+									</p>
 								</div>
 							</div>
 
@@ -534,6 +551,78 @@ const maxApproveQuantity = computed(() =>
 					:userRole="userRole"
 					:lenderSchedules="lenderSchedules"
 				/>
+
+				<!-- Add pickup schedule section after rental details -->
+				<Card v-if="pickupSchedule || actions.canChoosePickupSchedule" class="shadow-sm">
+					<CardHeader class="bg-card border-b">
+						<CardTitle class="text-lg">Pickup Details</CardTitle>
+					</CardHeader>
+					<CardContent class="p-6">
+						<div class="space-y-6">
+							<!-- Meetup Location -->
+							<div class="space-y-2">
+								<h4 class="font-medium">Meetup Location</h4>
+								<div class="p-4 border rounded-lg bg-muted/30">
+									<div class="space-y-2">
+										<p class="font-medium">{{ rental.listing.location.address }}</p>
+										<p class="text-muted-foreground text-sm">
+											{{ rental.listing.location.city }},
+											{{ rental.listing.location.province }}
+											{{ rental.listing.location.postal_code }}
+										</p>
+									</div>
+								</div>
+							</div>
+
+							<!-- Schedule Information -->
+							<div v-if="pickupSchedule" class="space-y-2">
+								<h4 class="font-medium">Scheduled Time</h4>
+								<div class="p-4 border rounded-lg bg-muted/30">
+									<div class="space-y-3">
+										<div class="flex items-baseline justify-between">
+											<span class="font-medium">{{
+												pickupScheduleDetails.dayOfWeek
+											}}</span>
+											<span class="text-sm text-muted-foreground">{{
+												pickupScheduleDetails.date
+											}}</span>
+										</div>
+										<div class="flex items-center justify-between">
+											<span class="text-sm text-muted-foreground">Time Frame</span>
+											<span class="font-medium">{{
+												pickupScheduleDetails.timeFrame
+											}}</span>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<!-- Important Notes -->
+							<div class="space-y-2">
+								<h4 class="font-medium">Important Notes</h4>
+								<ul class="space-y-2 text-sm text-muted-foreground">
+									<li class="flex items-center gap-2">
+										<span class="text-primary">•</span>
+										<span>Please arrive at the meetup location on time</span>
+									</li>
+									<li class="flex items-center gap-2">
+										<span class="text-primary">•</span>
+										<span
+											>Verify the item's condition before completing the handover</span
+										>
+									</li>
+								</ul>
+							</div>
+
+							<!-- Schedule Selection Button -->
+							<div v-if="actions.canChoosePickupSchedule && !pickupSchedule">
+								<Button class="w-full" @click="showScheduleDialog = true">
+									Choose Pickup Schedule
+								</Button>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
 			</div>
 
 			<!-- Right Column -->
@@ -636,7 +725,7 @@ const maxApproveQuantity = computed(() =>
 								@click="showHandoverDialog = true"
 								:disabled="!canShowHandover"
 							>
-								{{ canShowHandover ? "Hand Over" : "Waiting for Schedule" }}
+								{{ canShowHandover ? "Hand Over Item" : "Waiting for Schedule" }}
 							</Button>
 
 							<Button

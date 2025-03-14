@@ -25,6 +25,10 @@ const props = defineProps({
 		type: Array,
 		required: true,
 	},
+	lenderSchedules: {
+		type: Array,
+		default: () => [],
+	},
 });
 
 // Image handling
@@ -164,14 +168,12 @@ const actions = computed(() => props.data.rental_request.available_actions);
 // computed property for payment request
 const paymentRequest = computed(() => props.data.rental_request.payment_request);
 
-// Add computed property to check if handover is allowed
 const canShowHandover = computed(() => {
-	if (actions.value.canHandover) {
-		return props.data.rental_request.pickup_schedules?.some(
-			(schedule) => schedule.is_selected
-		);
-	}
-	return false;
+	if (!actions.value.canHandover) return false;
+
+	return props.data.rental_request.pickup_schedules?.some(
+		(schedule) => schedule.is_selected
+	);
 });
 </script>
 
@@ -331,6 +333,7 @@ const canShowHandover = computed(() => {
 	<HandoverDialog
 		v-model:show="showHandoverDialog"
 		:rental="data.rental_request"
+		:lender-schedules="lenderSchedules"
 		type="handover"
 	/>
 </template>

@@ -110,6 +110,7 @@ const showScheduleManager = ref(false);
 							:selected-status="tab.id"
 							:rejection-reasons="rejectionReasons"
 							:cancellation-reasons="cancellationReasons"
+							:lender-schedules="pickupSchedules"
 						/>
 					</div>
 					<div v-else class="text-muted-foreground py-10 text-center">
@@ -142,6 +143,7 @@ const showScheduleManager = ref(false);
 						:selected-status="selectedTab"
 						:rejection-reasons="rejectionReasons"
 						:cancellation-reasons="cancellationReasons"
+						:lender-schedules="pickupSchedules"
 					/>
 				</div>
 				<div v-else class="text-muted-foreground py-10 text-center">
