@@ -15,13 +15,16 @@ return new class extends Migration
             if (!Schema::hasColumn('completion_payments', 'notes')) {
                 $table->text('notes')->nullable()->after('processed_by');
             }
+            if (!Schema::hasColumn('completion_payments', 'total_amount')) {
+                $table->integer('total_amount')->nullable()->after('amount');
+            }
         });
     }
 
     public function down()
     {
         Schema::table('completion_payments', function (Blueprint $table) {
-            $table->dropColumn(['processed_by', 'notes']);
+            $table->dropColumn(['processed_by', 'notes', 'total_amount']);
         });
     }
 };

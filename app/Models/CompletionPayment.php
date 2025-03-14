@@ -11,10 +11,9 @@ class CompletionPayment extends Model
         'type',
         'amount',
         'includes_overdue_fee',
-        'total_amount',
         'reference_number',
         'proof_path',
-        'processed_by',
+        'processed_by', // Changed from admin_id
         'processed_at',
         'notes'
     ];
@@ -22,7 +21,6 @@ class CompletionPayment extends Model
     protected $casts = [
         'processed_at' => 'datetime',
         'amount' => 'decimal:2',
-        'total_amount' => 'decimal:2',
         'includes_overdue_fee' => 'boolean'
     ];
 
@@ -48,6 +46,6 @@ class CompletionPayment extends Model
 
     public function admin()
     {
-        return $this->belongsTo(User::class, 'admin_id');
+        return $this->belongsTo(User::class, 'processed_by'); // Changed from admin_id
     }
 }

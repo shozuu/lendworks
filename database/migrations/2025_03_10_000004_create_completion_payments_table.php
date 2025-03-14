@@ -13,8 +13,9 @@ return new class extends Migration
             $table->foreignId('rental_request_id')->constrained()->onDelete('cascade');
             $table->enum('type', ['lender_payment', 'deposit_refund']);
             $table->integer('amount');
+            $table->integer('total_amount')->nullable();
             $table->string('proof_path');
-            $table->foreignId('admin_id')->constrained('users');
+            $table->foreignId('processed_by')->constrained('users'); // Changed from admin_id
             $table->string('reference_number');
             $table->text('notes')->nullable();
             $table->timestamp('processed_at')->nullable();

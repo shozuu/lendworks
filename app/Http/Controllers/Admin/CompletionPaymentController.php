@@ -16,7 +16,7 @@ class CompletionPaymentController extends Controller
     {
         $validated = $request->validate([
             'reference_number' => ['required', 'string'],
-            'proof_image' => ['required', 'image', 'max:2048'], // Changed from payment_proof to proof_image
+            'proof_image' => ['required', 'image', 'max:2048'],
             'notes' => ['nullable', 'string']
         ]);
 
@@ -28,19 +28,17 @@ class CompletionPaymentController extends Controller
             $baseAmount = $earnings['base'];
             $overdueAmount = $earnings['overdue'];
             
-            // Changed to proof_image
             $path = $request->file('proof_image')->store('payment-proofs', 'public');
 
-            // Create completion payment record
+            // Create completion payment record with proper amount handling
             $payment = CompletionPayment::create([
                 'rental_request_id' => $rental->id,
                 'type' => 'lender_payment',
                 'amount' => $baseAmount,
                 'includes_overdue_fee' => $overdueAmount > 0,
-                'total_amount' => $baseAmount + $overdueAmount,
                 'reference_number' => $validated['reference_number'],
                 'proof_path' => $path,
-                'processed_by' => Auth::id(),
+                'processed_by' => Auth::id(), // Use processed_by consistently
                 'notes' => $validated['notes'] ?? null,
                 'processed_at' => now()
             ]);
@@ -111,7 +109,7 @@ class CompletionPaymentController extends Controller
                 'type' => 'deposit_refund',
                 'amount' => $validated['amount'],
                 'proof_path' => $path,
-                'admin_id' => Auth::id(),
+                'processed_by' => Auth::id(), // Changed from admin_id
                 'reference_number' => $validated['reference_number'],
                 'notes' => $validated['notes'],
                 'processed_at' => now()
