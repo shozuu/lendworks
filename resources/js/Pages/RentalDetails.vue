@@ -227,6 +227,11 @@ const lenderEarnings = computed(() => {
         total: basePrice - discount - serviceFee + overdueFee
     };
 });
+
+// Add a computed property for showing overdue sections
+const showOverdueSection = computed(() => {
+    return props.rental.overdue_days > 0 || props.rental.is_overdue || props.rental.overdue_payment;
+});
 </script>
 
 <template>
@@ -408,41 +413,14 @@ const lenderEarnings = computed(() => {
 									</template>
 
 									<!-- Overdue section -->
-									<template v-if="rental.is_overdue">
-										<div class="mt-8 pt-4 border-t space-y-4">
-											<h4 class="font-medium text-destructive mb-4">Overdue Charges</h4>
-											
-											<!-- Overdue Rate -->
-											<div class="flex justify-between text-sm">
-												<span class="text-muted-foreground">Overdue Rate (per day)</span>
-												<span>{{ formatNumber(rental.listing.price) }}</span>
-											</div>
-											
-											<!-- Number of Overdue Days -->
-											<div class="flex justify-between text-sm">
-												<span class="text-muted-foreground">Days Overdue</span>
-												<span>{{ rental.overdue_days }} days</span>
-											</div>
-
-											<!-- Overdue Fee -->
-											<div class="flex justify-between text-sm text-destructive font-medium mt-2">
-												<span>Total Overdue Fee</span>
-													<span>{{ formatNumber(rental.overdue_fee) }}</span>
-											</div>
-
-											<Separator class="my-4" />
-
-											<!-- Final total with overdue - different for renter and lender -->
-											<div class="flex justify-between font-medium">
-												<span>{{ userRole === 'renter' ? 'Total Amount Due' : 'Total Earnings with Overdue' }}</span>
-												<span :class="{
-															'text-destructive': userRole === 'renter',
-															'text-emerald-500': userRole === 'lender'
-														}">
-													{{ formatNumber(userRole === 'renter' ? rental.overdue_fee : rentalOnlyTotal + rental.overdue_fee) }}
-												</span>
-											</div>
+									<template v-if="rental.overdue_days > 0">
+										<div class="flex justify-between text-sm text-destructive font-medium">
+											<span>Overdue Fee</span>
+											<span>+ {{ formatNumber(rental.overdue_fee) }}</span>
 										</div>
+										<p class="text-xs text-muted-foreground">
+											See Overdue Status Details section for complete breakdown
+										</p>
 									</template>
 
 									<p class="text-muted-foreground mt-6 text-xs">
@@ -450,6 +428,85 @@ const lenderEarnings = computed(() => {
 										subject to item condition
 									</p>
 								</div>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
+
+				<!-- After the Listing Details Card and before the Pickup schedule input -->
+				<Card v-if="showOverdueSection" class="shadow-sm">
+					<CardHeader class="bg-card border-b">
+						<CardTitle class="flex items-center gap-2">
+							<Clock class="w-4 h-4 text-destructive" />
+							Overdue Status Details
+						</CardTitle>
+					</CardHeader>
+					<CardContent class="p-6">
+						<div class="space-y-6">
+							<!-- Overdue Period Info -->
+							<div class="space-y-4">
+								<div class="grid sm:grid-cols-2 gap-4">
+									<div>
+										<p class="text-muted-foreground text-sm">Original End Date</p>
+										<p class="font-medium">
+											{{ formatDateTime(rental.end_date, "MMMM D, YYYY") }}
+										</p>
+									</div>
+									<div>
+										<p class="text-muted-foreground text-sm">Days Overdue</p>
+										<p class="font-medium text-destructive">
+											{{ rental.overdue_days }} days
+										</p>
+									</div>
+								</div>
+							</div>
+
+							<Separator />
+
+							<!-- Fee Breakdown -->
+							<div class="space-y-4">
+								<h4 class="font-medium">Fee Breakdown</h4>
+								<div class="space-y-2">
+									<div class="flex justify-between text-sm">
+										<span class="text-muted-foreground">Daily Rate</span>
+										<span>{{ formatNumber(rental.listing.price) }}</span>
+									</div>
+									<div class="flex justify-between text-sm">
+										<span class="text-muted-foreground">Total Days Overdue</span>
+										<span>× {{ rental.overdue_days }}</span>
+									</div>
+									<Separator class="my-2" />
+									<div class="flex justify-between font-medium">
+										<span>Total Overdue Fee</span>
+										<span class="text-destructive">{{ formatNumber(rental.overdue_fee) }}</span>
+									</div>
+								</div>
+							</div>
+
+							<!-- Payment Status -->
+							<div v-if="rental.overdue_payment" class="mt-4 p-4 bg-muted rounded-lg">
+								<h4 class="text-sm font-medium mb-3">Payment Status</h4>
+								<div class="space-y-2">
+									<div class="flex justify-between text-sm">
+										<span class="text-muted-foreground">Status</span>
+										<span class="text-emerald-500">Verified</span>
+									</div>
+									<div class="flex justify-between text-sm">
+										<span class="text-muted-foreground">Verified On</span>
+										<span>{{ formatDateTime(rental.overdue_payment.verified_at) }}</span>
+									</div>
+									<div class="flex justify-between text-sm">
+										<span class="text-muted-foreground">Reference</span>
+										<span>{{ rental.overdue_payment.reference_number }}</span>
+									</div>
+								</div>
+							</div>
+
+							<!-- Warning for unpaid overdue -->
+							<div v-else-if="!rental.overdue_payment" class="mt-4 p-4 bg-destructive/10 rounded-lg">
+								<p class="text-sm text-destructive">
+									 ⚠️ Overdue payment must be settled before proceeding with the return process
+								</p>
 							</div>
 						</div>
 					</CardContent>
