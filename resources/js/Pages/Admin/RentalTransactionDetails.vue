@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import CompletionPaymentDialog from '@/Components/Admin/CompletionPaymentDialog.vue';
 import PaymentProofDialog from '@/Components/PaymentProofDialog.vue'; // Add this import
 import OverduePaymentDialog from '@/Components/Admin/OverduePaymentDialog.vue'; // Add this import
+import RentalDurationTracker from "@/Components/RentalDurationTracker.vue"; // Add this import
 
 defineOptions({ layout: AdminLayout });
 
@@ -151,10 +152,17 @@ const lenderEarnings = computed(() => {
 
 // Add a computed property for showing overdue sections
 const showOverdueSection = computed(() => {
+    // Show section if any of these conditions are true:
+    // 1. Has overdue days recorded
+    // 2. Currently overdue
+    // 3. Has overdue payment (verified)
+    // 4. Has pending/rejected overdue payment request
+    // 5. Transaction was overdue during return process
     return props.rental.overdue_days > 0 || 
            props.rental.is_overdue || 
            props.rental.overdue_payment ||
-           (props.rental.payment_request?.type === 'overdue');
+           (props.rental.payment_request?.type === 'overdue') ||
+           props.rental.status.includes('return');
 });
 </script>
 
@@ -183,6 +191,8 @@ const showOverdueSection = computed(() => {
 				class="sm:text-base self-start text-sm"
 			/>
 		</div>
+
+		<RentalDurationTracker :rental="rental" />
 
 		<!-- Timeline -->
 		<Card class="shadow-sm">
@@ -396,7 +406,7 @@ const showOverdueSection = computed(() => {
 							<!-- Payment Status -->
 							<div class="space-y-3">
 								<!-- Verified Payment -->
-								<div v-if="rental.overdue_payment" class="space-y-3">
+								<div v-if="rental.overdue_payment?.verified_at" class="space-y-3">
 									<h3 class="font-medium text-emerald-500">Payment Verified</h3>
 									<div class="space-y-2 p-4 bg-muted rounded-lg text-sm">
 										<div class="flex justify-between">
@@ -465,7 +475,7 @@ const showOverdueSection = computed(() => {
 								</div>
 
 								<!-- No Payment -->
-								<div v-else class="text-sm text-muted-foreground text-center p-4 bg-muted/30 rounded-lg">
+								<div v-else-if="!rental.overdue_payment" class="text-sm text-muted-foreground text-center p-4 bg-muted/30 rounded-lg">
 									Waiting for renter to submit overdue payment
 								</div>
 							</div>

@@ -11,7 +11,7 @@ const props = defineProps({
     }
 });
 
-const isActive = computed(() => props.rental.status === 'active');
+const isActive = computed(() => true); // Always show as active
 const isOverdue = computed(() => props.rental.is_overdue ?? false);
 
 const formatDays = (days) => {
@@ -37,39 +37,47 @@ const stats = computed(() => [
             : `Due on ${formatDateTime(props.rental.end_date, 'MMM D, YYYY')}`
     }
 ]);
+
+const showTracker = computed(() => {
+    // Show tracker for all statuses except cancelled, rejected or completed states
+    const hideStates = ['cancelled', 'rejected'];
+    return !hideStates.includes(props.rental.status);
+});
 </script>
 
 <template>
-    <Card v-if="isActive">
-        <CardHeader>
-            <CardTitle>Rental Duration Tracker</CardTitle>
-        </CardHeader>
-        <CardContent>
-            <div class="grid gap-4 md:grid-cols-2">
-                <div 
-                    v-for="stat in stats" 
-                    :key="stat.label"
-                    class="space-y-2"
-                >
-                    <div class="flex items-center gap-2">
-                        <component 
-                            :is="stat.icon" 
-                            class="w-4 h-4"
-                            :class="stat.variant === 'destructive' ? 'text-destructive' : 'text-muted-foreground'"
-                        />
-                        <h4 class="text-sm font-medium">{{ stat.label }}</h4>
-                    </div>
-                    <p 
-                        class="text-2xl font-bold"
-                        :class="stat.variant === 'destructive' ? 'text-destructive' : ''"
+    <div v-if="showTracker" class="space-y-4">
+        <Card>
+            <CardHeader>
+                <CardTitle>Rental Duration Tracker</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div 
+                        v-for="stat in stats" 
+                        :key="stat.label"
+                        class="space-y-2"
                     >
-                        {{ stat.value }}
-                    </p>
-                    <p class="text-xs text-muted-foreground">
-                        {{ stat.description }}
-                    </p>
+                        <div class="flex items-center gap-2">
+                            <component 
+                                :is="stat.icon" 
+                                class="w-4 h-4"
+                                :class="stat.variant === 'destructive' ? 'text-destructive' : 'text-muted-foreground'"
+                            />
+                            <h4 class="text-sm font-medium">{{ stat.label }}</h4>
+                        </div>
+                        <p 
+                            class="text-2xl font-bold"
+                            :class="stat.variant === 'destructive' ? 'text-destructive' : ''"
+                        >
+                            {{ stat.value }}
+                        </p>
+                        <p class="text-xs text-muted-foreground">
+                            {{ stat.description }}
+                        </p>
+                    </div>
                 </div>
-            </div>
-        </CardContent>
-    </Card>
+            </CardContent>
+        </Card>
+    </div>
 </template>
