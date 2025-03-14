@@ -84,4 +84,58 @@ class LenderPickupScheduleController extends Controller
         $schedule->delete();
         return back()->with('success', 'Pickup schedule removed successfully.');
     }
+
+    public function addTimeSlot(Request $request, $dayOfWeek)
+    {
+        $validated = $request->validate([
+            'start_time' => 'required|string',
+            'end_time' => 'required|string|after:start_time',
+        ]);
+
+        try {
+            $startTime = date('H:i:s', strtotime($validated['start_time']));
+            $endTime = date('H:i:s', strtotime($validated['end_time']));
+
+            LenderPickupSchedule::create([
+                'user_id' => Auth::id(),
+                'day_of_week' => $dayOfWeek,
+                'start_time' => $startTime,
+                'end_time' => $endTime,
+                'is_active' => true,
+            ]);
+
+            return back()->with('success', 'Time slot added successfully.');
+        } catch (\Exception $e) {
+            report($e);
+            return back()->with('error', 'Failed to add time slot.');
+        }
+    }
+
+    public function toggleActive(LenderPickupSchedule $schedule)
+    {
+        if ($schedule->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        try {
+            $schedule->update([
+                'is_active' => !$schedule->is_active
+            ]);
+
+            return back()->with('success', 'Schedule availability updated.');
+        } catch (\Exception $e) {
+            report($e);
+            return back()->with('error', 'Failed to update availability.');
+        }
+    }
+
+    public function destroyTimeSlot(LenderPickupSchedule $schedule)
+    {
+        if ($schedule->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $schedule->delete();
+        return back()->with('success', 'Time slot removed successfully.');
+    }
 }

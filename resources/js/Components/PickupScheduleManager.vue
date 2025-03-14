@@ -120,7 +120,6 @@ const handleDelete = () => {
 
 const editingSchedule = ref(null);
 const editForm = useForm({
-	day_of_week: "",
 	start_time: "",
 	end_time: "",
 });
@@ -141,7 +140,6 @@ const startEditing = (schedule) => {
 	editingEndHour.value = endHour;
 	editingEndMinute.value = endMin;
 
-	editForm.day_of_week = schedule.day_of_week;
 	editForm.start_time = schedule.start_time;
 	editForm.end_time = schedule.end_time;
 };
@@ -208,7 +206,6 @@ watch([editingStartHour, editingStartMinute, editingEndHour, editingEndMinute], 
 
 const isEditFormValid = computed(() => {
 	if (
-		!editForm.day_of_week ||
 		!editingStartHour.value ||
 		!editingStartMinute.value ||
 		!editingEndHour.value ||
@@ -320,444 +317,436 @@ const isThisWeek = (date) => {
 	const endOfWeek = addDays(weekStart, 6);
 	return date >= weekStart && date <= endOfWeek;
 };
+
+// Add new form for adding time slots
+const addTimeSlotForm = useForm({
+	start_time: "",
+	end_time: "",
+});
+
+const selectedDay = ref(null);
+const showAddTimeSlotDialog = ref(false);
+
+const timeSlotsByDay = computed(() => {
+	const grouped = {};
+	props.schedules?.forEach((schedule) => {
+		if (!grouped[schedule.day_of_week]) {
+			grouped[schedule.day_of_week] = [];
+		}
+		grouped[schedule.day_of_week].push(schedule);
+	});
+
+	// Sort each day's schedules by start time
+	Object.keys(grouped).forEach((day) => {
+		grouped[day].sort((a, b) => {
+			return a.start_time.localeCompare(b.start_time);
+		});
+	});
+
+	return grouped;
+});
+
+const handleAddTimeSlot = (day) => {
+	selectedDay.value = day;
+	showAddTimeSlotDialog.value = true;
+};
+
+const submitNewTimeSlot = () => {
+	addTimeSlotForm.post(
+		route("lender.pickup-schedules.add-time-slot", selectedDay.value),
+		{
+			preserveScroll: true,
+			onSuccess: () => {
+				showAddTimeSlotDialog.value = false;
+				selectedDay.value = null;
+				addTimeSlotForm.reset();
+			},
+		}
+	);
+};
+
+const toggleScheduleActive = (schedule) => {
+	useForm().patch(route("lender.pickup-schedules.toggle", schedule.id), {
+		preserveScroll: true,
+	});
+};
+
+const editingTimeSlot = ref(null);
+const showEditDialog = ref(false);
+
+const startEditingTimeSlot = (schedule) => {
+	editingTimeSlot.value = schedule;
+	showEditDialog.value = true;
+
+	const [startHour, startMin] = schedule.start_time.split(":");
+	const [endHour, endMin] = schedule.end_time.split(":");
+
+	editingStartHour.value = startHour;
+	editingStartMinute.value = startMin;
+	editingEndHour.value = endHour;
+	editingEndMinute.value = endMin;
+};
+
+const cancelEditingTimeSlot = () => {
+	editingTimeSlot.value = null;
+	showEditDialog.value = false;
+	editingStartHour.value = "";
+	editingStartMinute.value = "";
+	editingEndHour.value = "";
+	editingEndMinute.value = "";
+	editTimeError.value = "";
+};
+
+const handleUpdateTimeSlot = () => {
+	if (!validateEditTimeRange()) return;
+
+	editForm.start_time = `${editingStartHour.value}:${editingStartMinute.value}`;
+	editForm.end_time = `${editingEndHour.value}:${editingEndMinute.value}`;
+
+	editForm.patch(route("lender.pickup-schedules.update", editingTimeSlot.value.id), {
+		preserveScroll: true,
+		onSuccess: () => {
+			cancelEditingTimeSlot();
+		},
+	});
+};
+
+const schedulesGroupedByDay = computed(() => {
+	const grouped = {};
+	props.schedules?.forEach((schedule) => {
+		if (!grouped[schedule.day_of_week]) {
+			grouped[schedule.day_of_week] = [];
+		}
+		grouped[schedule.day_of_week].push(schedule);
+	});
+
+	// Sort time slots within each day
+	Object.keys(grouped).forEach((day) => {
+		grouped[day].sort((a, b) => a.start_time.localeCompare(b.start_time));
+	});
+
+	return grouped;
+});
+
+// Sort days in correct order
+const sortedDays = computed(() => {
+	const dayOrder = {
+		Monday: 1,
+		Tuesday: 2,
+		Wednesday: 3,
+		Thursday: 4,
+		Friday: 5,
+		Saturday: 6,
+		Sunday: 7,
+	};
+	return Object.keys(schedulesGroupedByDay.value).sort(
+		(a, b) => dayOrder[a] - dayOrder[b]
+	);
+});
 </script>
 
 <template>
-	<div class="space-y-4">
-		<h2 class="text-lg font-semibold">Pickup Schedule Management</h2>
-		<p class="text-muted-foreground text-sm">
-			Set your regular availability for item handovers
-		</p>
+	<div class="space-y-6">
+		<!-- Title section stays fixed at the top -->
+		<div>
+			<h2 class="text-lg font-semibold">Pickup Schedule Management</h2>
+			<p class="text-muted-foreground text-sm">
+				Set your regular availability for item handovers
+			</p>
+		</div>
 
-		<div class="grid gap-6 md:grid-cols-2">
-			<!-- Schedule Form Card -->
-			<Card class="shadow-sm">
-				<CardHeader class="bg-card border-b">
-					<CardTitle>Add Availability</CardTitle>
-					<p class="text-muted-foreground text-sm">
-						Select days and times for your pickup schedules
+		<!-- Scrollable content -->
+		<div class="max-h-[calc(100vh-12rem)] overflow-y-auto pr-2">
+			<div class="space-y-8">
+				<!-- Add Availability Section -->
+				<div class="space-y-6">
+					<!-- Day Selection -->
+					<div>
+						<!-- <label class="text-sm font-medium mb-2 block">Select Days</label> -->
+						<h3 class="text-base font-semibold mb-2">Select Days</h3>
+						<div class="inline-flex flex-wrap gap-1.5">
+							<Button
+								v-for="day in days"
+								:key="day"
+								variant="outline"
+								size="sm"
+								:class="{
+									'bg-primary text-primary-foreground': selectedDays.includes(day),
+								}"
+								@click="
+									selectedDays.includes(day)
+										? (selectedDays = selectedDays.filter((d) => d !== day))
+										: selectedDays.push(day)
+								"
+							>
+								{{ day }}
+							</Button>
+						</div>
+					</div>
+
+					<!-- Time Range -->
+					<div class="grid sm:grid-cols-2 gap-4">
+						<!-- Start Time -->
+						<div>
+							<label class="text-sm font-medium mb-2 block">From</label>
+							<div class="grid grid-cols-2 gap-2">
+								<Select v-model="defaultStartHour">
+									<SelectTrigger>
+										<SelectValue placeholder="Hour" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem
+											v-for="hour in hours"
+											:key="hour.value"
+											:value="hour.value"
+										>
+											{{ hour.label }}
+										</SelectItem>
+									</SelectContent>
+								</Select>
+
+								<Select v-model="defaultStartMinute">
+									<SelectTrigger>
+										<SelectValue placeholder="Min" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem v-for="min in minutes" :key="min" :value="min">
+											{{ min }}
+										</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+						</div>
+
+						<!-- End Time -->
+						<div>
+							<label class="text-sm font-medium mb-2 block">To</label>
+							<div class="grid grid-cols-2 gap-2">
+								<Select v-model="defaultEndHour">
+									<SelectTrigger>
+										<SelectValue placeholder="Hour" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem
+											v-for="hour in hours"
+											:key="hour.value"
+											:value="hour.value"
+										>
+											{{ hour.label }}
+										</SelectItem>
+									</SelectContent>
+								</Select>
+
+								<Select v-model="defaultEndMinute">
+									<SelectTrigger>
+										<SelectValue placeholder="Min" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem v-for="min in minutes" :key="min" :value="min">
+											{{ min }}
+										</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+						</div>
+					</div>
+
+					<p v-if="timeError" class="text-destructive text-sm">
+						{{ timeError }}
 					</p>
-				</CardHeader>
-				<CardContent class="p-6">
-					<div class="space-y-6">
-						<!-- Day Selection -->
-						<div class="space-y-2">
-							<label class="text-sm font-medium">Select Days</label>
-							<div class="flex flex-wrap gap-2">
-								<Button
-									v-for="day in days"
-									:key="day"
-									variant="outline"
-									size="sm"
-									:class="{
-										'bg-primary text-primary-foreground': selectedDays.includes(day),
-									}"
-									@click="
-										selectedDays.includes(day)
-											? (selectedDays = selectedDays.filter((d) => d !== day))
-											: selectedDays.push(day)
-									"
+
+					<Button
+						class="w-full"
+						:disabled="!isBulkFormValid || bulkForm.processing"
+						@click="handleBulkSubmit"
+					>
+						Create Schedules
+					</Button>
+				</div>
+
+				<!-- Divider -->
+				<div class="border-t" />
+
+				<!-- Current Availability Section -->
+				<div class="space-y-6">
+					<div>
+						<h3 class="text-base font-semibold mb-1">Current Availability</h3>
+						<p class="text-muted-foreground text-sm">
+							Your recurring schedules for item handovers
+						</p>
+					</div>
+
+					<!-- Schedule Groups By Day -->
+					<div class="space-y-4">
+						<div v-for="day in sortedDays" :key="day" class="border rounded-lg p-4">
+							<!-- Day Header -->
+							<div class="flex items-center justify-between mb-4">
+								<div>
+									<h4 class="font-medium">{{ day }}</h4>
+									<p class="text-xs text-muted-foreground">
+										{{ format(getNextOccurrence(day), "MMM d, yyyy") }}
+									</p>
+								</div>
+								<div class="flex gap-2">
+									<Button size="sm" variant="" @click="handleAddTimeSlot(day)">
+										Add Time Slot
+									</Button>
+									<Button
+										size="sm"
+										variant="destructive"
+										@click="initiateDelete(schedulesGroupedByDay[day][0])"
+									>
+										Remove Day
+									</Button>
+								</div>
+							</div>
+
+							<!-- Time Slots -->
+							<div class="space-y-2">
+								<div
+									v-for="schedule in schedulesGroupedByDay[day]"
+									:key="schedule.id"
+									class="flex items-center justify-between p-2 rounded-md bg-muted/30"
+									:class="{ 'opacity-60': !schedule.is_active }"
 								>
-									{{ day }}
-								</Button>
-							</div>
-						</div>
-
-						<!-- Time Range -->
-						<div class="space-y-4">
-							<h4 class="text-sm font-medium">Time Range</h4>
-							<div class="grid gap-4">
-								<!-- Start Time -->
-								<div class="space-y-2">
-									<label class="text-sm font-medium">From</label>
-									<div class="grid grid-cols-2 gap-2">
-										<Select v-model="defaultStartHour">
-											<SelectTrigger>
-												<SelectValue placeholder="Hour" />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem
-													v-for="hour in hours"
-													:key="hour.value"
-													:value="hour.value"
-												>
-													{{ hour.label }}
-												</SelectItem>
-											</SelectContent>
-										</Select>
-
-										<Select v-model="defaultStartMinute">
-											<SelectTrigger>
-												<SelectValue placeholder="Min" />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem v-for="min in minutes" :key="min" :value="min">
-													{{ min }}
-												</SelectItem>
-											</SelectContent>
-										</Select>
+									<div class="flex items-center gap-4">
+										<Button
+											size="sm"
+											variant="ghost"
+											class="flex items-center gap-2"
+											@click="toggleScheduleActive(schedule)"
+										>
+											<div
+												class="w-2 h-2 rounded-full"
+												:class="schedule.is_active ? 'bg-primary' : 'bg-muted-foreground'"
+											/>
+											<span>{{ formatScheduleTime(schedule) }}</span>
+										</Button>
 									</div>
-								</div>
 
-								<!-- End Time -->
-								<div class="space-y-2">
-									<label class="text-sm font-medium">To</label>
-									<div class="grid grid-cols-2 gap-2">
-										<Select v-model="defaultEndHour">
-											<SelectTrigger>
-												<SelectValue placeholder="Hour" />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem
-													v-for="hour in hours"
-													:key="hour.value"
-													:value="hour.value"
-												>
-													{{ hour.label }}
-												</SelectItem>
-											</SelectContent>
-										</Select>
-
-										<Select v-model="defaultEndMinute">
-											<SelectTrigger>
-												<SelectValue placeholder="Min" />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem v-for="min in minutes" :key="min" :value="min">
-													{{ min }}
-												</SelectItem>
-											</SelectContent>
-										</Select>
+									<div class="flex items-center gap-2">
+										<Button size="sm" variant="outline" @click="startEditing(schedule)">
+											Edit Time
+										</Button>
+										<Button size="sm" variant="outline" @click="initiateDelete(schedule)">
+											Remove
+										</Button>
 									</div>
 								</div>
 							</div>
 						</div>
-
-						<p v-if="timeError" class="text-destructive text-sm mt-1">
-							{{ timeError }}
-						</p>
-
-						<Button
-							class="w-full"
-							:disabled="!isBulkFormValid || bulkForm.processing"
-							@click="handleBulkSubmit"
-						>
-							Create Schedules
-						</Button>
 					</div>
-				</CardContent>
-			</Card>
 
-			<!-- Current Schedules Card -->
-			<Card class="shadow-sm">
-				<CardHeader class="bg-card border-b">
-					<CardTitle>Current Availability</CardTitle>
-					<p class="text-muted-foreground text-sm">
-						Your recurring schedules for item handovers
+					<!-- No schedules message -->
+					<p
+						v-if="!Object.keys(schedulesGroupedByDay).length"
+						class="text-muted-foreground py-8 text-center text-sm"
+					>
+						No schedules set yet. Add your availability using the form above.
 					</p>
-				</CardHeader>
-				<CardContent class="p-6">
-					<div class="space-y-6">
-						<!-- This Week's Schedules -->
-						<div v-if="currentWeekSchedules.length" class="space-y-3">
-							<h3 class="text-sm font-medium text-muted-foreground">This Week</h3>
-							<div
-								v-for="schedule in currentWeekSchedules"
-								:key="schedule.id"
-								class="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-							>
-								<!-- Existing schedule display code -->
-								<div v-if="editingSchedule?.id === schedule.id" class="space-y-4">
-									<div class="space-y-4">
-										<!-- Day Selection -->
-										<div class="space-y-2">
-											<label class="text-sm font-medium">Day of Week</label>
-											<Select v-model="editForm.day_of_week">
-												<SelectTrigger>
-													<SelectValue :placeholder="editForm.day_of_week" />
-												</SelectTrigger>
-												<SelectContent>
-													<SelectItem v-for="day in days" :key="day" :value="day">
-														{{ day }}
-													</SelectItem>
-												</SelectContent>
-											</Select>
-										</div>
-
-										<!-- Time Range -->
-										<div class="grid gap-4">
-											<!-- Start Time -->
-											<div class="space-y-2">
-												<label class="text-sm font-medium">From</label>
-												<div class="grid grid-cols-2 gap-2">
-													<Select v-model="editingStartHour">
-														<SelectTrigger>
-															<SelectValue placeholder="Hour" />
-														</SelectTrigger>
-														<SelectContent>
-															<SelectItem
-																v-for="hour in hours"
-																:key="hour.value"
-																:value="hour.value"
-															>
-																{{ hour.label }}
-															</SelectItem>
-														</SelectContent>
-													</Select>
-
-													<Select v-model="editingStartMinute">
-														<SelectTrigger>
-															<SelectValue placeholder="Min" />
-														</SelectTrigger>
-														<SelectContent>
-															<SelectItem v-for="min in minutes" :key="min" :value="min">
-																{{ min }}
-															</SelectItem>
-														</SelectContent>
-													</Select>
-												</div>
-											</div>
-
-											<!-- End Time -->
-											<div class="space-y-2">
-												<label class="text-sm font-medium">To</label>
-												<div class="grid grid-cols-2 gap-2">
-													<Select v-model="editingEndHour">
-														<SelectTrigger>
-															<SelectValue placeholder="Hour" />
-														</SelectTrigger>
-														<SelectContent>
-															<SelectItem
-																v-for="hour in hours"
-																:key="hour.value"
-																:value="hour.value"
-															>
-																{{ hour.label }}
-															</SelectItem>
-														</SelectContent>
-													</Select>
-
-													<Select v-model="editingEndMinute">
-														<SelectTrigger>
-															<SelectValue placeholder="Min" />
-														</SelectTrigger>
-														<SelectContent>
-															<SelectItem v-for="min in minutes" :key="min" :value="min">
-																{{ min }}
-															</SelectItem>
-														</SelectContent>
-													</Select>
-												</div>
-											</div>
-										</div>
-
-										<p v-if="editTimeError" class="text-destructive text-sm mt-1">
-											{{ editTimeError }}
-										</p>
-
-										<div class="flex gap-2">
-											<Button
-												@click="handleUpdate"
-												:disabled="!isEditFormValid || editForm.processing"
-											>
-												Save
-											</Button>
-											<Button variant="outline" @click="cancelEditing">Cancel</Button>
-										</div>
-									</div>
-								</div>
-								<div v-else class="flex items-center justify-between">
-									<div class="space-y-1">
-										<div class="flex items-baseline gap-2">
-											<p class="text-sm font-medium">{{ schedule.day_of_week }}</p>
-											<p class="text-xs text-muted-foreground">
-												{{
-													format(getNextOccurrence(schedule.day_of_week), "MMM d, yyyy")
-												}}
-											</p>
-										</div>
-										<p class="text-sm text-muted-foreground">
-											{{ formatScheduleTime(schedule) }}
-										</p>
-									</div>
-									<div class="flex gap-2">
-										<Button size="sm" variant="outline" @click="startEditing(schedule)">
-											Edit
-										</Button>
-										<Button
-											size="sm"
-											variant="destructive"
-											:disabled="deleteForm.processing"
-											@click="initiateDelete(schedule)"
-										>
-											Delete
-										</Button>
-									</div>
-								</div>
-							</div>
-						</div>
-
-						<!-- Next Week's Schedules -->
-						<div v-if="nextWeekSchedules.length" class="space-y-3">
-							<h3 class="text-sm font-medium text-muted-foreground">Next Week</h3>
-							<div
-								v-for="schedule in nextWeekSchedules"
-								:key="schedule.id"
-								class="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-							>
-								<!-- Same content as This Week's schedules -->
-								<div v-if="editingSchedule?.id === schedule.id" class="space-y-4">
-									<div class="space-y-4">
-										<!-- Day Selection -->
-										<div class="space-y-2">
-											<label class="text-sm font-medium">Day of Week</label>
-											<Select v-model="editForm.day_of_week">
-												<SelectTrigger>
-													<SelectValue :placeholder="editForm.day_of_week" />
-												</SelectTrigger>
-												<SelectContent>
-													<SelectItem v-for="day in days" :key="day" :value="day">
-														{{ day }}
-													</SelectItem>
-												</SelectContent>
-											</Select>
-										</div>
-
-										<!-- Time Range -->
-										<div class="grid gap-4">
-											<!-- Start Time -->
-											<div class="space-y-2">
-												<label class="text-sm font-medium">From</label>
-												<div class="grid grid-cols-2 gap-2">
-													<Select v-model="editingStartHour">
-														<SelectTrigger>
-															<SelectValue placeholder="Hour" />
-														</SelectTrigger>
-														<SelectContent>
-															<SelectItem
-																v-for="hour in hours"
-																:key="hour.value"
-																:value="hour.value"
-															>
-																{{ hour.label }}
-															</SelectItem>
-														</SelectContent>
-													</Select>
-
-													<Select v-model="editingStartMinute">
-														<SelectTrigger>
-															<SelectValue placeholder="Min" />
-														</SelectTrigger>
-														<SelectContent>
-															<SelectItem v-for="min in minutes" :key="min" :value="min">
-																{{ min }}
-															</SelectItem>
-														</SelectContent>
-													</Select>
-												</div>
-											</div>
-
-											<!-- End Time -->
-											<div class="space-y-2">
-												<label class="text-sm font-medium">To</label>
-												<div class="grid grid-cols-2 gap-2">
-													<Select v-model="editingEndHour">
-														<SelectTrigger>
-															<SelectValue placeholder="Hour" />
-														</SelectTrigger>
-														<SelectContent>
-															<SelectItem
-																v-for="hour in hours"
-																:key="hour.value"
-																:value="hour.value"
-															>
-																{{ hour.label }}
-															</SelectItem>
-														</SelectContent>
-													</Select>
-
-													<Select v-model="editingEndMinute">
-														<SelectTrigger>
-															<SelectValue placeholder="Min" />
-														</SelectTrigger>
-														<SelectContent>
-															<SelectItem v-for="min in minutes" :key="min" :value="min">
-																{{ min }}
-															</SelectItem>
-														</SelectContent>
-													</Select>
-												</div>
-											</div>
-										</div>
-
-										<p v-if="editTimeError" class="text-destructive text-sm mt-1">
-											{{ editTimeError }}
-										</p>
-
-										<div class="flex gap-2">
-											<Button
-												@click="handleUpdate"
-												:disabled="!isEditFormValid || editForm.processing"
-											>
-												Save
-											</Button>
-											<Button variant="outline" @click="cancelEditing">Cancel</Button>
-										</div>
-									</div>
-								</div>
-								<div v-else class="flex items-center justify-between">
-									<div class="space-y-1">
-										<div class="flex items-baseline gap-2">
-											<p class="text-sm font-medium">{{ schedule.day_of_week }}</p>
-											<p class="text-xs text-muted-foreground">
-												{{
-													format(getNextOccurrence(schedule.day_of_week), "MMM d, yyyy")
-												}}
-											</p>
-										</div>
-										<p class="text-sm text-muted-foreground">
-											{{ formatScheduleTime(schedule) }}
-										</p>
-									</div>
-									<div class="flex gap-2">
-										<Button size="sm" variant="outline" @click="startEditing(schedule)">
-											Edit
-										</Button>
-										<Button
-											size="sm"
-											variant="destructive"
-											:disabled="deleteForm.processing"
-											@click="initiateDelete(schedule)"
-										>
-											Delete
-										</Button>
-									</div>
-								</div>
-							</div>
-						</div>
-
-						<!-- No schedules message -->
-						<p
-							v-if="!currentWeekSchedules.length && !nextWeekSchedules.length"
-							class="text-muted-foreground py-8 text-center text-sm"
-						>
-							No schedules set yet. Add your availability using the form.
-						</p>
-					</div>
-				</CardContent>
-			</Card>
+				</div>
+			</div>
 		</div>
 	</div>
 
 	<ConfirmDialog
 		:show="showDeleteDialog"
-		title="Delete Schedule"
-		description="Are you sure you want to delete this schedule? This action cannot be undone and will remove this time slot from your availability."
-		confirmLabel="Delete Schedule"
+		:title="
+			scheduleToDelete?.day_of_week === editForm.day_of_week
+				? 'Delete Day'
+				: 'Delete Time Slot'
+		"
+		:description="
+			scheduleToDelete?.day_of_week === editForm.day_of_week
+				? 'Are you sure you want to delete all time slots for this day?'
+				: 'Are you sure you want to delete this time slot?'
+		"
+		confirmLabel="Delete"
 		confirmVariant="destructive"
 		:processing="deleteForm.processing"
 		@confirm="handleDelete"
 		@update:show="showDeleteDialog = $event"
 		@cancel="showDeleteDialog = false"
 	/>
+
+	<!-- Time Slot Edit Dialog -->
+	<Dialog :open="editingSchedule !== null" @update:open="cancelEditing">
+		<DialogContent class="sm:max-w-[425px]">
+			<DialogHeader>
+				<DialogTitle>Edit Time Slot</DialogTitle>
+			</DialogHeader>
+
+			<div class="grid gap-4 py-4">
+				<!-- Time Range -->
+				<div class="grid grid-cols-2 gap-4">
+					<!-- Start Time -->
+					<div class="space-y-2">
+						<label class="text-sm font-medium">From</label>
+						<div class="grid grid-cols-2 gap-2">
+							<Select v-model="editingStartHour">
+								<SelectTrigger>
+									<SelectValue placeholder="Hour" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem v-for="hour in hours" :key="hour.value" :value="hour.value">
+										{{ hour.label }}
+									</SelectItem>
+								</SelectContent>
+							</Select>
+
+							<Select v-model="editingStartMinute">
+								<SelectTrigger>
+									<SelectValue placeholder="Min" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem v-for="min in minutes" :key="min" :value="min">
+										{{ min }}
+									</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+					</div>
+
+					<!-- End Time -->
+					<div class="space-y-2">
+						<label class="text-sm font-medium">To</label>
+						<div class="grid grid-cols-2 gap-2">
+							<Select v-model="editingEndHour">
+								<SelectTrigger>
+									<SelectValue placeholder="Hour" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem v-for="hour in hours" :key="hour.value" :value="hour.value">
+										{{ hour.label }}
+									</SelectItem>
+								</SelectContent>
+							</Select>
+
+							<Select v-model="editingEndMinute">
+								<SelectTrigger>
+									<SelectValue placeholder="Min" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem v-for="min in minutes" :key="min" :value="min">
+										{{ min }}
+									</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+					</div>
+				</div>
+
+				<p v-if="editTimeError" class="text-destructive text-sm">
+					{{ editTimeError }}
+				</p>
+			</div>
+
+			<DialogFooter>
+				<Button variant="outline" @click="cancelEditing"> Cancel </Button>
+				<Button @click="handleUpdate" :disabled="!isEditFormValid || editForm.processing">
+					Save Changes
+				</Button>
+			</DialogFooter>
+		</DialogContent>
+	</Dialog>
 </template>

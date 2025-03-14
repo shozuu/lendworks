@@ -83,6 +83,12 @@ Route::middleware(['auth'])->group(function () {
         ->name('lender.pickup-schedules.update');
     Route::post('lender/pickup-schedules/bulk', [LenderPickupScheduleController::class, 'storeBulk'])
         ->name('lender.pickup-schedules.store-bulk');
+    Route::post('lender/pickup-schedules/{dayOfWeek}/time-slot', [LenderPickupScheduleController::class, 'addTimeSlot'])
+        ->name('lender.pickup-schedules.add-time-slot');
+    Route::patch('lender/pickup-schedules/{schedule}/toggle', [LenderPickupScheduleController::class, 'toggleActive'])
+        ->name('lender.pickup-schedules.toggle');
+    Route::delete('lender/pickup-schedules/{schedule}/time-slot', [LenderPickupScheduleController::class, 'destroyTimeSlot'])
+        ->name('lender.pickup-schedules.destroy-time-slot');
 
     // Return routes
     Route::controller(ReturnController::class)->group(function () {
