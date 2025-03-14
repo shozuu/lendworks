@@ -6,7 +6,16 @@ use Illuminate\Database\Eloquent\Model;
 
 class RentalCancellationReason extends Model
 {
-    protected $fillable = ['code', 'label', 'description'];
+    protected $fillable = [
+        'code',
+        'label',
+        'description',
+        'role'
+    ];
+
+    protected $casts = [
+        'role' => 'string'
+    ];
 
     public function rentalRequests()
     {

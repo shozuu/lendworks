@@ -64,6 +64,10 @@ const props = defineProps({
 		default: () => [],
 	},
 	selectValue: String,
+	forceShowTextarea: {
+		type: Boolean,
+		default: false,
+	},
 });
 
 const emits = defineEmits([
@@ -122,12 +126,23 @@ const isDisabled = computed(() => {
 
 	const textareaContent = props.textareaValue?.trim() || "";
 
-	if (isSelectReasonOther.value) {
+	if (props.showTextarea || isSelectReasonOther.value) {
 		// Enforce minimum and maximum length for custom feedback
 		return textareaContent.length < 10 || textareaContent.length > 1000;
 	}
 
+	// If select is shown but no value is selected
+	if (props.showSelect && !props.selectValue) {
+		return true;
+	}
+
 	return false;
+});
+
+const shouldShowTextarea = computed(() => {
+	if (props.forceShowTextarea) return true;
+	if (!props.showSelect) return props.showTextarea;
+	return isSelectReasonOther.value;
 });
 </script>
 
@@ -143,39 +158,42 @@ const isDisabled = computed(() => {
 			class="w-[calc(100vw-2rem)] sm:max-w-[425px] p-0 flex flex-col max-h-[calc(100vh-2rem)] overflow-hidden rounded-lg"
 		>
 			<!-- Fixed Header -->
-			<DialogHeader class="p-4 sm:p-6">
-				<DialogTitle class="text-lg sm:text-xl">{{ title }}</DialogTitle>
-				<DialogDescription class="mt-2 sm:mt-3">
+			<DialogHeader class="sm:p-6 p-4">
+				<DialogTitle class="sm:text-xl text-lg">{{ title }}</DialogTitle>
+				<DialogDescription class="sm:mt-3 mt-2">
 					{{ description }}
 				</DialogDescription>
 			</DialogHeader>
 
 			<!-- Scrollable Content Area -->
-			<div class="flex-1 px-4 sm:px-6" v-if="showSelect">
+			<div class="sm:px-6 flex-1 px-4">
 				<!-- Select input -->
-				<div class="space-y-2 mb-4">
-					<Select
-						:model-value="selectValue"
-						@update:model-value="(value) => $emit('update:selectValue', value)"
-					>
-						<SelectTrigger class="w-full">
-							<SelectValue :placeholder="'Select a reason...'" />
-						</SelectTrigger>
-						<SelectContent class="max-h-[200px]">
-							<SelectItem
-								v-for="option in selectOptions"
-								:key="option.value"
-								:value="option.value"
-								class="cursor-pointer"
-							>
-								{{ option.label }}
-							</SelectItem>
-						</SelectContent>
-					</Select>
+				<div v-if="showSelect" class="mb-4 space-y-2">
+					<!-- Select input -->
+					<div class="mb-4 space-y-2">
+						<Select
+							:model-value="selectValue"
+							@update:model-value="(value) => $emit('update:selectValue', value)"
+						>
+							<SelectTrigger class="w-full">
+								<SelectValue :placeholder="'Select a reason...'" />
+							</SelectTrigger>
+							<SelectContent class="max-h-[200px]">
+								<SelectItem
+									v-for="option in selectOptions"
+									:key="option.value"
+									:value="option.value"
+									class="cursor-pointer"
+								>
+									{{ option.label }}
+								</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
 				</div>
 
 				<!-- Textarea sections -->
-				<div v-if="showTextarea || isSelectReasonOther" class="space-y-3">
+				<div v-if="shouldShowTextarea" class="space-y-3">
 					<textarea
 						:value="textareaValue"
 						@input="handleTextareaInput"
@@ -207,7 +225,7 @@ const isDisabled = computed(() => {
 			</div>
 
 			<!-- Fixed Footer -->
-			<DialogFooter class="p-4 sm:p-6">
+			<DialogFooter class="sm:p-6 p-4">
 				<div
 					class="sm:flex-row sm:gap-3 sm:justify-end flex flex-col-reverse w-full gap-2"
 				>
