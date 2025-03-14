@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import StatCard from "@/Components/StatCard.vue";
 import LenderListingCard from "@/Components/LenderListingCard.vue";
-import PickupScheduleManager from "@/Components/PickupScheduleManager.vue";
+import PickupScheduleManagerDialog from "@/Components/PickupScheduleManagerDialog.vue";
 import { ref, computed } from "vue";
 import { formatLabel } from "@/lib/formatters";
 
@@ -20,7 +20,6 @@ const props = defineProps({
 	cancellationReasons: Array,
 	pickupSchedules: Array,
 });
-console.log(props.groupedListings);
 const selectedTab = ref("pending");
 
 const tabs = [
@@ -35,7 +34,7 @@ const tabs = [
 	{ id: "return_scheduled", label: "Return Scheduled" },
 	{ id: "pending_return_confirmation", label: "Return Confirmation" },
 	{ id: "pending_final_confirmation", label: "Final Confirmation" },
-	{ id: "disputed", label: "In Dispute" }, // Add this line
+	{ id: "disputed", label: "In Dispute" },
 	{ id: "completed", label: "Completed" },
 	{ id: "rejected", label: "Rejected" },
 	{ id: "cancelled", label: "Cancelled" },
@@ -58,17 +57,24 @@ const groupedListings = computed(() => {
 
 	return result;
 });
+
+// Add ref for dialog control
+const showScheduleManager = ref(false);
 </script>
 
 <template>
 	<Head title="| Lender Dashboard" />
 	<div class="space-y-6">
-		<!-- Header -->
+		<!-- Header with Manage Availability Button -->
 		<div class="sm:flex-row sm:items-center sm:justify-between flex flex-col gap-4">
 			<div class="space-y-1">
 				<h2 class="text-2xl font-semibold tracking-tight">Lender Dashboard</h2>
 				<p class="text-muted-foreground text-sm">Manage rentals of your listed items</p>
 			</div>
+			<PickupScheduleManagerDialog
+				v-model:open="showScheduleManager"
+				:schedules="pickupSchedules"
+			/>
 		</div>
 
 		<!-- Stats Cards -->
@@ -81,16 +87,13 @@ const groupedListings = computed(() => {
 			/>
 		</div>
 
-		 <!-- Add Pickup Schedule Manager -->
-		<PickupScheduleManager :schedules="pickupSchedules" />
-
 		<!-- Tabs for lg+ screens -->
 		<div class="lg:block hidden">
 			<Tabs v-model="selectedTab" class="w-full" @update:modelValue="handleValueChange">
 				<TabsList class="flex flex-wrap items-center gap-2 p-1">
-					<TabsTrigger 
-						v-for="tab in tabs" 
-						:key="tab.id" 
+					<TabsTrigger
+						v-for="tab in tabs"
+						:key="tab.id"
 						:value="tab.id"
 						class="whitespace-nowrap min-w-fit px-3"
 					>
@@ -148,15 +151,3 @@ const groupedListings = computed(() => {
 		</div>
 	</div>
 </template>
-
-<style scoped>
-.TabsList {
-  overflow-x: auto;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
-}
-
-.TabsList::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
-}
-</style>

@@ -118,25 +118,6 @@ const handleDelete = () => {
 	});
 };
 
-const dayOrder = {
-	Monday: 1,
-	Tuesday: 2,
-	Wednesday: 3,
-	Thursday: 4,
-	Friday: 5,
-	Saturday: 6,
-	Sunday: 7,
-};
-
-const safeSchedules = computed(() => {
-	const schedules = props.schedules || [];
-	return [...schedules].sort((a, b) => {
-		const dayDiff = dayOrder[a.day_of_week] - dayOrder[b.day_of_week];
-		if (dayDiff !== 0) return dayDiff;
-		return a.start_time.localeCompare(b.start_time);
-	});
-});
-
 const editingSchedule = ref(null);
 const editForm = useForm({
 	day_of_week: "",

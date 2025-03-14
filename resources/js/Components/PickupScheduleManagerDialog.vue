@@ -1,0 +1,36 @@
+<script setup>
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import PickupScheduleManager from "@/Components/PickupScheduleManager.vue";
+import { Calendar } from "lucide-vue-next";
+
+defineProps({
+	open: Boolean,
+	schedules: Array,
+});
+
+const emit = defineEmits(["update:open"]);
+</script>
+
+<template>
+	<Dialog :open="open" @update:open="emit('update:open', $event)">
+		<DialogTrigger asChild>
+			<Button variant="outline" class="gap-2">
+				<Calendar class="w-4 h-4" />
+				Manage Availability
+			</Button>
+		</DialogTrigger>
+		<DialogContent class="sm:max-w-[800px]">
+			<DialogHeader>
+				<DialogTitle>Manage Pickup Schedule</DialogTitle>
+			</DialogHeader>
+			<PickupScheduleManager :schedules="schedules" />
+		</DialogContent>
+	</Dialog>
+</template>
