@@ -3,7 +3,6 @@ import { computed } from "vue";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useForm } from "@inertiajs/vue3";
-import { formatDateTime } from "@/lib/formatters";
 import { format, addDays } from "date-fns";
 
 const props = defineProps({
@@ -12,76 +11,83 @@ const props = defineProps({
 	lenderSchedules: Array,
 });
 
-const selectForm = useForm({});
+const selectForm = useForm({
+	start_time: "",
+	end_time: "",
+});
 
 const emit = defineEmits(["schedule-selected"]);
 
-const handleSelectDate = (schedule) => {
+const handleSelectDate = (slot) => {
+	console.log("Selecting slot:", slot); // Add logging to debug
+
+	// Set form data before submission
+	selectForm.start_time = slot.start_time;
+	selectForm.end_time = slot.end_time;
+
 	selectForm.patch(
 		route("pickup-schedules.select", {
 			rental: props.rental.id,
-			lender_schedule: schedule.id,
+			lender_schedule: slot.id, // This was the issue - slot is a generated timeslot
 		}),
 		{
-			data: {
-				metadata: {
-					day_of_week: schedule.day_of_week,
-					date: format(schedule.scheduleDate, "MMMM d, yyyy"),
-					start_time: schedule.start_time,
-					end_time: schedule.end_time,
-				},
-			},
 			preserveScroll: true,
 			onSuccess: () => {
 				emit("schedule-selected");
+			},
+			onError: (errors) => {
+				console.error("Selection failed:", errors); // Add error logging
 			},
 		}
 	);
 };
 
-// Modified to get actual date based on day of week
-const getScheduleDate = (dayOfWeek) => {
-	const today = new Date();
-	const daysMap = {
-		Monday: 1,
-		Tuesday: 2,
-		Wednesday: 3,
-		Thursday: 4,
-		Friday: 5,
-		Saturday: 6,
-		Sunday: 0,
-	};
-
-	const currentDay = today.getDay();
-	const targetDay = daysMap[dayOfWeek];
-	let daysToAdd = targetDay - currentDay;
-
-	if (daysToAdd < 0) {
-		daysToAdd += 7;
-	}
-
-	const scheduleDate = new Date(today);
-	scheduleDate.setDate(today.getDate() + daysToAdd);
-	return scheduleDate;
+const parseTime = (timeStr) => {
+	const [hours, minutes] = timeStr.split(":");
+	return { hours: parseInt(hours), minutes: parseInt(minutes) };
 };
 
-// Modified availableSchedules computed property
-const availableSchedules = computed(() => {
-	const rentalStartDate = new Date(props.rental.start_date);
-	rentalStartDate.setHours(23, 59, 59, 999); // End of rental start date
+const daysMap = {
+	Monday: 1,
+	Tuesday: 2,
+	Wednesday: 3,
+	Thursday: 4,
+	Friday: 5,
+	Saturday: 6,
+	Sunday: 0,
+};
 
-	return props.lenderSchedules
-		.map((schedule) => {
-			const scheduleDate = getScheduleDate(schedule.day_of_week);
-			return {
-				...schedule,
-				scheduleDate,
-				formattedTime: formatScheduleTime(schedule),
-			};
-		})
-		.filter((schedule) => schedule.scheduleDate <= rentalStartDate)
-		.sort((a, b) => a.scheduleDate - b.scheduleDate);
-});
+// Move isPastTimeSlot to be schedule-independent first check
+const isPastTimeSlot = (schedule) => {
+	const now = new Date();
+	const today = now.getDay();
+	const currentHour = now.getHours();
+	const currentMinute = now.getMinutes();
+
+	const { hours: endHour, minutes: endMinute } = parseTime(schedule.end_time);
+
+	// If it's the same day, check if current time is past the end time
+	if (daysMap[schedule.day_of_week] === today) {
+		return (
+			currentHour > endHour || (currentHour === endHour && currentMinute > endMinute)
+		);
+	}
+
+	return false;
+};
+
+// Update getScheduleDate to check against rental start date
+const getScheduleDate = (schedule) => {
+	const rentalStartDate = new Date(props.rental.start_date);
+	const dayOfWeek = format(rentalStartDate, "EEEE"); // Gets day name like "Monday"
+
+	// Only return date if schedule matches rental start day
+	if (schedule.day_of_week === dayOfWeek) {
+		return rentalStartDate;
+	}
+
+	return null;
+};
 
 const selectedSchedule = computed(() => {
 	if (!props.rental.pickup_schedules?.length) return null;
@@ -130,16 +136,6 @@ const formatScheduleTime = (schedule) => {
 	)}`;
 };
 
-// Add this computed property to get available times for each day
-const availableTimesForDay = computed(() => (dayOfWeek) => {
-	return props.lenderSchedules
-		.filter((schedule) => schedule.day_of_week === dayOfWeek)
-		.map((schedule) => ({
-			...schedule,
-			formattedTime: formatScheduleTime(schedule),
-		}));
-});
-
 // Update selectedScheduleDetails to use the correct schedule reference
 const selectedScheduleDetails = computed(() => {
 	if (!selectedSchedule.value) return null;
@@ -156,59 +152,65 @@ const selectedScheduleDetails = computed(() => {
 	};
 });
 
-// Add computed properties for week grouping
-const schedulesGroupedByWeek = computed(() => {
+// Add new helper function for time slot generation
+const generateTimeSlots = (schedule) => {
+	const { hours: startHour, minutes: startMin } = parseTime(schedule.start_time);
+	const { hours: endHour, minutes: endMin } = parseTime(schedule.end_time);
+
+	const slots = [];
+	const slotDuration = 120; // 2 hours per slot
+
+	let currentSlotStart = startHour * 60 + startMin;
+	const endTime = endHour * 60 + endMin;
+
+	while (currentSlotStart < endTime) {
+		const slotEnd = Math.min(currentSlotStart + slotDuration, endTime);
+
+		slots.push({
+			id: schedule.id, // Make sure we keep the original schedule's ID
+			day_of_week: schedule.day_of_week,
+			start_time: `${Math.floor(currentSlotStart / 60)
+				.toString()
+				.padStart(2, "0")}:${(currentSlotStart % 60).toString().padStart(2, "0")}`,
+			end_time: `${Math.floor(slotEnd / 60)
+				.toString()
+				.padStart(2, "0")}:${(slotEnd % 60).toString().padStart(2, "0")}`,
+		});
+
+		currentSlotStart = slotEnd;
+	}
+
+	return slots;
+};
+
+// Update availableTimeSlots computed to use time slots
+const availableTimeSlots = computed(() => {
 	const rentalStartDate = new Date(props.rental.start_date);
-	rentalStartDate.setHours(23, 59, 59, 999);
+	const now = new Date();
+	const dayOfWeek = format(rentalStartDate, "EEEE");
 
-	const today = new Date();
-	const grouped = {
-		thisWeek: {},
-		nextWeek: {},
-	};
-
-	props.lenderSchedules
+	return props.lenderSchedules
 		.filter((schedule) => {
-			const scheduleDate = getScheduleDate(schedule.day_of_week);
-			return scheduleDate <= rentalStartDate;
-		})
-		.forEach((schedule) => {
-			const scheduleDate = getScheduleDate(schedule.day_of_week);
-			const isThisWeek =
-				scheduleDate.getTime() >= today.getTime() &&
-				scheduleDate.getTime() < addDays(today, 7 - today.getDay()).getTime();
-
-			const targetWeek = isThisWeek ? "thisWeek" : "nextWeek";
-			const day = schedule.day_of_week;
-
-			if (!grouped[targetWeek][day]) {
-				grouped[targetWeek][day] = [];
+			// Must be active and match rental start day
+			if (!schedule.is_active || schedule.day_of_week !== dayOfWeek) {
+				return false;
 			}
 
-			grouped[targetWeek][day].push({
-				...schedule,
-				scheduleDate,
-				formattedTime: formatScheduleTime(schedule),
-			});
-		});
+			// If it's today, check if time slot hasn't passed
+			if (format(now, "yyyy-MM-dd") === format(rentalStartDate, "yyyy-MM-dd")) {
+				return !isPastTimeSlot(schedule);
+			}
 
-	// Sort timeslots within each day
-	Object.values(grouped).forEach((week) => {
-		Object.values(week).forEach((slots) => {
-			slots.sort((a, b) => a.start_time.localeCompare(b.start_time));
-		});
-	});
-
-	return grouped;
+			return true;
+		})
+		.flatMap((schedule) => generateTimeSlots(schedule))
+		.map((slot) => ({
+			...slot,
+			scheduleDate: rentalStartDate,
+			formattedTime: formatScheduleTime(slot),
+		}))
+		.sort((a, b) => a.start_time.localeCompare(b.start_time));
 });
-
-const hasThisWeekSchedules = computed(
-	() => Object.keys(schedulesGroupedByWeek.value.thisWeek).length > 0
-);
-
-const hasNextWeekSchedules = computed(
-	() => Object.keys(schedulesGroupedByWeek.value.nextWeek).length > 0
-);
 </script>
 
 <template>
@@ -216,94 +218,42 @@ const hasNextWeekSchedules = computed(
 		<CardHeader class="bg-card border-b">
 			<CardTitle>Pickup Schedule</CardTitle>
 			<p class="text-muted-foreground text-sm">
-				Select a pickup date before or on
+				Select a pickup time for
 				{{ format(new Date(props.rental.start_date), "MMMM d, yyyy") }}
 			</p>
 		</CardHeader>
 		<CardContent class="p-0">
-			<!-- Remove padding from CardContent -->
-			<!-- For Renter: Show available schedules -->
-			<div
-				v-if="userRole === 'renter' && !selectedSchedule"
-				class="max-h-[400px] overflow-y-auto px-6 py-4 divide-y"
-			>
-				<!-- This Week -->
-				<div v-if="hasThisWeekSchedules" class="space-y-4 pb-4">
-					<h3 class="font-medium text-sm text-muted-foreground">This Week</h3>
-					<div
-						v-for="(slots, day) in schedulesGroupedByWeek.thisWeek"
-						:key="day"
-						class="space-y-3"
-					>
-						<div class="bg-muted/50 p-3 rounded-lg">
-							<div class="flex items-baseline justify-between">
-								<h4 class="font-medium">{{ day }}</h4>
-								<p class="text-xs text-muted-foreground">
-									{{ format(slots[0].scheduleDate, "MMM d, yyyy") }}
-								</p>
-							</div>
-							<div class="mt-2 space-y-2">
-								<div
-									v-for="slot in slots"
-									:key="slot.id"
-									class="flex items-center justify-between bg-background p-2 rounded"
+			<!-- Show available time slots -->
+			<div v-if="userRole === 'renter' && !selectedSchedule" class="px-6 py-4">
+				<div v-if="availableTimeSlots.length" class="space-y-4">
+					<div class="bg-muted/50 p-3 rounded-lg">
+						<div class="flex items-baseline justify-between">
+							<h4 class="font-medium">Available Time Slots</h4>
+							<p class="text-xs text-muted-foreground">
+								{{ format(availableTimeSlots[0].scheduleDate, "MMM d, yyyy") }}
+							</p>
+						</div>
+						<div class="mt-2 space-y-2">
+							<div
+								v-for="slot in availableTimeSlots"
+								:key="slot.id"
+								class="flex items-center justify-between bg-background p-2 rounded"
+							>
+								<span class="text-sm">{{ slot.formattedTime }}</span>
+								<Button
+									size="sm"
+									variant="outline"
+									@click="handleSelectDate(slot)"
+									:disabled="selectForm.processing"
 								>
-									<span class="text-sm">{{ slot.formattedTime }}</span>
-									<Button
-										size="sm"
-										variant="outline"
-										@click="handleSelectDate(slot)"
-										:disabled="selectForm.processing"
-									>
-										Select
-									</Button>
-								</div>
+									Select
+								</Button>
 							</div>
 						</div>
 					</div>
 				</div>
-
-				<!-- Next Week -->
-				<div v-if="hasNextWeekSchedules" class="space-y-4 pt-4">
-					<h3 class="font-medium text-sm text-muted-foreground">Next Week</h3>
-					<div
-						v-for="(slots, day) in schedulesGroupedByWeek.nextWeek"
-						:key="day"
-						class="space-y-3"
-					>
-						<div class="bg-muted/50 p-3 rounded-lg">
-							<div class="flex items-baseline justify-between">
-								<h4 class="font-medium">{{ day }}</h4>
-								<p class="text-xs text-muted-foreground">
-									{{ format(slots[0].scheduleDate, "MMM d, yyyy") }}
-								</p>
-							</div>
-							<div class="mt-2 space-y-2">
-								<div
-									v-for="slot in slots"
-									:key="slot.id"
-									class="flex items-center justify-between bg-background p-2 rounded"
-								>
-									<span class="text-sm">{{ slot.formattedTime }}</span>
-									<Button
-										size="sm"
-										variant="outline"
-										@click="handleSelectDate(slot)"
-										:disabled="selectForm.processing"
-									>
-										Select
-									</Button>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<p
-					v-if="!hasThisWeekSchedules && !hasNextWeekSchedules"
-					class="text-muted-foreground py-8 text-center text-sm"
-				>
-					No available schedules before the rental start date.
+				<p v-else class="text-muted-foreground py-8 text-center text-sm">
+					No available time slots for the rental start date.
 				</p>
 			</div>
 

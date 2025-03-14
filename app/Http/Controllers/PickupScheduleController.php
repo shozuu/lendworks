@@ -54,49 +54,41 @@ class PickupScheduleController extends Controller
         return back()->with('success', 'Schedule deleted successfully');
     }
 
-    public function select(RentalRequest $rental, LenderPickupSchedule $lender_schedule)
+    public function select(Request $request, RentalRequest $rental, LenderPickupSchedule $lender_schedule)
     {
         // Validate that the rental belongs to the authenticated user
         if ($rental->renter_id !== Auth::id()) {
             abort(403);
         }
 
-        DB::transaction(function () use ($rental, $lender_schedule) {
-            // Calculate the next occurrence of the schedule's day
-            $nextDate = Carbon::now();
-            while ($nextDate->format('l') !== $lender_schedule->day_of_week) {
-                $nextDate->addDay();
-            }
+        $validated = $request->validate([
+            'start_time' => 'required|string',
+            'end_time' => 'required|string'
+        ]);
 
-            // Combine date with schedule time
-            $pickupDatetime = Carbon::parse(
-                $nextDate->format('Y-m-d') . ' ' . $lender_schedule->start_time
-            );
+        DB::transaction(function () use ($rental, $lender_schedule, $validated) {
+            // Reset existing selections
+            $rental->pickup_schedules()->update(['is_selected' => false]);
 
-            // Create or update pickup schedule with correct reference
-            $pickup_schedule = $rental->pickup_schedules()->updateOrCreate(
-                ['rental_request_id' => $rental->id],
-                [
-                    'lender_pickup_schedule_id' => $lender_schedule->id, // Fix: Use correct field name
-                    'pickup_datetime' => $pickupDatetime,
-                    'is_selected' => true,
-                    'start_time' => $lender_schedule->start_time,
-                    'end_time' => $lender_schedule->end_time
-                ]
-            );
+            // Calculate the pickup datetime using rental start date and slot start time
+            $pickupDatetime = Carbon::parse($rental->start_date)->setTimeFromTimeString($validated['start_time']);
 
-            // Add timeline event with detailed metadata
-            $rental->timeline_events()->create([
-                'actor_id' => Auth::id(),
-                'event_type' => 'pickup_schedule_selected',
-                'status' => $rental->status,
-                'metadata' => [
-                    'day_of_week' => $lender_schedule->day_of_week,
-                    'date' => $pickupDatetime->format('F d, Y'),
-                    'start_time' => $lender_schedule->start_time,
-                    'end_time' => $lender_schedule->end_time,
-                    'pickup_datetime' => $pickupDatetime->format('Y-m-d H:i:s')
-                ]
+            // Create pickup schedule with exact time slot
+            $pickup_schedule = $rental->pickup_schedules()->create([
+                'lender_pickup_schedule_id' => $lender_schedule->id,
+                'pickup_datetime' => $pickupDatetime,
+                'start_time' => $validated['start_time'],
+                'end_time' => $validated['end_time'],
+                'is_selected' => true
+            ]);
+
+            // Add timeline event
+            $rental->recordTimelineEvent('pickup_schedule_selected', Auth::id(), [
+                'day_of_week' => $pickupDatetime->format('l'),
+                'date' => $pickupDatetime->format('F d, Y'), 
+                'start_time' => $validated['start_time'],
+                'end_time' => $validated['end_time'],
+                'pickup_datetime' => $pickupDatetime->format('Y-m-d H:i:s')
             ]);
         });
 
