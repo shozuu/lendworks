@@ -25,28 +25,18 @@ const props = defineProps({
 
 const emit = defineEmits(['update:show']);
 
-// Update the earnings computed property with debugging
+// Simplify earnings computed property
 const earnings = computed(() => {
-  if (!props.rental) {
-    console.log('No rental data available');
-    return { base: 0, overdue: 0, total: 0, hasOverdue: false };
-  }
+  if (!props.rental) return { base: 0, overdue: 0, total: 0 };
   
-  // Debug log the entire rental object
-  console.log('Full rental data:', {
-    id: props.rental.id,
-    base_price: props.rental.base_price,
-    discount: props.rental.discount,
-    service_fee: props.rental.service_fee,
-    earnings: props.rental.lender_earnings
-  });
+  const baseEarnings = props.rental.base_price - props.rental.discount - props.rental.service_fee;
+  const overdueFee = props.rental.overdue_fee || 0;
   
-  if (!props.rental.lender_earnings) {
-    console.log('No lender_earnings data available');
-    return { base: 0, overdue: 0, total: 0, hasOverdue: false };
-  }
-  
-  return props.rental.lender_earnings;
+  return {
+    base: baseEarnings,
+    overdue: overdueFee,
+    total: baseEarnings + overdueFee
+  };
 });
 
 const form = useForm({
@@ -55,8 +45,6 @@ const form = useForm({
   notes: '',
   amount: computed(() => {
     if (props.type === 'lender_payment') {
-      // Debug log
-      console.log('Form amount calculation:', earnings.value);
       return earnings.value.total;
     }
     return props.rental?.deposit_fee || 0;
@@ -75,9 +63,6 @@ const handleSubmit = () => {
   form.post(endpoint, {
     preserveScroll: true,
     onSuccess: (response) => {
-      // Add debug logging
-      console.log('Payment Response:', response);
-      
       emit('update:show', false);
       form.reset();
       selectedImage.value = [];
@@ -113,24 +98,21 @@ const description = computed(() =>
           <!-- Lender Payment Amount Display -->
           <div v-if="type === 'lender_payment'" class="space-y-2 p-4 bg-muted rounded-lg">
             <div class="space-y-1 text-sm">
-              <!-- Debug info -->
-              <div class="text-xs mb-2 p-2 bg-secondary">
-                <div>Base Price: {{ rental.base_price }}</div>
-                <div>Discount: {{ rental.discount }}</div>
-                <div>Service Fee: {{ rental.service_fee }}</div>
-                <div>Raw Earnings: {{ JSON.stringify(rental.lender_earnings) }}</div>
-              </div>
-              
-              <!-- Debug display -->
-              <pre class="text-xs mb-2">{{ JSON.stringify(earnings, null, 2) }}</pre>
-              
               <div class="flex justify-between">
-                <span class="text-muted-foreground">Base Earnings:</span>
-                <span>{{ formatNumber(earnings.base) }}</span>
+                <span class="text-muted-foreground">Base Price:</span>
+                <span>{{ formatNumber(rental.base_price) }}</span>
               </div>
-              <div v-if="earnings.hasOverdue" class="flex justify-between">
+              <div v-if="rental.discount > 0" class="flex justify-between">
+                <span class="text-muted-foreground">Discount:</span>
+                <span class="text-destructive">- {{ formatNumber(rental.discount) }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-muted-foreground">Service Fee:</span>
+                <span class="text-destructive">- {{ formatNumber(rental.service_fee) }}</span>
+              </div>
+              <div v-if="rental.overdue_fee > 0" class="flex justify-between">
                 <span class="text-muted-foreground">Overdue Fee:</span>
-                <span class="text-emerald-500">+ {{ formatNumber(earnings.overdue) }}</span>
+                <span class="text-emerald-500">+ {{ formatNumber(rental.overdue_fee) }}</span>
               </div>
               <div class="flex justify-between font-medium pt-2 border-t mt-2">
                 <span>Total Payment:</span>
