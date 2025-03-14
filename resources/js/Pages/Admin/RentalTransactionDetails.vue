@@ -536,7 +536,7 @@ const showOverdueSection = computed(() => {
 								<span class="font-medium">Discounts & Fees:</span>
 								<span>- {{ formatNumber(rental.discount + rental.service_fee) }}</span>
 							</div>
-							<div v-if="rental.overdue_payment" class="flex justify-between items-center text-emerald-500">
+							<div v-if="showOverdueSection" class="flex justify-between items-center text-emerald-500">
 								<span class="font-medium">Overdue Fee:</span>
 								<span>+ {{ formatNumber(rental.overdue_fee) }}</span>
 							</div>
@@ -544,11 +544,11 @@ const showOverdueSection = computed(() => {
 							<div class="flex justify-between items-center">
 								<span class="font-medium">Total Earnings:</span>
 								<span class="text-emerald-500 text-lg">
-									{{ formatNumber(rental.base_price - rental.discount - rental.service_fee + (rental.overdue_payment ? rental.overdue_fee : 0)) }}
+									{{ formatNumber(rental.base_price - rental.discount - rental.service_fee + (showOverdueSection ? rental.overdue_fee : 0)) }}
 								</span>
 							</div>
 							<p class="text-muted-foreground text-xs">
-								{{ rental.overdue_payment ? 'Total earnings including overdue fees' : 'Total earnings after discounts and fees' }}
+								{{ showOverdueSection ? 'Total earnings including overdue fees' : 'Total earnings after discounts and fees' }}
 							</p>
 						</div>
 					</CardContent>
