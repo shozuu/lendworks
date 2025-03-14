@@ -12,6 +12,13 @@ import { Button } from "@/components/ui/button";
 import { useForm } from "@inertiajs/vue3";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import { addDays, format, startOfWeek } from "date-fns";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogFooter,
+} from "@/components/ui/dialog";
 
 const props = defineProps({
 	schedules: Array,
@@ -101,24 +108,47 @@ const deleteForm = useForm({});
 const scheduleToDelete = ref(null);
 const showDeleteDialog = ref(false);
 
-const initiateDelete = (schedule) => {
+// Add delete type tracking
+const deleteType = ref(null); // 'day' or 'timeslot'
+
+const initiateDelete = (schedule, type = "timeslot") => {
 	scheduleToDelete.value = schedule;
+	deleteType.value = type;
 	showDeleteDialog.value = true;
 };
 
 const handleDelete = () => {
 	if (!scheduleToDelete.value) return;
 
-	deleteForm.delete(route("lender.pickup-schedules.destroy", scheduleToDelete.value.id), {
-		preserveScroll: true,
-		onSuccess: () => {
+	if (deleteType.value === "day") {
+		// Delete all schedules for this day
+		const daySchedules = schedulesGroupedByDay.value[scheduleToDelete.value.day_of_week];
+		const deletePromises = daySchedules.map((schedule) =>
+			deleteForm.delete(route("lender.pickup-schedules.destroy", schedule.id))
+		);
+
+		Promise.all(deletePromises).then(() => {
 			showDeleteDialog.value = false;
 			scheduleToDelete.value = null;
-		},
-	});
+			deleteType.value = null;
+		});
+	} else {
+		// Delete single time slot
+		deleteForm.delete(
+			route("lender.pickup-schedules.destroy", scheduleToDelete.value.id),
+			{
+				preserveScroll: true,
+				onSuccess: () => {
+					showDeleteDialog.value = false;
+					scheduleToDelete.value = null;
+					deleteType.value = null;
+				},
+			}
+		);
+	}
 };
 
-const editingSchedule = ref(null);
+const editingTimeSlot = ref(null);
 const editForm = useForm({
 	start_time: "",
 	end_time: "",
@@ -130,7 +160,7 @@ const editingEndHour = ref("");
 const editingEndMinute = ref("");
 
 const startEditing = (schedule) => {
-	editingSchedule.value = schedule;
+	editingTimeSlot.value = schedule;
 
 	const [startHour, startMin] = schedule.start_time.split(":");
 	const [endHour, endMin] = schedule.end_time.split(":");
@@ -145,7 +175,7 @@ const startEditing = (schedule) => {
 };
 
 const cancelEditing = () => {
-	editingSchedule.value = null;
+	editingTimeSlot.value = null;
 	editForm.reset();
 	editingStartHour.value = "";
 	editingStartMinute.value = "";
@@ -222,15 +252,18 @@ const isEditFormValid = computed(() => {
 });
 
 const handleUpdate = () => {
-	if (!validateEditTimeRange()) {
-		return;
-	}
+	if (!validateEditTimeRange()) return;
 
-	editForm.patch(route("lender.pickup-schedules.update", editingSchedule.value.id), {
+	editForm.start_time = `${editingStartHour.value}:${editingStartMinute.value}`;
+	editForm.end_time = `${editingEndHour.value}:${editingEndMinute.value}`;
+
+	// Keep the same day_of_week when updating
+	editForm.day_of_week = editingTimeSlot.value.day_of_week;
+
+	editForm.patch(route("lender.pickup-schedules.update", editingTimeSlot.value.id), {
 		preserveScroll: true,
 		onSuccess: () => {
 			cancelEditing();
-			editTimeError.value = "";
 		},
 	});
 };
@@ -349,9 +382,18 @@ const timeSlotsByDay = computed(() => {
 const handleAddTimeSlot = (day) => {
 	selectedDay.value = day;
 	showAddTimeSlotDialog.value = true;
+
+	// Reset form
+	addStartHour.value = "";
+	addStartMinute.value = "";
+	addEndHour.value = "";
+	addEndMinute.value = "";
+	addTimeError.value = "";
 };
 
 const submitNewTimeSlot = () => {
+	if (!validateAddTimeRange()) return;
+
 	addTimeSlotForm.post(
 		route("lender.pickup-schedules.add-time-slot", selectedDay.value),
 		{
@@ -360,6 +402,10 @@ const submitNewTimeSlot = () => {
 				showAddTimeSlotDialog.value = false;
 				selectedDay.value = null;
 				addTimeSlotForm.reset();
+				addStartHour.value = "";
+				addStartMinute.value = "";
+				addEndHour.value = "";
+				addEndMinute.value = "";
 			},
 		}
 	);
@@ -368,46 +414,6 @@ const submitNewTimeSlot = () => {
 const toggleScheduleActive = (schedule) => {
 	useForm().patch(route("lender.pickup-schedules.toggle", schedule.id), {
 		preserveScroll: true,
-	});
-};
-
-const editingTimeSlot = ref(null);
-const showEditDialog = ref(false);
-
-const startEditingTimeSlot = (schedule) => {
-	editingTimeSlot.value = schedule;
-	showEditDialog.value = true;
-
-	const [startHour, startMin] = schedule.start_time.split(":");
-	const [endHour, endMin] = schedule.end_time.split(":");
-
-	editingStartHour.value = startHour;
-	editingStartMinute.value = startMin;
-	editingEndHour.value = endHour;
-	editingEndMinute.value = endMin;
-};
-
-const cancelEditingTimeSlot = () => {
-	editingTimeSlot.value = null;
-	showEditDialog.value = false;
-	editingStartHour.value = "";
-	editingStartMinute.value = "";
-	editingEndHour.value = "";
-	editingEndMinute.value = "";
-	editTimeError.value = "";
-};
-
-const handleUpdateTimeSlot = () => {
-	if (!validateEditTimeRange()) return;
-
-	editForm.start_time = `${editingStartHour.value}:${editingStartMinute.value}`;
-	editForm.end_time = `${editingEndHour.value}:${editingEndMinute.value}`;
-
-	editForm.patch(route("lender.pickup-schedules.update", editingTimeSlot.value.id), {
-		preserveScroll: true,
-		onSuccess: () => {
-			cancelEditingTimeSlot();
-		},
 	});
 };
 
@@ -442,6 +448,89 @@ const sortedDays = computed(() => {
 	return Object.keys(schedulesGroupedByDay.value).sort(
 		(a, b) => dayOrder[a] - dayOrder[b]
 	);
+});
+
+// Update week sorting logic
+const isInCurrentWeek = (dayOfWeek) => {
+	const today = new Date();
+	const todayDayIndex = today.getDay() || 7; // Convert Sunday (0) to 7
+	const dayIndex = daysMap[dayOfWeek];
+
+	return dayIndex >= todayDayIndex;
+};
+
+const daysMap = {
+	Monday: 1,
+	Tuesday: 2,
+	Wednesday: 3,
+	Thursday: 4,
+	Friday: 5,
+	Saturday: 6,
+	Sunday: 7,
+};
+
+// Update schedule grouping computeds
+const currentWeekDays = computed(() =>
+	sortedDays.value.filter((day) => isInCurrentWeek(day))
+);
+
+const nextWeekDays = computed(() =>
+	sortedDays.value.filter((day) => !isInCurrentWeek(day))
+);
+
+const addStartHour = ref("");
+const addStartMinute = ref("");
+const addEndHour = ref("");
+const addEndMinute = ref("");
+const addTimeError = ref("");
+
+// Add watchers for add time slot form
+watch([addStartHour, addStartMinute], () => {
+	if (addStartHour.value && addStartMinute.value) {
+		addTimeSlotForm.start_time = `${addStartHour.value}:${addStartMinute.value}`;
+	}
+});
+
+watch([addEndHour, addEndMinute], () => {
+	if (addEndHour.value && addEndMinute.value) {
+		addTimeSlotForm.end_time = `${addEndHour.value}:${addEndMinute.value}`;
+	}
+});
+
+// Add validation for add time slot
+const validateAddTimeRange = () => {
+	addTimeError.value = "";
+
+	if (
+		!addStartHour.value ||
+		!addStartMinute.value ||
+		!addEndHour.value ||
+		!addEndMinute.value
+	) {
+		return false;
+	}
+
+	const start = parseInt(addStartHour.value) * 60 + parseInt(addStartMinute.value);
+	const end = parseInt(addEndHour.value) * 60 + parseInt(addEndMinute.value);
+
+	if (end <= start) {
+		addTimeError.value = "End time must be later than start time";
+		return false;
+	}
+
+	return true;
+};
+
+const isAddFormValid = computed(() => {
+	if (
+		!addStartHour.value ||
+		!addStartMinute.value ||
+		!addEndHour.value ||
+		!addEndMinute.value
+	) {
+		return false;
+	}
+	return validateAddTimeRange();
 });
 </script>
 
@@ -576,9 +665,10 @@ const sortedDays = computed(() => {
 						</p>
 					</div>
 
-					<!-- Schedule Groups By Day -->
-					<div class="space-y-4">
-						<div v-for="day in sortedDays" :key="day" class="border rounded-lg p-4">
+					<!-- Current Week Section -->
+					<div v-if="currentWeekDays.length" class="space-y-4">
+						<h4 class="text-sm font-medium text-muted-foreground">This Week</h4>
+						<div v-for="day in currentWeekDays" :key="day" class="border rounded-lg p-4">
 							<!-- Day Header -->
 							<div class="flex items-center justify-between mb-4">
 								<div>
@@ -588,13 +678,71 @@ const sortedDays = computed(() => {
 									</p>
 								</div>
 								<div class="flex gap-2">
-									<Button size="sm" variant="" @click="handleAddTimeSlot(day)">
-										Add Time Slot
-									</Button>
+									<Button size="sm" @click="handleAddTimeSlot(day)"> Add Time </Button>
 									<Button
 										size="sm"
 										variant="destructive"
-										@click="initiateDelete(schedulesGroupedByDay[day][0])"
+										@click="initiateDelete(schedulesGroupedByDay[day][0], 'day')"
+									>
+										Remove Day
+									</Button>
+								</div>
+							</div>
+
+							<!-- Time Slots -->
+							<div class="space-y-2">
+								<div
+									v-for="schedule in schedulesGroupedByDay[day]"
+									:key="schedule.id"
+									class="flex items-center justify-between p-2 rounded-md bg-muted/30"
+									:class="{ 'opacity-60': !schedule.is_active }"
+								>
+									<div class="flex items-center gap-4">
+										<Button
+											size="sm"
+											variant="ghost"
+											class="flex items-center gap-2"
+											@click="toggleScheduleActive(schedule)"
+										>
+											<div
+												class="w-2 h-2 rounded-full"
+												:class="schedule.is_active ? 'bg-primary' : 'bg-muted-foreground'"
+											/>
+											<span>{{ formatScheduleTime(schedule) }}</span>
+										</Button>
+									</div>
+
+									<div class="flex items-center gap-2">
+										<Button size="sm" variant="outline" @click="startEditing(schedule)">
+											Edit Time
+										</Button>
+										<Button size="sm" variant="outline" @click="initiateDelete(schedule)">
+											Remove
+										</Button>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Next Week Section -->
+					<div v-if="nextWeekDays.length" class="space-y-4">
+						<h4 class="text-sm font-medium text-muted-foreground">Next Week</h4>
+						<div v-for="day in nextWeekDays" :key="day" class="border rounded-lg p-4">
+							<!-- Same day header and time slots structure as above -->
+							<div class="flex items-center justify-between mb-4">
+								<div>
+									<h4 class="font-medium">{{ day }}</h4>
+									<p class="text-xs text-muted-foreground">
+										{{ format(getNextOccurrence(day), "MMM d, yyyy") }}
+									</p>
+								</div>
+								<div class="flex gap-2">
+									<Button size="sm" @click="handleAddTimeSlot(day)"> Add Time </Button>
+									<Button
+										size="sm"
+										variant="destructive"
+										@click="initiateDelete(schedulesGroupedByDay[day][0], 'day')"
 									>
 										Remove Day
 									</Button>
@@ -651,26 +799,114 @@ const sortedDays = computed(() => {
 
 	<ConfirmDialog
 		:show="showDeleteDialog"
-		:title="
-			scheduleToDelete?.day_of_week === editForm.day_of_week
-				? 'Delete Day'
-				: 'Delete Time Slot'
-		"
+		:title="deleteType === 'day' ? 'Delete Day Schedule' : 'Delete Time Slot'"
 		:description="
-			scheduleToDelete?.day_of_week === editForm.day_of_week
-				? 'Are you sure you want to delete all time slots for this day?'
-				: 'Are you sure you want to delete this time slot?'
+			deleteType === 'day'
+				? `Are you sure you want to delete all time slots for ${scheduleToDelete?.day_of_week}? This action cannot be undone.`
+				: 'Are you sure you want to delete this time slot? This action cannot be undone.'
 		"
 		confirmLabel="Delete"
 		confirmVariant="destructive"
 		:processing="deleteForm.processing"
 		@confirm="handleDelete"
 		@update:show="showDeleteDialog = $event"
-		@cancel="showDeleteDialog = false"
+		@cancel="
+			() => {
+				showDeleteDialog = false;
+				deleteType = null;
+				scheduleToDelete = null;
+			}
+		"
 	/>
 
+	<!-- Add Time Slot Dialog -->
+	<Dialog :open="showAddTimeSlotDialog" @update:open="showAddTimeSlotDialog = false">
+		<DialogContent class="sm:max-w-[425px]">
+			<DialogHeader>
+				<DialogTitle>Add Time Slot for {{ selectedDay }}</DialogTitle>
+			</DialogHeader>
+
+			<div class="grid gap-4 py-4">
+				<div class="grid grid-cols-2 gap-4">
+					<!-- Start Time -->
+					<div class="space-y-2">
+						<label class="text-sm font-medium">From</label>
+						<div class="grid grid-cols-2 gap-2">
+							<Select v-model="addStartHour">
+								<SelectTrigger>
+									<SelectValue placeholder="Hour" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem v-for="hour in hours" :key="hour.value" :value="hour.value">
+										{{ hour.label }}
+									</SelectItem>
+								</SelectContent>
+							</Select>
+
+							<Select v-model="addStartMinute">
+								<SelectTrigger>
+									<SelectValue placeholder="Min" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem v-for="min in minutes" :key="min" :value="min">
+										{{ min }}
+									</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+					</div>
+
+					<!-- End Time -->
+					<div class="space-y-2">
+						<label class="text-sm font-medium">To</label>
+						<div class="grid grid-cols-2 gap-2">
+							<Select v-model="addEndHour">
+								<SelectTrigger>
+									<SelectValue placeholder="Hour" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem v-for="hour in hours" :key="hour.value" :value="hour.value">
+										{{ hour.label }}
+									</SelectItem>
+								</SelectContent>
+							</Select>
+
+							<Select v-model="addEndMinute">
+								<SelectTrigger>
+									<SelectValue placeholder="Min" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem v-for="min in minutes" :key="min" :value="min">
+										{{ min }}
+									</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+					</div>
+				</div>
+
+				<p v-if="addTimeError" class="text-destructive text-sm">
+					{{ addTimeError }}
+				</p>
+			</div>
+
+			<DialogFooter>
+				<Button variant="outline" @click="showAddTimeSlotDialog = false"> Cancel </Button>
+				<Button
+					@click="submitNewTimeSlot"
+					:disabled="!isAddFormValid || addTimeSlotForm.processing"
+				>
+					Add Time Slot
+				</Button>
+			</DialogFooter>
+		</DialogContent>
+	</Dialog>
+
 	<!-- Time Slot Edit Dialog -->
-	<Dialog :open="editingSchedule !== null" @update:open="cancelEditing">
+	<Dialog
+		:open="editingTimeSlot !== null"
+		@update:open="(open) => !open && cancelEditing()"
+	>
 		<DialogContent class="sm:max-w-[425px]">
 			<DialogHeader>
 				<DialogTitle>Edit Time Slot</DialogTitle>

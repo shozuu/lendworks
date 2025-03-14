@@ -53,7 +53,6 @@ class LenderPickupScheduleController extends Controller
         }
 
         $validated = $request->validate([
-            'day_of_week' => 'required|string|in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday',
             'start_time' => 'required|string',
             'end_time' => 'required|string|after:start_time',
         ]);
@@ -63,7 +62,6 @@ class LenderPickupScheduleController extends Controller
             $endTime = date('H:i:s', strtotime($validated['end_time']));
 
             $schedule->update([
-                'day_of_week' => $validated['day_of_week'],
                 'start_time' => $startTime,
                 'end_time' => $endTime,
             ]);
