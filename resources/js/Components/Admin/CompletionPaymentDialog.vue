@@ -48,7 +48,8 @@ const form = useForm({
       return earnings.value.total;
     }
     return props.rental?.deposit_fee || 0;
-  })
+  }),
+  total_amount: computed(() => earnings.value.total) // Add this line
 });
 
 const selectedImage = ref([]);
@@ -61,14 +62,10 @@ const handleSubmit = () => {
   form.proof_image = selectedImage.value[0];
   
   form.post(endpoint, {
-    preserveScroll: true,
-    onSuccess: (response) => {
+    onSuccess: () => {
       emit('update:show', false);
       form.reset();
       selectedImage.value = [];
-    },
-    onError: (errors) => {
-      console.error('Payment Error:', errors);
     }
   });
 };

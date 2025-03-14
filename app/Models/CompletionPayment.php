@@ -10,10 +10,11 @@ class CompletionPayment extends Model
         'rental_request_id',
         'type',
         'amount',
+        'total_amount',
         'includes_overdue_fee',
         'reference_number',
         'proof_path',
-        'processed_by', // Changed from admin_id
+        'admin_id', // Ensure this is admin_id, not processed_by
         'processed_at',
         'notes'
     ];
@@ -46,6 +47,6 @@ class CompletionPayment extends Model
 
     public function admin()
     {
-        return $this->belongsTo(User::class, 'processed_by'); // Changed from admin_id
+        return $this->belongsTo(User::class, 'admin_id');
     }
 }
