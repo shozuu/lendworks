@@ -30,12 +30,13 @@ const props = defineProps({
 			search: "",
 			status: "all",
 			sortBy: "latest",
+			verified: "all",
 		}),
 	},
 	userCounts: {
 		type: Object,
-		required: true,
-	},
+		required: true
+	}
 });
 
 const getStatusBadge = (status) => {
@@ -49,6 +50,7 @@ const getStatusBadge = (status) => {
 const search = ref(props.filters?.search ?? "");
 const status = ref(props.filters?.status ?? "all");
 const sortBy = ref(props.filters?.sortBy ?? "latest");
+const verified = ref(props.filters?.verified ?? "all");
 const showDialog = ref(false);
 const selectedUser = ref(null);
 const action = ref(null);
@@ -82,6 +84,10 @@ watch(status, (newVal) => {
 // Update watch handler for sort
 watch(sortBy, (newVal) => {
 	updateFilters({ sortBy: newVal }); // Changed from 'sort' to 'sortBy'
+});
+
+watch(verified, (newVal) => {
+	updateFilters({ verified: newVal });
 });
 
 const confirmAction = (user, actionType) => {
@@ -124,17 +130,61 @@ const handleAction = () => {
 				<div class="flex flex-wrap gap-3">
 					<!-- Status Filter -->
 					<Select v-model="status" defaultValue="all">
-						<SelectTrigger class="w-full sm:w-[140px]">
+						<SelectTrigger class="w-full sm:w-[180px]">
 							<SelectValue placeholder="Filter by status" />
 						</SelectTrigger>
 						<SelectContent>
 							<SelectLabel class="p-1 text-center">Filter Status</SelectLabel>
 							<Separator class="my-2" />
-							<SelectItem value="all">All Status</SelectItem>
-							<SelectItem value="active">Active</SelectItem>
-							<SelectItem value="suspended">Suspended</SelectItem>
-						</SelectContent>
-					</Select>
+							<SelectItem value="all" class="flex items-center justify-between">
+							<span>All Status</span>
+							<span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+								{{ userCounts.total }}
+							</span>
+						</SelectItem>
+							<SelectItem value="active" class="flex items-center justify-between">
+							<span>Active</span>
+							<span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+								{{ userCounts.active }}
+							</span>
+						</SelectItem>
+							<SelectItem value="suspended" class="flex items-center justify-between">
+							<span>Suspended</span>
+							<span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+								{{ userCounts.suspended }}
+							</span>
+						</SelectItem>
+					</SelectContent>
+				</Select>
+
+				 <!-- Verification Filter -->
+                <Select v-model="verified" defaultValue="all">
+                    <SelectTrigger class="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Verification" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectLabel class="p-1 text-center">Verification Status</SelectLabel>
+                        <Separator class="my-2" />
+                        <SelectItem value="all" class="flex items-center justify-between">
+                            <span>All Users</span>
+                            <span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                                {{ userCounts.total }}
+                            </span>
+                        </SelectItem>
+                        <SelectItem value="verified" class="flex items-center justify-between">
+                            <span>Verified</span>
+                            <span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                                {{ userCounts.verified }}
+                            </span>
+                        </SelectItem>
+                        <SelectItem value="unverified" class="flex items-center justify-between">
+                            <span>Unverified</span>
+                            <span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                                {{ userCounts.unverified }}
+                            </span>
+                        </SelectItem>
+	                    </SelectContent>
+	                </Select>
 
 					<!-- Sort -->
 					<Select v-model="sortBy" defaultValue="latest">
@@ -175,6 +225,9 @@ const handleAction = () => {
 								<Badge :variant="getStatusBadge(user.status).variant">
 									{{ getStatusBadge(user.status).label }}
 								</Badge>
+								<Badge :variant="user.email_verified_at ? 'success' : 'secondary'">
+                                    {{ user.email_verified_at ? 'Verified' : 'Unverified' }}
+                                </Badge>
 							</div>
 							<div class="sm:text-sm text-muted-foreground space-y-1 text-xs">
 								<p class="truncate">{{ user.email }}</p>
@@ -227,3 +280,14 @@ const handleAction = () => {
 		/>
 	</div>
 </template>
+
+<style scoped>
+/* Add these styles for consistent alignment */
+:deep(.select-content) {
+    min-width: 200px;
+}
+
+:deep(.select-item) {
+    padding-right: 1rem;
+}
+</style>

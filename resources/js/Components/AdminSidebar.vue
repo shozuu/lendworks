@@ -28,6 +28,22 @@ onMounted(() => {
     });
 });
 
+/**
+ * AdminSidebar Component Modifications
+ * Last Modified: [Current Date]
+ * 
+ * Changes:
+ * 1. Added new System navigation item
+ * 2. Updated navigation array with system management link
+ * 
+ * Change Log:
+ * 1. Removed separate Platform menu item
+ * 2. Updated System menu item to be the single access point
+ * 3. Simplified navigation structure
+ * 4. Maintained consistent icon usage
+ * 5. Updated route references
+ */
+
 const navigation = [
     { name: "Dashboard", href: route("admin.dashboard"), component: "Admin/Dashboard", icon: LayoutDashboard },
     { name: "Users", href: route("admin.users"), component: "Admin/Users", icon: Users },
@@ -35,6 +51,11 @@ const navigation = [
     { name: "Rental Transactions", href: route("admin.rental-transactions"), component: "Admin/RentalTransactions", icon: ClipboardList },
     { name: "Payments", href: route("admin.payments"), component: "Admin/Payments/Index", icon: Receipt },
     { name: "Disputes", href: route("admin.disputes"), component: "Admin/Disputes", icon: AlertTriangle },
+    { 
+        name: "System", 
+        href: route("admin.system"), 
+        icon: "gear" 
+    }
 ];
 </script>
 
