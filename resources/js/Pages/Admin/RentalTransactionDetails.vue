@@ -394,8 +394,8 @@ const showOverdueSection = computed(() => {
 							</div>
 
 							<!-- Payment Status -->
-								<div class="space-y-3">
-								 <!-- Verified Payment -->
+							<div class="space-y-3">
+								<!-- Verified Payment -->
 								<div v-if="rental.overdue_payment" class="space-y-3">
 									<h3 class="font-medium text-emerald-500">Payment Verified</h3>
 									<div class="space-y-2 p-4 bg-muted rounded-lg text-sm">
@@ -423,8 +423,8 @@ const showOverdueSection = computed(() => {
 									</div>
 								</div>
 
-								 <!-- Pending Payment -->
-								<div v-else-if="rental.payment_request?.type === 'overdue'" class="space-y-3">
+								<!-- Pending Verification -->
+								<div v-else-if="rental.payment_request?.type === 'overdue' && rental.payment_request?.status === 'pending'" class="space-y-3">
 									<h3 class="font-medium text-yellow-500">Payment Pending Verification</h3>
 									<div class="space-y-2 p-4 bg-muted rounded-lg text-sm">
 										<div class="flex justify-between">
@@ -443,6 +443,24 @@ const showOverdueSection = computed(() => {
 										>
 											Review Payment
 										</Button>
+									</div>
+								</div>
+
+								 <!-- Rejected Payment -->
+								<div v-else-if="rental.payment_request?.type === 'overdue' && rental.payment_request?.status === 'rejected'" class="space-y-3">
+									<h3 class="font-medium text-destructive">Payment Rejected</h3>
+									<div class="space-y-2 p-4 bg-muted rounded-lg text-sm">
+										<div class="flex justify-between">
+											<span class="text-muted-foreground">Reference:</span>
+											<span>{{ rental.payment_request.reference_number }}</span>
+										</div>
+										<div class="flex justify-between">
+											<span class="text-muted-foreground">Rejected On:</span>
+											<span>{{ formatDateTime(rental.payment_request.updated_at) }}</span>
+										</div>
+										<p class="text-destructive/80 text-xs mt-2">
+											Waiting for renter to submit new payment proof
+										</p>
 									</div>
 								</div>
 
