@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import RentalStatusBadge from "@/Components/RentalStatusBadge.vue";
 import { formatNumber, formatDateTime, timeAgo } from "@/lib/formatters";
 import { Separator } from "@/components/ui/separator";
-import { Package, Clock, DollarSign } from "lucide-vue-next";
+import { Package, Clock } from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
 import { computed } from "vue";
 import { calculateDiscountPercentage } from "@/lib/rentalCalculator";
@@ -15,7 +15,6 @@ import RentalTimeline from "@/Components/RentalTimeline.vue";
 import { Link } from "@inertiajs/vue3";
 import PaymentDialog from "@/Components/PaymentDialog.vue";
 import HandoverDialog from "@/Components/HandoverDialog.vue";
-import PickupDateSelector from "@/Components/PickupDateSelector.vue";
 import RentalDurationTracker from "@/Components/RentalDurationTracker.vue";
 import ReturnScheduler from "@/Components/ReturnScheduler.vue";
 import ReturnConfirmationDialog from "@/Components/ReturnConfirmationDialog.vue";
@@ -155,21 +154,6 @@ const canShowHandover = computed(() => {
 	return actions.value.canReceive;
 });
 
-// Fix the totalWithOverdue computed to properly add numbers
-const totalWithOverdue = computed(() => {
-	if (!props.rental.is_overdue) return props.rental.total_price;
-
-	// Convert to numbers and ensure positive values
-	const total = Math.abs(Number(props.rental.total_price));
-	const overdueFee = Math.abs(Number(props.rental.overdue_fee));
-
-	// Always add the overdue fee to the total
-	return total + overdueFee;
-});
-
-// Add computed for base total (without overdue)
-const baseTotal = computed(() => props.rental.total_price);
-
 const lenderPayment = computed(() =>
 	props.rental.completion_payments?.find((p) => p.type === "lender_payment")
 );
@@ -188,20 +172,6 @@ const showPaymentProof = (payment) => {
 	showPaymentProofDialog.value = true;
 };
 
-// Add these computed properties after other computed properties
-const displayTotal = computed(() => {
-	// Base calculation without deposit
-	const base = props.rental.base_price - props.rental.discount;
-
-	if (props.userRole === "renter") {
-		// For renter: add service fee
-		return base + props.rental.service_fee;
-	} else {
-		// For lender: subtract service fee
-		return base - props.rental.service_fee;
-	}
-});
-
 // Add these new computed properties after displayTotal
 const rentalOnlyTotal = computed(() => {
 	const base = props.rental.base_price - props.rental.discount;
@@ -212,27 +182,6 @@ const rentalOnlyTotal = computed(() => {
 
 const totalWithDeposit = computed(() => {
 	return rentalOnlyTotal.value + props.rental.deposit_fee;
-});
-
-// Add new computed property for lender earnings
-const lenderEarnings = computed(() => {
-	if (props.userRole !== "lender") return null;
-
-	const basePrice = props.rental.base_price;
-	const discount = props.rental.discount;
-	const serviceFee = props.rental.service_fee;
-	const overdueFee = props.rental.overdue_payment ? props.rental.overdue_fee : 0;
-	const hasOverdue = props.rental.overdue_payment !== null;
-
-	return {
-		basePrice,
-		discount,
-		serviceFee,
-		overdueFee,
-		hasOverdue,
-		baseEarnings: basePrice - discount - serviceFee,
-		total: basePrice - discount - serviceFee + overdueFee,
-	};
 });
 
 // Add a computed property for showing overdue sections
@@ -573,15 +522,6 @@ const maxApproveQuantity = computed(() =>
 					</CardContent>
 				</Card>
 
-				<!--Pickup schedule input-->
-				<Card class="space-y-8" v-if="rental.status === 'to_handover'">
-					<PickupDateSelector
-						:rental="rental"
-						:userRole="userRole"
-						:lenderSchedules="lenderSchedules"
-					/>
-				</Card>
-
 				<!-- Add ReturnScheduler after PickupScheduler -->
 				<ReturnScheduler
 					v-if="
@@ -696,7 +636,7 @@ const maxApproveQuantity = computed(() =>
 								@click="showHandoverDialog = true"
 								:disabled="!canShowHandover"
 							>
-								Hand Over Item
+								{{ canShowHandover ? "Hand Over" : "Waiting for Schedule" }}
 							</Button>
 
 							<Button

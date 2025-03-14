@@ -254,7 +254,7 @@ const canShowHandover = computed(() => {
 					:disabled="!canShowHandover"
 					@click.stop="showHandoverDialog = true"
 				>
-					Hand Over Item
+					{{ canShowHandover ? "Hand Over Item" : "Waiting for Schedule" }}
 				</Button>
 			</div>
 		</template>
