@@ -7,6 +7,7 @@ import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import PaymentDialog from "@/Components/PaymentDialog.vue";
 import HandoverDialog from "@/Components/HandoverDialog.vue";
 import RentalDurationTracker from "@/Components/RentalDurationTracker.vue";
+import PickupScheduleDialog from "@/Components/PickupScheduleDialog.vue";
 import { useForm } from "@inertiajs/vue3";
 
 const props = defineProps({
@@ -18,11 +19,20 @@ const props = defineProps({
 		type: Array,
 		required: true,
 	},
+	userRole: {
+		type: String,
+		required: true,
+	},
+	lenderSchedules: {
+		type: Array,
+		default: () => [],
+	},
 });
 
 const showCancelDialog = ref(false);
 const showPaymentDialog = ref(false);
 const showHandoverDialog = ref(false);
+const showScheduleDialog = ref(false);
 
 // Update the cancelForm to include reason
 const cancelForm = useForm({
@@ -194,6 +204,16 @@ const actions = computed(() => props.rental.available_actions);
 				>
 					Cancel Request
 				</Button>
+
+				<!-- Add schedule selection button -->
+				<Button
+					v-if="actions.canChoosePickupSchedule"
+					variant="default"
+					size="sm"
+					@click.stop="showScheduleDialog = true"
+				>
+					Choose Pickup Schedule
+				</Button>
 			</div>
 		</template>
 	</BaseRentalCard>
@@ -236,5 +256,13 @@ const actions = computed(() => props.rental.available_actions);
 		v-model:show="showHandoverDialog"
 		:rental="rental"
 		:type="actions.canHandover ? 'handover' : 'receive'"
+	/>
+
+	<!-- Add dialog -->
+	<PickupScheduleDialog
+		v-model:show="showScheduleDialog"
+		:rental="rental"
+		:userRole="userRole"
+		:lenderSchedules="lenderSchedules"
 	/>
 </template>

@@ -259,7 +259,10 @@ class RentalRequest extends Model
                 ($this->status === 'pending_final_confirmation' && 
                  $this->dispute && 
                  $this->dispute->resolution_type === 'rejected')
-            )
+            ),
+            'canChoosePickupSchedule' => $isRenter && 
+                $this->status === 'to_handover' && 
+                !$this->pickup_schedules()->where('is_selected', true)->exists()
         ];
 
         if (!$user) return $actions;

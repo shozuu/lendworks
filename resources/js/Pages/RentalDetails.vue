@@ -21,6 +21,7 @@ import ReturnScheduler from "@/Components/ReturnScheduler.vue";
 import ReturnConfirmationDialog from "@/Components/ReturnConfirmationDialog.vue";
 import PaymentProofDialog from "@/Components/PaymentProofDialog.vue";
 import DisputeDialog from "@/Components/DisputeDialog.vue";
+import PickupScheduleDialog from "@/Components/PickupScheduleDialog.vue";
 
 const props = defineProps({
 	rental: Object,
@@ -70,6 +71,7 @@ const showHandoverDialog = ref(false);
 const showReturnDialog = ref(false);
 const returnDialogType = ref("submit");
 const showDisputeDialog = ref(false);
+const showScheduleDialog = ref(false);
 
 // Forms
 const approveForm = useForm({
@@ -783,6 +785,15 @@ const maxApproveQuantity = computed(() =>
 								Raise Dispute
 							</Button>
 
+							<!-- Add button in the actions section -->
+							<Button
+								v-if="actions.canChoosePickupSchedule"
+								class="w-full"
+								@click="showScheduleDialog = true"
+							>
+								Choose Pickup Schedule
+							</Button>
+
 							<!-- No Actions Message -->
 							<p
 								v-if="
@@ -793,7 +804,8 @@ const maxApproveQuantity = computed(() =>
 									!actions.canReceive &&
 									!actions.canSubmitReturn &&
 									!actions.canConfirmReturn &&
-									!actions.canFinalizeReturn
+									!actions.canFinalizeReturn &&
+									!actions.canChoosePickupSchedule
 								"
 								class="text-muted-foreground text-sm text-center"
 							>
@@ -915,7 +927,7 @@ const maxApproveQuantity = computed(() =>
 				<!-- Update the lender earnings card -->
 				<Card v-if="userRole === 'lender'" class="shadow-sm">
 					<CardHeader class="bg-card border-b">
-						<CardTitle class="flex items-center gap-2"> Total Lender Earnings </CardTitle>
+						<CardTitle class="flex items-center gap-2"> Lender Earnings </CardTitle>
 					</CardHeader>
 					<CardContent class="p-4">
 						<div class="space-y-3">
@@ -1201,4 +1213,12 @@ const maxApproveQuantity = computed(() =>
 
 	<!-- Add new DisputeDialog component before the end of template -->
 	<DisputeDialog v-model:show="showDisputeDialog" :rental="rental" />
+
+	<!-- Add dialog at the end of the template -->
+	<PickupScheduleDialog
+		v-model:show="showScheduleDialog"
+		:rental="rental"
+		:userRole="userRole"
+		:lenderSchedules="lenderSchedules"
+	/>
 </template>
