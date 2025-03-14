@@ -9,6 +9,7 @@ import HandoverDialog from "@/Components/HandoverDialog.vue";
 import RentalDurationTracker from "@/Components/RentalDurationTracker.vue";
 import PickupScheduleDialog from "@/Components/PickupScheduleDialog.vue";
 import { useForm } from "@inertiajs/vue3";
+import { format } from "date-fns";
 
 const props = defineProps({
 	rental: {
@@ -112,6 +113,16 @@ const details = computed(() => {
 			value: props.rental.listing.user.name,
 		},
 	];
+
+	// Add pickup schedule if available
+	const schedule = props.rental.pickup_schedules?.find((s) => s.is_selected);
+	if (schedule) {
+		const pickupDate = new Date(schedule.pickup_datetime);
+		baseDetails.push({
+			label: "Meetup",
+			value: `${format(pickupDate, "MMMM d")}, ${format(pickupDate, "EEEE")}`,
+		});
+	}
 
 	// Add overdue days if rental is overdue
 	if (isOverdue.value) {
