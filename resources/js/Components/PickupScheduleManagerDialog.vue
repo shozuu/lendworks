@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import PickupScheduleManager from "@/Components/PickupScheduleManager.vue";
-import { Calendar } from "lucide-vue-next";
+import { Calendar, X } from "lucide-vue-next";
 
 defineProps({
 	open: Boolean,
@@ -19,7 +19,13 @@ const emit = defineEmits(["update:open"]);
 </script>
 
 <template>
-	<Dialog :open="open" @update:open="emit('update:open', $event)">
+	<Dialog
+		:open="open"
+		@update:open="emit('update:open', $event)"
+		:modal="true"
+		@close="emit('update:open', false)"
+		@keydown="handleKeyDown"
+	>
 		<DialogTrigger asChild>
 			<Button class="gap-2">
 				<Calendar class="w-4 h-4" />
@@ -27,9 +33,18 @@ const emit = defineEmits(["update:open"]);
 			</Button>
 		</DialogTrigger>
 		<DialogContent
-			class="w-[calc(100vw-2rem)] h-[calc(100vh-2rem)] sm:max-w-[640px] md:max-w-[800px] p-0 gap-0"
+			class="flex flex-col w-[90vw] h-[90vh] md:w-[800px] md:h-[85vh] lg:w-[900px] xl:w-[1000px] p-0 rounded-lg"
 		>
-			<div class="flex-1 overflow-hidden">
+			<!-- Close button -->
+			<button
+				class="absolute right-4 top-4 z-50 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+				@click="emit('update:open', false)"
+			>
+				<X class="h-4 w-4" />
+				<span class="sr-only">Close</span>
+			</button>
+
+			<div class="flex-1 h-full overflow-hidden">
 				<PickupScheduleManager :schedules="schedules" />
 			</div>
 		</DialogContent>
