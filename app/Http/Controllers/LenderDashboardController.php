@@ -133,7 +133,6 @@ class LenderDashboardController extends Controller
 
         // Get pickup schedules
         $pickupSchedules = LenderPickupSchedule::where('user_id', $lender->id)
-            ->where('is_active', true)
             ->orderBy('day_of_week')
             ->orderBy('start_time')
             ->get();

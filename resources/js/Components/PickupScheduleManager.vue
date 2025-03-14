@@ -1,6 +1,5 @@
 <script setup>
 import { ref, watch, computed } from "vue";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Select,
 	SelectContent,
@@ -9,6 +8,8 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch"; // Add this import
+import { Label } from "@/components/ui/label"; // Add this import
 import { useForm } from "@inertiajs/vue3";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import { addDays, format, startOfWeek } from "date-fns";
@@ -313,6 +314,7 @@ const formatScheduleTime = (schedule) => {
 const currentWeekSchedules = computed(() => {
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
+	// Include all schedules without filtering by is_active
 	const schedules = props.schedules || [];
 
 	return [...schedules]
@@ -330,6 +332,7 @@ const currentWeekSchedules = computed(() => {
 const nextWeekSchedules = computed(() => {
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
+	// Include all schedules without filtering by is_active
 	const schedules = props.schedules || [];
 
 	return [...schedules]
@@ -411,14 +414,22 @@ const submitNewTimeSlot = () => {
 	);
 };
 
+const toggleForm = useForm({});
+
 const toggleScheduleActive = (schedule) => {
-	useForm().patch(route("lender.pickup-schedules.toggle", schedule.id), {
-		preserveScroll: true,
-	});
+	toggleForm.patch(
+		route("lender.pickup-schedules.toggle", schedule.id),
+		{},
+		{
+			preserveScroll: true,
+			preserveState: true,
+		}
+	);
 };
 
 const schedulesGroupedByDay = computed(() => {
 	const grouped = {};
+	// Make sure we're including all schedules regardless of is_active status
 	props.schedules?.forEach((schedule) => {
 		if (!grouped[schedule.day_of_week]) {
 			grouped[schedule.day_of_week] = [];
@@ -551,8 +562,8 @@ const isAddFormValid = computed(() => {
 				<div class="space-y-6">
 					<!-- Day Selection -->
 					<div>
-						<!-- <label class="text-sm font-medium mb-2 block">Select Days</label> -->
-						<h3 class="text-base font-semibold mb-2">Select Days</h3>
+						<!-- <label class="block mb-2 text-sm font-medium">Select Days</label> -->
+						<h3 class="mb-2 text-base font-semibold">Select Days</h3>
 						<div class="inline-flex flex-wrap gap-1.5">
 							<Button
 								v-for="day in days"
@@ -574,10 +585,10 @@ const isAddFormValid = computed(() => {
 					</div>
 
 					<!-- Time Range -->
-					<div class="grid sm:grid-cols-2 gap-4">
+					<div class="sm:grid-cols-2 grid gap-4">
 						<!-- Start Time -->
 						<div>
-							<label class="text-sm font-medium mb-2 block">From</label>
+							<label class="block mb-2 text-sm font-medium">From</label>
 							<div class="grid grid-cols-2 gap-2">
 								<Select v-model="defaultStartHour">
 									<SelectTrigger>
@@ -609,7 +620,7 @@ const isAddFormValid = computed(() => {
 
 						<!-- End Time -->
 						<div>
-							<label class="text-sm font-medium mb-2 block">To</label>
+							<label class="block mb-2 text-sm font-medium">To</label>
 							<div class="grid grid-cols-2 gap-2">
 								<Select v-model="defaultEndHour">
 									<SelectTrigger>
@@ -659,7 +670,7 @@ const isAddFormValid = computed(() => {
 				<!-- Current Availability Section -->
 				<div class="space-y-6">
 					<div>
-						<h3 class="text-base font-semibold mb-1">Current Availability</h3>
+						<h3 class="mb-1 text-base font-semibold">Current Availability</h3>
 						<p class="text-muted-foreground text-sm">
 							Your recurring schedules for item handovers
 						</p>
@@ -667,13 +678,13 @@ const isAddFormValid = computed(() => {
 
 					<!-- Current Week Section -->
 					<div v-if="currentWeekDays.length" class="space-y-4">
-						<h4 class="text-sm font-medium text-muted-foreground">This Week</h4>
-						<div v-for="day in currentWeekDays" :key="day" class="border rounded-lg p-4">
+						<h4 class="text-muted-foreground text-sm font-medium">This Week</h4>
+						<div v-for="day in currentWeekDays" :key="day" class="p-4 border rounded-lg">
 							<!-- Day Header -->
 							<div class="flex items-center justify-between mb-4">
 								<div>
 									<h4 class="font-medium">{{ day }}</h4>
-									<p class="text-xs text-muted-foreground">
+									<p class="text-muted-foreground text-xs">
 										{{ format(getNextOccurrence(day), "MMM d, yyyy") }}
 									</p>
 								</div>
@@ -694,31 +705,75 @@ const isAddFormValid = computed(() => {
 								<div
 									v-for="schedule in schedulesGroupedByDay[day]"
 									:key="schedule.id"
-									class="flex items-center justify-between p-2 rounded-md bg-muted/30"
-									:class="{ 'opacity-60': !schedule.is_active }"
+									class="flex items-center justify-between p-3 rounded-md transition-colors"
+									:class="[
+										'bg-muted/30 hover:bg-muted/40',
+										!schedule.is_active && 'border-destructive/50 bg-destructive/5',
+									]"
 								>
 									<div class="flex items-center gap-4">
-										<Button
-											size="sm"
-											variant="ghost"
-											class="flex items-center gap-2"
-											@click="toggleScheduleActive(schedule)"
-										>
-											<div
-												class="w-2 h-2 rounded-full"
-												:class="schedule.is_active ? 'bg-primary' : 'bg-muted-foreground'"
-											/>
-											<span>{{ formatScheduleTime(schedule) }}</span>
-										</Button>
+										<div class="flex flex-col">
+											<span
+												class="font-medium"
+												:class="!schedule.is_active && 'text-muted-foreground'"
+											>
+												{{ formatScheduleTime(schedule) }}
+											</span>
+											<span
+												class="text-xs"
+												:class="
+													schedule.is_active
+														? 'text-muted-foreground'
+														: 'text-destructive'
+												"
+											>
+												{{
+													schedule.is_active
+														? "Available for bookings"
+														: "Currently unavailable"
+												}}
+											</span>
+										</div>
 									</div>
 
-									<div class="flex items-center gap-2">
-										<Button size="sm" variant="outline" @click="startEditing(schedule)">
-											Edit Time
-										</Button>
-										<Button size="sm" variant="outline" @click="initiateDelete(schedule)">
-											Remove
-										</Button>
+									<div class="flex items-center gap-3">
+										<div class="flex items-center gap-2 min-w-[140px]">
+											<Switch
+												:id="`schedule-active-${schedule.id}`"
+												:model-value="schedule.is_active"
+												:disabled="toggleForm.processing"
+												@update:model-value="toggleScheduleActive(schedule)"
+												class="mr-1"
+											/>
+											<Label
+												:for="`schedule-active-${schedule.id}`"
+												class="text-sm cursor-pointer"
+												:class="[
+													toggleForm.processing ? 'opacity-50' : '',
+													!schedule.is_active ? 'text-destructive' : '',
+												]"
+											>
+												{{ schedule.is_active ? "Active" : "Inactive" }}
+											</Label>
+										</div>
+										<div class="flex items-center gap-2">
+											<Button
+												size="sm"
+												variant="outline"
+												class="h-8"
+												@click="startEditing(schedule)"
+											>
+												Edit
+											</Button>
+											<Button
+												size="sm"
+												variant="outline"
+												class="h-8"
+												@click="initiateDelete(schedule)"
+											>
+												Remove
+											</Button>
+										</div>
 									</div>
 								</div>
 							</div>
@@ -727,13 +782,13 @@ const isAddFormValid = computed(() => {
 
 					<!-- Next Week Section -->
 					<div v-if="nextWeekDays.length" class="space-y-4">
-						<h4 class="text-sm font-medium text-muted-foreground">Next Week</h4>
-						<div v-for="day in nextWeekDays" :key="day" class="border rounded-lg p-4">
+						<h4 class="text-muted-foreground text-sm font-medium">Next Week</h4>
+						<div v-for="day in nextWeekDays" :key="day" class="p-4 border rounded-lg">
 							<!-- Same day header and time slots structure as above -->
 							<div class="flex items-center justify-between mb-4">
 								<div>
 									<h4 class="font-medium">{{ day }}</h4>
-									<p class="text-xs text-muted-foreground">
+									<p class="text-muted-foreground text-xs">
 										{{ format(getNextOccurrence(day), "MMM d, yyyy") }}
 									</p>
 								</div>
@@ -754,31 +809,75 @@ const isAddFormValid = computed(() => {
 								<div
 									v-for="schedule in schedulesGroupedByDay[day]"
 									:key="schedule.id"
-									class="flex items-center justify-between p-2 rounded-md bg-muted/30"
-									:class="{ 'opacity-60': !schedule.is_active }"
+									class="flex items-center justify-between p-3 rounded-md transition-colors"
+									:class="[
+										'bg-muted/30 hover:bg-muted/40',
+										!schedule.is_active && 'border-destructive/50 bg-destructive/5',
+									]"
 								>
 									<div class="flex items-center gap-4">
-										<Button
-											size="sm"
-											variant="ghost"
-											class="flex items-center gap-2"
-											@click="toggleScheduleActive(schedule)"
-										>
-											<div
-												class="w-2 h-2 rounded-full"
-												:class="schedule.is_active ? 'bg-primary' : 'bg-muted-foreground'"
-											/>
-											<span>{{ formatScheduleTime(schedule) }}</span>
-										</Button>
+										<div class="flex flex-col">
+											<span
+												class="font-medium"
+												:class="!schedule.is_active && 'text-muted-foreground'"
+											>
+												{{ formatScheduleTime(schedule) }}
+											</span>
+											<span
+												class="text-xs"
+												:class="
+													schedule.is_active
+														? 'text-muted-foreground'
+														: 'text-destructive'
+												"
+											>
+												{{
+													schedule.is_active
+														? "Available for bookings"
+														: "Currently unavailable"
+												}}
+											</span>
+										</div>
 									</div>
 
-									<div class="flex items-center gap-2">
-										<Button size="sm" variant="outline" @click="startEditing(schedule)">
-											Edit Time
-										</Button>
-										<Button size="sm" variant="outline" @click="initiateDelete(schedule)">
-											Remove
-										</Button>
+									<div class="flex items-center gap-3">
+										<div class="flex items-center gap-2 min-w-[140px]">
+											<Switch
+												:id="`schedule-active-${schedule.id}`"
+												:model-value="schedule.is_active"
+												:disabled="toggleForm.processing"
+												@update:model-value="toggleScheduleActive(schedule)"
+												class="mr-1"
+											/>
+											<Label
+												:for="`schedule-active-${schedule.id}`"
+												class="text-sm"
+												:class="[
+													toggleForm.processing ? 'opacity-50' : '',
+													!schedule.is_active ? 'text-destructive' : '',
+												]"
+											>
+												{{ schedule.is_active ? "Active" : "Inactive" }}
+											</Label>
+										</div>
+										<div class="flex items-center gap-2">
+											<Button
+												size="sm"
+												variant="outline"
+												class="h-8"
+												@click="startEditing(schedule)"
+											>
+												Edit
+											</Button>
+											<Button
+												size="sm"
+												variant="outline"
+												class="h-8"
+												@click="initiateDelete(schedule)"
+											>
+												Remove
+											</Button>
+										</div>
 									</div>
 								</div>
 							</div>
@@ -788,7 +887,7 @@ const isAddFormValid = computed(() => {
 					<!-- No schedules message -->
 					<p
 						v-if="!Object.keys(schedulesGroupedByDay).length"
-						class="text-muted-foreground py-8 text-center text-sm"
+						class="text-muted-foreground py-8 text-sm text-center"
 					>
 						No schedules set yet. Add your availability using the form above.
 					</p>

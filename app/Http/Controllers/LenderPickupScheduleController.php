@@ -120,10 +120,10 @@ class LenderPickupScheduleController extends Controller
                 'is_active' => !$schedule->is_active
             ]);
 
-            return back()->with('success', 'Schedule availability updated.');
+            return back()->with('success', 'Schedule availability updated successfully.');
         } catch (\Exception $e) {
             report($e);
-            return back()->with('error', 'Failed to update availability.');
+            return back()->with('error', 'Failed to update schedule availability.');
         }
     }
 

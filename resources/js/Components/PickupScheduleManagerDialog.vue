@@ -21,7 +21,7 @@ const emit = defineEmits(["update:open"]);
 <template>
 	<Dialog :open="open" @update:open="emit('update:open', $event)">
 		<DialogTrigger asChild>
-			<Button variant="outline" class="gap-2">
+			<Button class="gap-2">
 				<Calendar class="w-4 h-4" />
 				Manage Availability
 			</Button>
