@@ -883,83 +883,104 @@ const isAddFormValid = computed(() => {
 
 	<!-- Add Time Slot Dialog -->
 	<Dialog :open="showAddTimeSlotDialog" @update:open="showAddTimeSlotDialog = false">
-		<DialogContent class="sm:max-w-[425px]">
-			<DialogHeader>
+		<DialogContent
+			class="w-[calc(100vw-2rem)] sm:max-w-[425px] p-0 flex flex-col max-h-[calc(100vh-2rem)] overflow-hidden rounded-lg"
+		>
+			<DialogHeader class="sm:p-6 p-4">
 				<DialogTitle>Add Time Slot for {{ selectedDay }}</DialogTitle>
 			</DialogHeader>
 
-			<div class="grid gap-4 py-4">
-				<div class="grid grid-cols-2 gap-4">
-					<!-- Start Time -->
-					<div class="space-y-2">
-						<label class="text-sm font-medium">From</label>
-						<div class="grid grid-cols-2 gap-2">
-							<Select v-model="addStartHour">
-								<SelectTrigger>
-									<SelectValue placeholder="Hour" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem v-for="hour in hours" :key="hour.value" :value="hour.value">
-										{{ hour.label }}
-									</SelectItem>
-								</SelectContent>
-							</Select>
+			<div class="sm:px-6 px-4 flex-1">
+				<div class="grid gap-4">
+					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+						<!-- Start Time -->
+						<div class="space-y-2">
+							<label class="text-sm font-medium">From</label>
+							<div class="grid grid-cols-2 gap-2">
+								<Select v-model="addStartHour">
+									<SelectTrigger class="h-10">
+										<SelectValue placeholder="Hour" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem
+											v-for="hour in hours"
+											:key="hour.value"
+											:value="hour.value"
+										>
+											{{ hour.label }}
+										</SelectItem>
+									</SelectContent>
+								</Select>
 
-							<Select v-model="addStartMinute">
-								<SelectTrigger>
-									<SelectValue placeholder="Min" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem v-for="min in minutes" :key="min" :value="min">
-										{{ min }}
-									</SelectItem>
-								</SelectContent>
-							</Select>
+								<Select v-model="addStartMinute">
+									<SelectTrigger class="h-10">
+										<SelectValue placeholder="Min" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem v-for="min in minutes" :key="min" :value="min">
+											{{ min }}
+										</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+						</div>
+
+						<!-- End Time -->
+						<div class="space-y-2">
+							<label class="text-sm font-medium">To</label>
+							<div class="grid grid-cols-2 gap-2">
+								<Select v-model="addEndHour">
+									<SelectTrigger class="h-10">
+										<SelectValue placeholder="Hour" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem
+											v-for="hour in hours"
+											:key="hour.value"
+											:value="hour.value"
+										>
+											{{ hour.label }}
+										</SelectItem>
+									</SelectContent>
+								</Select>
+
+								<Select v-model="addEndMinute">
+									<SelectTrigger class="h-10">
+										<SelectValue placeholder="Min" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem v-for="min in minutes" :key="min" :value="min">
+											{{ min }}
+										</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
 						</div>
 					</div>
 
-					<!-- End Time -->
-					<div class="space-y-2">
-						<label class="text-sm font-medium">To</label>
-						<div class="grid grid-cols-2 gap-2">
-							<Select v-model="addEndHour">
-								<SelectTrigger>
-									<SelectValue placeholder="Hour" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem v-for="hour in hours" :key="hour.value" :value="hour.value">
-										{{ hour.label }}
-									</SelectItem>
-								</SelectContent>
-							</Select>
-
-							<Select v-model="addEndMinute">
-								<SelectTrigger>
-									<SelectValue placeholder="Min" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem v-for="min in minutes" :key="min" :value="min">
-										{{ min }}
-									</SelectItem>
-								</SelectContent>
-							</Select>
-						</div>
-					</div>
+					<p v-if="addTimeError" class="text-destructive text-sm">
+						{{ addTimeError }}
+					</p>
 				</div>
-
-				<p v-if="addTimeError" class="text-destructive text-sm">
-					{{ addTimeError }}
-				</p>
 			</div>
 
-			<DialogFooter>
-				<Button variant="outline" @click="showAddTimeSlotDialog = false"> Cancel </Button>
-				<Button
-					@click="submitNewTimeSlot"
-					:disabled="!isAddFormValid || addTimeSlotForm.processing"
-				>
-					Add Time Slot
-				</Button>
+			<DialogFooter class="sm:p-6 p-4">
+				<div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+					<Button
+						class="sm:w-auto w-full"
+						variant="outline"
+						@click="showAddTimeSlotDialog = false"
+					>
+						Cancel
+					</Button>
+					<Button
+						class="sm:w-auto w-full"
+						@click="submitNewTimeSlot"
+						:disabled="!isAddFormValid || addTimeSlotForm.processing"
+					>
+						Add Time Slot
+					</Button>
+				</div>
 			</DialogFooter>
 		</DialogContent>
 	</Dialog>
@@ -969,81 +990,100 @@ const isAddFormValid = computed(() => {
 		:open="editingTimeSlot !== null"
 		@update:open="(open) => !open && cancelEditing()"
 	>
-		<DialogContent class="sm:max-w-[425px]">
-			<DialogHeader>
+		<DialogContent
+			class="w-[calc(100vw-2rem)] sm:max-w-[425px] p-0 flex flex-col max-h-[calc(100vh-2rem)] overflow-hidden rounded-lg"
+		>
+			<DialogHeader class="sm:p-6 p-4">
 				<DialogTitle>Edit Time Slot</DialogTitle>
 			</DialogHeader>
 
-			<div class="grid gap-4 py-4">
-				<!-- Time Range -->
-				<div class="grid grid-cols-2 gap-4">
-					<!-- Start Time -->
-					<div class="space-y-2">
-						<label class="text-sm font-medium">From</label>
-						<div class="grid grid-cols-2 gap-2">
-							<Select v-model="editingStartHour">
-								<SelectTrigger>
-									<SelectValue placeholder="Hour" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem v-for="hour in hours" :key="hour.value" :value="hour.value">
-										{{ hour.label }}
-									</SelectItem>
-								</SelectContent>
-							</Select>
+			<div class="sm:px-6 px-4 flex-1">
+				<div class="grid gap-4">
+					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+						<!-- Start Time -->
+						<div class="space-y-2">
+							<label class="text-sm font-medium">From</label>
+							<div class="grid grid-cols-2 gap-2">
+								<Select v-model="editingStartHour">
+									<SelectTrigger class="h-10">
+										<SelectValue placeholder="Hour" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem
+											v-for="hour in hours"
+											:key="hour.value"
+											:value="hour.value"
+										>
+											{{ hour.label }}
+										</SelectItem>
+									</SelectContent>
+								</Select>
 
-							<Select v-model="editingStartMinute">
-								<SelectTrigger>
-									<SelectValue placeholder="Min" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem v-for="min in minutes" :key="min" :value="min">
-										{{ min }}
-									</SelectItem>
-								</SelectContent>
-							</Select>
+								<Select v-model="editingStartMinute">
+									<SelectTrigger class="h-10">
+										<SelectValue placeholder="Min" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem v-for="min in minutes" :key="min" :value="min">
+											{{ min }}
+										</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+						</div>
+
+						<!-- End Time -->
+						<div class="space-y-2">
+							<label class="text-sm font-medium">To</label>
+							<div class="grid grid-cols-2 gap-2">
+								<Select v-model="editingEndHour">
+									<SelectTrigger class="h-10">
+										<SelectValue placeholder="Hour" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem
+											v-for="hour in hours"
+											:key="hour.value"
+											:value="hour.value"
+										>
+											{{ hour.label }}
+										</SelectItem>
+									</SelectContent>
+								</Select>
+
+								<Select v-model="editingEndMinute">
+									<SelectTrigger class="h-10">
+										<SelectValue placeholder="Min" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem v-for="min in minutes" :key="min" :value="min">
+											{{ min }}
+										</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
 						</div>
 					</div>
 
-					<!-- End Time -->
-					<div class="space-y-2">
-						<label class="text-sm font-medium">To</label>
-						<div class="grid grid-cols-2 gap-2">
-							<Select v-model="editingEndHour">
-								<SelectTrigger>
-									<SelectValue placeholder="Hour" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem v-for="hour in hours" :key="hour.value" :value="hour.value">
-										{{ hour.label }}
-									</SelectItem>
-								</SelectContent>
-							</Select>
-
-							<Select v-model="editingEndMinute">
-								<SelectTrigger>
-									<SelectValue placeholder="Min" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem v-for="min in minutes" :key="min" :value="min">
-										{{ min }}
-									</SelectItem>
-								</SelectContent>
-							</Select>
-						</div>
-					</div>
+					<p v-if="editTimeError" class="text-destructive text-sm">
+						{{ editTimeError }}
+					</p>
 				</div>
-
-				<p v-if="editTimeError" class="text-destructive text-sm">
-					{{ editTimeError }}
-				</p>
 			</div>
 
-			<DialogFooter>
-				<Button variant="outline" @click="cancelEditing"> Cancel </Button>
-				<Button @click="handleUpdate" :disabled="!isEditFormValid || editForm.processing">
-					Save Changes
-				</Button>
+			<DialogFooter class="sm:p-6 p-4">
+				<div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+					<Button class="sm:w-auto w-full" variant="outline" @click="cancelEditing">
+						Cancel
+					</Button>
+					<Button
+						class="sm:w-auto w-full"
+						@click="handleUpdate"
+						:disabled="!isEditFormValid || editForm.processing"
+					>
+						Save Changes
+					</Button>
+				</div>
 			</DialogFooter>
 		</DialogContent>
 	</Dialog>
