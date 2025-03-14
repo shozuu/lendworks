@@ -16,39 +16,45 @@ class CompletionPaymentController extends Controller
     {
         $validated = $request->validate([
             'reference_number' => ['required', 'string'],
-            'payment_proof' => ['required', 'image', 'max:2048']
+            'proof_image' => ['required', 'image', 'max:2048'], // Changed from payment_proof to proof_image
+            'notes' => ['nullable', 'string']
         ]);
 
         try {
             DB::beginTransaction();
 
-            // Calculate base earnings
-            $baseEarnings = $rental->base_price - $rental->discount - $rental->service_fee;
+            // Get earnings breakdown
+            $earnings = $rental->getLenderEarningsAttribute();
+            $baseAmount = $earnings['base'];
+            $overdueAmount = $earnings['overdue'];
             
-            // Add overdue fee if there's a verified overdue payment
-            $overdueFee = $rental->overdue_payment ? $rental->overdue_fee : 0;
-            
-            // Calculate total payment
-            $totalPayment = $baseEarnings + $overdueFee;
-
-            $path = $request->file('payment_proof')->store('payment-proofs', 'public');
+            // Changed to proof_image
+            $path = $request->file('proof_image')->store('payment-proofs', 'public');
 
             // Create completion payment record
-            $payment = $rental->completion_payments()->create([
+            $payment = CompletionPayment::create([
+                'rental_request_id' => $rental->id,
                 'type' => 'lender_payment',
-                'amount' => $totalPayment,
+                'amount' => $baseAmount,
+                'includes_overdue_fee' => $overdueAmount > 0,
+                'total_amount' => $baseAmount + $overdueAmount,
                 'reference_number' => $validated['reference_number'],
                 'proof_path' => $path,
                 'processed_by' => Auth::id(),
-                'processed_at' => now(),
-                'includes_overdue_fee' => $overdueFee > 0
+                'notes' => $validated['notes'] ?? null,
+                'processed_at' => now()
             ]);
 
-            // Record timeline event with detailed breakdown
+            // Update rental status if both payments are processed
+            if ($rental->completion_payments()->where('type', 'deposit_refund')->exists()) {
+                $rental->update(['status' => 'completed_with_payments']);
+            } else {
+                $rental->update(['status' => 'completed_pending_payments']);
+            }
+
+            // Record timeline event with amount
             $rental->recordTimelineEvent('lender_payment_processed', Auth::id(), [
-                'amount' => $totalPayment,
-                'base_earnings' => $baseEarnings,
-                'overdue_fee' => $overdueFee,
+                'amount' => $baseAmount,
                 'reference_number' => $validated['reference_number'],
                 'proof_path' => $path,
                 'processed_by' => Auth::user()->name,
@@ -56,14 +62,35 @@ class CompletionPaymentController extends Controller
             ]);
 
             DB::commit();
-            return back()->with('success', 'Lender payment processed successfully.');
+
+            // Add debug logging
+            \Log::info('Lender Payment Processed:', [
+                'rental_id' => $rental->id,
+                'payment_amount' => $baseAmount,
+                'status' => $rental->status,
+                'has_deposit_refund' => $rental->completion_payments()->where('type', 'deposit_refund')->exists()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Lender payment processed successfully.',
+                'rental' => $rental->fresh()->append(['available_actions'])
+            ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
             if (isset($path)) {
                 Storage::disk('public')->delete($path);
             }
-            return back()->with('error', 'Failed to process lender payment.');
+            \Log::error('Lender Payment Error:', [
+                'error' => $e->getMessage(),
+                'rental_id' => $rental->id
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process lender payment.',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 

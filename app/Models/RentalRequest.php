@@ -43,7 +43,8 @@ class RentalRequest extends Model
         'remaining_days',
         'overdue_days',
         'is_overdue',
-        'overdue_fee'
+        'overdue_fee',
+        'total_lender_earnings'  // Add this line
     ];
 
     // Define core rental status constants
@@ -346,49 +347,58 @@ class RentalRequest extends Model
     // Update this method to ensure overdue fee is included
     public function getLenderEarningsAttribute()
     {
+        // Force load the relationships if not already loaded
+        if (!$this->relationLoaded('overdue_payment')) {
+            $this->load('overdue_payment');
+        }
+
+        // Add detailed debug logging
+        \Log::info('Rental Request Details:', [
+            'rental_id' => $this->id,
+            'raw_values' => [
+                'base_price' => $this->base_price,
+                'discount' => $this->discount,
+                'service_fee' => $this->service_fee,
+            ]
+        ]);
+
+        // Cast values to integers and ensure they're not null
+        $basePrice = (int) ($this->base_price ?? 0);
+        $discount = (int) ($this->discount ?? 0);
+        $serviceFee = (int) ($this->service_fee ?? 0);
+
         // Calculate base earnings
-        $baseEarnings = $this->base_price - $this->discount - $this->service_fee;
+        $baseEarnings = $basePrice - $discount - $serviceFee;
 
         // Get verified overdue payment
         $verifiedPayment = $this->overdue_payment()
             ->whereNotNull('verified_at')
             ->first();
 
-        // Use the overdue fee from verified payment or attribute
-        $overdueFee = $verifiedPayment ? (float) $verifiedPayment->amount : 0;
+        // Cast overdue fee to integer
+        $overdueFee = $verifiedPayment ? (int) $verifiedPayment->amount : 0;
 
         // Calculate total
         $totalEarnings = $baseEarnings + $overdueFee;
 
-        // Debug logging
-        \Log::info('Rental Details Breakdown:', [
+        // Debug logging for calculations
+        \Log::info('Lender Earnings Calculation:', [
             'rental_id' => $this->id,
-            'breakdown' => [
-                'base_price' => $this->base_price,
-                'discount' => $this->discount,
-                'service_fee' => $this->service_fee,
+            'calculations' => [
+                'base_price' => $basePrice,
+                'discount' => $discount,
+                'service_fee' => $serviceFee,
                 'base_earnings' => $baseEarnings,
-                'verified_overdue_fee' => $overdueFee,
+                'overdue_fee' => $overdueFee,
                 'total_earnings' => $totalEarnings
             ]
         ]);
 
         return [
-            'base' => $baseEarnings,
+            'base' => max(0, $baseEarnings), // Ensure no negative values
             'overdue' => $overdueFee,
-            'total' => $totalEarnings,
-            'hasOverdue' => $overdueFee > 0,
-            'breakdown' => [
-                'base_price' => $this->base_price,
-                'discount' => $this->discount,
-                'service_fee' => $this->service_fee,
-                'overdue_fee' => $overdueFee,
-                'is_overdue_paid' => (bool) $verifiedPayment,
-                'payment_details' => $verifiedPayment ? [
-                    'verified_at' => $verifiedPayment->verified_at,
-                    'reference_number' => $verifiedPayment->reference_number
-                ] : null
-            ]
+            'total' => max(0, $totalEarnings), // Ensure no negative values
+            'hasOverdue' => $overdueFee > 0
         ];
     }
 
@@ -421,6 +431,13 @@ class RentalRequest extends Model
                 'reference_number' => $verifiedPayment->reference_number
             ] : null
         ];
+    }
+
+    // Add this new method
+    public function getTotalLenderEarningsAttribute()
+    {
+        $earnings = $this->getLenderEarningsAttribute();
+        return $earnings['total'];
     }
 
     // Scopes

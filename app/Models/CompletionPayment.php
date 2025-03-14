@@ -8,17 +8,22 @@ class CompletionPayment extends Model
 {
     protected $fillable = [
         'rental_request_id',
-        'type', // 'lender_payment' or 'deposit_refund'
+        'type',
         'amount',
+        'includes_overdue_fee',
+        'total_amount',
         'reference_number',
         'proof_path',
         'processed_by',
-        'processed_at'
+        'processed_at',
+        'notes'
     ];
 
     protected $casts = [
         'processed_at' => 'datetime',
-        'amount' => 'decimal:2'
+        'amount' => 'decimal:2',
+        'total_amount' => 'decimal:2',
+        'includes_overdue_fee' => 'boolean'
     ];
 
     // Add an accessor to get payment breakdown
