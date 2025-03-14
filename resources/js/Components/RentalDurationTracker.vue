@@ -18,25 +18,30 @@ const formatDays = (days) => {
     return typeof days === 'number' ? `${days} days` : '0 days';
 };
 
-const stats = computed(() => [
-    {
+// Update the display values to persist after return initiation
+const stats = computed(() => {
+    const isReturnInitiated = props.rental.status.includes('return');
+
+    return [{
         label: 'Rental Duration',
         value: formatDays(props.rental.rental_duration),
         icon: Clock,
         description: `${formatDateTime(props.rental.start_date, 'MMM D')} - ${formatDateTime(props.rental.end_date, 'MMM D, YYYY')}`
     },
     {
-        label: isOverdue.value ? 'Overdue By' : 'Days Remaining',
+        label: isOverdue.value ? 'Overdue By' : 'Final Days Remaining',
         value: isOverdue.value 
             ? formatDays(props.rental.overdue_days)
-            : formatDays(props.rental.remaining_days),
+            : formatDays(isReturnInitiated ? 0 : props.rental.remaining_days),
         icon: isOverdue.value ? AlertTriangle : Calendar,
         variant: isOverdue.value ? 'destructive' : 'default',
         description: isOverdue.value
             ? `Was due on ${formatDateTime(props.rental.end_date, 'MMM D, YYYY')}`
-            : `Due on ${formatDateTime(props.rental.end_date, 'MMM D, YYYY')}`
-    }
-]);
+            : isReturnInitiated 
+                ? `Return initiated on ${formatDateTime(props.rental.end_date, 'MMM D, YYYY')}`
+                : `Due on ${formatDateTime(props.rental.end_date, 'MMM D, YYYY')}`
+    }];
+});
 
 const showTracker = computed(() => {
     // Show tracker for all statuses except cancelled, rejected or completed states
