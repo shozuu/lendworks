@@ -7,9 +7,28 @@ const props = defineProps({
 		type: String,
 		required: true,
 	},
+	paymentRequest: {
+		type: Object,
+		default: null,
+	},
 });
 
 const statusInfo = computed(() => {
+	if (props.status === "approved" && props.paymentRequest) {
+		switch (props.paymentRequest.status) {
+			case "pending":
+				return {
+					label: "Payment Under Review",
+					variant: "warning",
+				};
+			case "rejected":
+				return {
+					label: "Payment Rejected",
+					variant: "destructive",
+				};
+		}
+	}
+
 	switch (props.status) {
 		case "pending":
 			return {
@@ -20,6 +39,16 @@ const statusInfo = computed(() => {
 			return {
 				label: "Approved",
 				variant: "info",
+			};
+		case "pending_proof":
+			return {
+				label: "Awaiting Confirmation",
+				variant: "warning",
+			};
+		case "to_handover":
+			return {
+				label: "Payment Verified",
+				variant: "success",
 			};
 		case "active":
 			return {

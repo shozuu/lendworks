@@ -4,14 +4,18 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Listing;
+use App\Models\PaymentRequest;
 use App\Models\RejectionReason;
 use App\Models\TakedownReason;
 use App\Models\User;
+use App\Models\RentalRequest;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
 use App\Notifications\ListingApproved;
 use App\Notifications\ListingRejected;
 use App\Notifications\ListingTakenDown;
+use App\Notifications\PaymentRejected;
+use App\Notifications\PaymentVerified;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -35,6 +39,13 @@ class AdminController extends Controller
 
     public function users(Request $request)
     {
+        // Get user counts first
+        $userCounts = [
+            'total' => User::count(),
+            'active' => User::where('status', 'active')->count(),
+            'suspended' => User::where('status', 'suspended')->count(),
+        ];
+
         $query = User::withCount('listings');
 
         // Search
@@ -71,7 +82,8 @@ class AdminController extends Controller
 
         return Inertia::render('Admin/Users', [
             'users' => $users,
-            'filters' => $request->only(['search', 'status', 'sortBy'])
+            'filters' => $request->only(['search', 'status', 'sortBy']),
+            'userCounts' => $userCounts
         ]);
     }
 
@@ -388,5 +400,107 @@ class AdminController extends Controller
             report($e);
             return back()->with('error', 'Failed to take down listing. Please try again.');
         }
+    }
+
+    public function rentalTransactions(Request $request)
+    {
+        $stats = [
+            'total' => RentalRequest::count(),
+            'pending' => RentalRequest::where('status', 'pending')->count(),
+            'approved' => RentalRequest::where('status', 'approved')->count(),
+            'to_handover' => RentalRequest::where('status', 'to_handover')->count(),
+            'active' => RentalRequest::where('status', 'active')->count(),
+            'completed' => RentalRequest::where('status', 'completed')->count(),
+            'rejected' => RentalRequest::where('status', 'rejected')->count(),
+            'cancelled' => RentalRequest::where('status', 'cancelled')->count(),
+        ];
+
+        $query = RentalRequest::with([
+            'listing' => fn($q) => $q->with(['images', 'user']), 
+            'renter',
+            'payment_request',
+            'latestRejection.rejectionReason',
+            'latestCancellation.cancellationReason'
+        ]);
+
+        // Apply search filter
+        if ($search = $request->input('search')) {
+            $query->where(function($q) use ($search) {
+                $q->whereHas('listing', function($q) use ($search) {
+                    $q->where('title', 'like', "%{$search}%");
+                })
+                ->orWhereHas('listing.user', function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%");
+                })
+                ->orWhereHas('renter', function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%");
+                });
+            });
+        }
+
+        // Apply period filter
+        if ($request->period) {
+            $query->where('created_at', '>=', now()->subDays($request->period));
+        }
+
+        // Apply status filter
+        if ($request->status && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        $transactions = $query->latest()->paginate(10)->appends($request->query());
+
+        return Inertia::render('Admin/RentalTransactions', [
+            'transactions' => $transactions,
+            'stats' => $stats,
+            'filters' => $request->only(['search', 'period', 'status'])
+        ]);
+    }
+
+    public function rentalTransactionDetails(RentalRequest $rental)
+    {
+        // Add viewer_id to help with determining actions
+        $rental->viewer_id = Auth::id();
+        
+        $rental->load([
+            'listing' => fn($q) => $q->with(['images', 'category', 'location', 'user']),
+            'renter',
+            'latestRejection.rejectionReason',
+            'latestCancellation.cancellationReason',
+            'timelineEvents.actor',  // Make sure actor is loaded for timeline
+            'payment_request',
+            'completion_payments'
+        ]);
+
+        // Add this debug line to check the data
+        \Log::info('Rental Transaction Details:', [
+            'rental_id' => $rental->id,
+            'status' => $rental->status,
+            'has_completion_payments' => $rental->completion_payments->count(),
+            'available_actions' => $rental->available_actions
+        ]);
+
+        return Inertia::render('Admin/RentalTransactionDetails', [
+            'rental' => $rental
+        ]);
+    }
+
+    public function payments()
+    {
+        $payments = PaymentRequest::with(['rentalRequest.listing', 'rentalRequest.renter'])
+            ->latest()
+            ->paginate(10);
+
+        $stats = [
+            'total' => PaymentRequest::count(),
+            'pending' => PaymentRequest::where('status', 'pending')->count(),
+            'verified' => PaymentRequest::where('status', 'verified')->count(),
+            'rejected' => PaymentRequest::where('status', 'rejected')->count(),
+        ];
+
+        return Inertia::render('Admin/PaymentRequests', [
+            'payments' => $payments,
+            'stats' => $stats
+        ]);
     }
 }
