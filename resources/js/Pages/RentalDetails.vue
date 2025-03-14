@@ -305,7 +305,7 @@ const formatTime = (timeStr) => {
 										:alt="rental.listing.title"
 									/>
 								</Link>
-								<div>
+								<div class="space-y-2">
 									<Link
 										:href="route('listing.show', rental.listing.id)"
 										class="hover:text-primary transition-colors"
@@ -314,6 +314,9 @@ const formatTime = (timeStr) => {
 									</Link>
 									<p class="text-muted-foreground text-sm">
 										Category: {{ rental.listing.category.name }}
+									</p>
+									<p class="text-muted-foreground text-sm">
+										Meetup Location: {{ rental.listing.location.address }}
 									</p>
 								</div>
 							</div>
@@ -553,7 +556,7 @@ const formatTime = (timeStr) => {
 				/>
 
 				<!-- Add pickup schedule section after rental details -->
-				<Card v-if="pickupSchedule || actions.canChoosePickupSchedule" class="shadow-sm">
+				<Card v-if="pickupSchedule && !rental.handover_at" class="shadow-sm">
 					<CardHeader class="bg-card border-b">
 						<CardTitle class="text-lg">Pickup Details</CardTitle>
 					</CardHeader>
