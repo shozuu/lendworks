@@ -547,8 +547,8 @@ const isAddFormValid = computed(() => {
 
 <template>
 	<div class="flex flex-col h-full">
-		<!-- Title section - Make it sticky -->
-		<div class="sticky top-0 z-10 bg-background border-b p-4">
+		<!-- Title section -->
+		<div class="sticky top-0 z-10 bg-background border-b px-6 py-4">
 			<h2 class="text-lg font-semibold">Pickup Schedule Management</h2>
 			<p class="text-muted-foreground text-sm">
 				Set your regular availability for item handovers
@@ -556,10 +556,10 @@ const isAddFormValid = computed(() => {
 		</div>
 
 		<!-- Scrollable content -->
-		<div class="flex-1 overflow-y-auto p-4">
-			<div class="space-y-6">
+		<div class="flex-1 overflow-y-auto px-6 py-6">
+			<div class="space-y-6 max-w-3xl mx-auto">
 				<!-- Add Availability Section -->
-				<div class="space-y-4 rounded-lg border p-4">
+				<div class="space-y-5 rounded-lg border p-5">
 					<!-- Day Selection -->
 					<div>
 						<h3 class="mb-2 text-base font-semibold">Select Days</h3>
@@ -664,13 +664,13 @@ const isAddFormValid = computed(() => {
 				</div>
 
 				<!-- Current Availability Section -->
-				<div class="space-y-4">
+				<div class="space-y-5">
 					<div class="flex items-center justify-between">
 						<h3 class="text-base font-semibold">Current Availability</h3>
 					</div>
 
 					<!-- Current Week Section -->
-					<div v-if="currentWeekDays.length" class="space-y-4">
+					<div v-if="currentWeekDays.length" class="space-y-5">
 						<h4 class="text-sm font-medium text-muted-foreground">This Week</h4>
 						<div
 							v-for="day in currentWeekDays"
@@ -678,7 +678,9 @@ const isAddFormValid = computed(() => {
 							class="rounded-lg border overflow-hidden"
 						>
 							<!-- Day Header -->
-							<div class="bg-muted/50 px-4 py-3 flex items-center justify-between">
+							<div
+								class="bg-muted/50 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+							>
 								<div>
 									<h4 class="font-medium">{{ day }}</h4>
 									<p class="text-xs text-muted-foreground">
@@ -702,10 +704,10 @@ const isAddFormValid = computed(() => {
 								<div
 									v-for="schedule in schedulesGroupedByDay[day]"
 									:key="schedule.id"
-									class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+									class="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
 									:class="[!schedule.is_active && 'bg-destructive/5']"
 								>
-									<div class="grid gap-2">
+									<div class="grid">
 										<label
 											:for="`schedule-active-${schedule.id}`"
 											class="flex items-center gap-3 cursor-pointer"
@@ -718,7 +720,7 @@ const isAddFormValid = computed(() => {
 											/>
 											<div>
 												<span
-													class="font-medium"
+													class="font-medium text-sm"
 													:class="!schedule.is_active && 'text-muted-foreground'"
 												>
 													{{ formatScheduleTime(schedule) }}
@@ -757,7 +759,7 @@ const isAddFormValid = computed(() => {
 					</div>
 
 					<!-- Next Week Section -->
-					<div v-if="nextWeekDays.length" class="space-y-4">
+					<div v-if="nextWeekDays.length" class="space-y-5">
 						<h4 class="text-sm font-medium text-muted-foreground">Next Week</h4>
 						<div
 							v-for="day in nextWeekDays"
@@ -765,7 +767,9 @@ const isAddFormValid = computed(() => {
 							class="rounded-lg border overflow-hidden"
 						>
 							<!-- Day Header -->
-							<div class="bg-muted/50 px-4 py-3 flex items-center justify-between">
+							<div
+								class="bg-muted/50 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+							>
 								<div>
 									<h4 class="font-medium">{{ day }}</h4>
 									<p class="text-xs text-muted-foreground">
@@ -789,10 +793,10 @@ const isAddFormValid = computed(() => {
 								<div
 									v-for="schedule in schedulesGroupedByDay[day]"
 									:key="schedule.id"
-									class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+									class="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
 									:class="[!schedule.is_active && 'bg-destructive/5']"
 								>
-									<div class="grid gap-2">
+									<div class="grid">
 										<label
 											:for="`schedule-active-${schedule.id}`"
 											class="flex items-center gap-3 cursor-pointer"
@@ -805,7 +809,7 @@ const isAddFormValid = computed(() => {
 											/>
 											<div>
 												<span
-													class="font-medium"
+													class="font-medium text-sm"
 													:class="!schedule.is_active && 'text-muted-foreground'"
 												>
 													{{ formatScheduleTime(schedule) }}
