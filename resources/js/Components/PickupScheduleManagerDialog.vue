@@ -26,7 +26,9 @@ const emit = defineEmits(["update:open"]);
 				Manage Availability
 			</Button>
 		</DialogTrigger>
-		<DialogContent class="sm:max-w-[800px] h-[calc(100vh-4rem)]">
+		<DialogContent
+			class="w-[calc(100vw-2rem)] h-[calc(100vh-2rem)] sm:max-w-[640px] md:max-w-[800px] p-0 gap-0"
+		>
 			<div class="flex-1 overflow-hidden">
 				<PickupScheduleManager :schedules="schedules" />
 			</div>
