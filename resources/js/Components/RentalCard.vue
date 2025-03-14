@@ -6,7 +6,6 @@ import BaseRentalCard from "@/Components/BaseRentalCard.vue";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import PaymentDialog from "@/Components/PaymentDialog.vue";
 import HandoverDialog from "@/Components/HandoverDialog.vue";
-import RentalDurationTracker from "@/Components/RentalDurationTracker.vue";
 import PickupScheduleDialog from "@/Components/PickupScheduleDialog.vue";
 import { useForm } from "@inertiajs/vue3";
 import { format } from "date-fns";
@@ -114,14 +113,32 @@ const details = computed(() => {
 		},
 	];
 
-	// Add pickup schedule if available
+	// Only show meetup schedule if not yet active
 	const schedule = props.rental.pickup_schedules?.find((s) => s.is_selected);
-	if (schedule) {
+	if (schedule && props.rental.status !== "active") {
 		const pickupDate = new Date(schedule.pickup_datetime);
 		baseDetails.push({
 			label: "Meetup",
 			value: `${format(pickupDate, "MMMM d")}, ${format(pickupDate, "EEEE")}`,
 		});
+	}
+
+	// For active rentals, add duration info instead of meetup
+	if (props.rental.status === "active") {
+		baseDetails.push(
+			{
+				label: "Duration",
+				value: `${props.rental.rental_duration} days`,
+				class: "text-primary",
+			},
+			{
+				label: isOverdue.value ? "Overdue By" : "Remaining",
+				value: isOverdue.value
+					? `${props.rental.overdue_days} days`
+					: `${props.rental.remaining_days} days`,
+				class: isOverdue.value ? "text-red-600" : "text-muted-foreground",
+			}
+		);
 	}
 
 	// Add overdue days if rental is overdue
@@ -155,12 +172,7 @@ const actions = computed(() => props.rental.available_actions);
 	>
 		<!-- Additional details slot -->
 		<template #additional-details>
-			<RentalDurationTracker
-				v-if="rental.status === 'active'"
-				:rental="rental"
-				class="mt-4"
-			/>
-			<!-- Update the overdue messages -->
+			<!-- Show overdue message without the tracker -->
 			<div
 				v-if="isOverdue"
 				class="mt-4"

@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { useForm } from "@inertiajs/vue3";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import HandoverDialog from "@/Components/HandoverDialog.vue";
-import RentalDurationTracker from "@/Components/RentalDurationTracker.vue";
 import { format } from "date-fns";
 
 const props = defineProps({
@@ -89,14 +88,32 @@ const details = computed(() => {
 		},
 	];
 
-	// Add pickup schedule if available
-	const schedule = props.data.rental_request.pickup_schedules?.find(s => s.is_selected);
-	if (schedule) {
+	// Only show meetup schedule if not yet active
+	const schedule = props.data.rental_request.pickup_schedules?.find((s) => s.is_selected);
+	if (schedule && props.data.rental_request.status !== "active") {
 		const pickupDate = new Date(schedule.pickup_datetime);
 		baseDetails.push({
 			label: "Meetup",
 			value: `${format(pickupDate, "MMMM d")}, ${format(pickupDate, "EEEE")}`,
 		});
+	}
+
+	// For active rentals, add duration info instead of meetup
+	if (props.data.rental_request.status === "active") {
+		baseDetails.push(
+			{
+				label: "Duration",
+				value: `${props.data.rental_request.rental_duration} days`,
+				class: "text-primary",
+			},
+			{
+				label: isOverdue.value ? "Overdue By" : "Remaining",
+				value: isOverdue.value
+					? `${props.data.rental_request.overdue_days} days`
+					: `${props.data.rental_request.remaining_days} days`,
+				class: isOverdue.value ? "text-red-600" : "text-muted-foreground",
+			}
+		);
 	}
 
 	// Add overdue days if rental is overdue
@@ -186,7 +203,6 @@ const canShowHandover = computed(() => {
 		(schedule) => schedule.is_selected
 	);
 });
-
 </script>
 
 <template>
@@ -201,12 +217,7 @@ const canShowHandover = computed(() => {
 	>
 		<!-- Additional details slot -->
 		<template #additional-details>
-			<RentalDurationTracker
-				v-if="data.rental_request.status === 'active'"
-				:rental="data.rental_request"
-				class="mt-4"
-			/>
-				<!-- Update the overdue messages -->
+			<!-- Remove RentalDurationTracker and only show overdue message -->
 			<div
 				v-if="isOverdue"
 				class="mt-4"
