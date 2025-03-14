@@ -758,64 +758,37 @@ const showOverdueSection = computed(() => {
 					</CardContent>
 				</Card>
 
-				<!-- Add this card in the right column for lenders only -->
+				 <!-- Update the lender earnings card -->
 				<Card v-if="userRole === 'lender'" class="shadow-sm">
 					<CardHeader class="bg-card border-b">
 						<CardTitle class="flex items-center gap-2">
 							<DollarSign class="w-4 h-4 text-emerald-500" />
-							Your Earnings
+							Total Lender Earnings
 						</CardTitle>
 					</CardHeader>
 					<CardContent class="p-4">
 						<div class="space-y-3">
-							<!-- Base Earnings -->
-							<div class="space-y-2 p-3 bg-muted rounded-lg">
-								<h4 class="text-sm font-medium mb-2">Base Rental Earnings</h4>
-								<div class="grid gap-2 text-sm">
-									<div class="flex justify-between items-center">
-										<span class="text-muted-foreground">Base Price:</span>
-										<span>{{ formatNumber(lenderEarnings.basePrice) }}</span>
-									</div>
-									<div class="flex justify-between items-center text-destructive">
-										<span class="text-muted-foreground">Duration Discount:</span>
-										<span>-{{ formatNumber(lenderEarnings.discount) }}</span>
-									</div>
-									<div class="flex justify-between items-center text-destructive">
-										<span class="text-muted-foreground">Platform Fee:</span>
-										<span>-{{ formatNumber(lenderEarnings.serviceFee) }}</span>
-									</div>
-									<Separator class="my-1" />
-									<div class="flex justify-between items-center font-medium">
-										<span>Base Earnings:</span>
-										<span>{{ formatNumber(lenderEarnings.baseEarnings) }}</span>
-									</div>
-								</div>
+							<div class="flex justify-between items-center">
+								<span class="font-medium">Base Rental:</span>
+								<span>{{ formatNumber(rental.base_price) }}</span>
 							</div>
-
-							<!-- Overdue Earnings if applicable -->
-							<div v-if="lenderEarnings.hasOverdue" class="space-y-2 p-3 bg-muted rounded-lg">
-								<h4 class="text-sm font-medium mb-2">Additional Earnings</h4>
-								<div class="grid gap-2 text-sm">
-									<div class="flex justify-between items-center text-emerald-500">
-										<span class="text-muted-foreground">Overdue Fee:</span>
-										<span>+{{ formatNumber(lenderEarnings.overdueFee) }}</span>
-									</div>
-								</div>
+							<div class="flex justify-between items-center text-destructive">
+								<span class="font-medium">Discounts & Fees:</span>
+								<span>- {{ formatNumber(rental.discount + rental.service_fee) }}</span>
 							</div>
-
-							<!-- Total Earnings -->
+							<div v-if="rental.overdue_payment" class="flex justify-between items-center text-emerald-500">
+								<span class="font-medium">Overdue Fee:</span>
+								<span>+ {{ formatNumber(rental.overdue_fee) }}</span>
+							</div>
 							<Separator />
-							<div class="flex justify-between items-center font-medium">
-								<span>Total Earnings:</span>
+							<div class="flex justify-between items-center">
+								<span class="font-medium">Total Earnings:</span>
 								<span class="text-emerald-500 text-lg">
-									{{ formatNumber(lenderEarnings.total) }}
+									{{ formatNumber(rental.base_price - rental.discount - rental.service_fee + (rental.overdue_payment ? rental.overdue_fee : 0)) }}
 								</span>
 							</div>
-
 							<p class="text-muted-foreground text-xs">
-								{{ lenderEarnings.hasOverdue 
-									? 'Your total earnings including overdue fees' 
-									: 'Your earnings after platform fees and discounts' }}
+								{{ rental.overdue_payment ? 'Total earnings including overdue fees' : 'Total earnings after discounts and fees' }}
 							</p>
 						</div>
 					</CardContent>
