@@ -14,6 +14,7 @@ import CompletionPaymentDialog from "@/Components/Admin/CompletionPaymentDialog.
 import PaymentProofDialog from "@/Components/PaymentProofDialog.vue"; // Add this import
 import OverduePaymentDialog from "@/Components/Admin/OverduePaymentDialog.vue"; // Add this import
 import RentalDurationTracker from "@/Components/RentalDurationTracker.vue"; // Add this import
+import { format } from "date-fns/format";
 
 defineOptions({ layout: AdminLayout });
 
@@ -289,6 +290,71 @@ const showOverdueSection = computed(() => {
 											<p class="text-muted-foreground text-sm">End Date</p>
 											<p class="font-medium">
 												{{ formatDateTime(rental.end_date, "MMMM D, YYYY") }}
+											</p>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<!-- Add Pickup Schedule Details -->
+							<div
+								v-if="rental.pickup_schedules?.find((s) => s.is_selected)"
+								class="space-y-4"
+							>
+								<h4 class="font-medium">Meetup Schedule</h4>
+								<div class="bg-muted p-4 rounded-lg">
+									<div class="space-y-2">
+										<div class="grid gap-2">
+											<div class="sm:grid-cols-2 grid gap-4">
+												<div>
+													<p class="text-muted-foreground text-sm">Date</p>
+													<p class="font-medium">
+														{{
+															formatDateTime(
+																rental.pickup_schedules.find((s) => s.is_selected)
+																	.pickup_datetime,
+																"MMMM D, YYYY"
+															)
+														}}
+													</p>
+												</div>
+											</div>
+											<div class="sm:grid-cols-2 grid gap-4">
+												<div>
+													<p class="text-muted-foreground text-sm">Time Window</p>
+													<p class="font-medium">
+														{{
+															format(
+																new Date(
+																	`2000-01-01 ${
+																		rental.pickup_schedules.find((s) => s.is_selected)
+																			.start_time
+																	}`
+																),
+																"h:mm a"
+															)
+														}}
+														-
+														{{
+															format(
+																new Date(
+																	`2000-01-01 ${
+																		rental.pickup_schedules.find((s) => s.is_selected)
+																			.end_time
+																	}`
+																),
+																"h:mm a"
+															)
+														}}
+													</p>
+												</div>
+											</div>
+										</div>
+										<div class="text-muted-foreground border-t pt-2 mt-2 text-sm">
+											<p>Location: {{ rental.listing.location.address }}</p>
+											<p>
+												{{ rental.listing.location.city }},
+												{{ rental.listing.location.province }}
 											</p>
 										</div>
 									</div>

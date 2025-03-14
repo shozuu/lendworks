@@ -469,7 +469,8 @@ class AdminController extends Controller
             'latestCancellation.cancellationReason',
             'timelineEvents.actor',  // Make sure actor is loaded for timeline
             'payment_request',
-            'completion_payments'
+            'completion_payments',
+            'pickup_schedules' // Add this line
         ]);
 
         return Inertia::render('Admin/RentalTransactionDetails', [
