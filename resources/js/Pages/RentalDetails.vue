@@ -20,6 +20,7 @@ import RentalDurationTracker from "@/Components/RentalDurationTracker.vue";
 import ReturnScheduler from '@/Components/ReturnScheduler.vue';
 import ReturnConfirmationDialog from '@/Components/ReturnConfirmationDialog.vue';
 import PaymentProofDialog from '@/Components/PaymentProofDialog.vue';
+import DisputeDialog from '@/Components/DisputeDialog.vue';
 
 const props = defineProps({
 	rental: Object,
@@ -68,6 +69,7 @@ const showAcceptDialog = ref(false);
 const showHandoverDialog = ref(false);
 const showReturnDialog = ref(false);
 const returnDialogType = ref('submit');
+const showDisputeDialog = ref(false);
 
 // Forms
 const approveForm = useForm({});
@@ -643,6 +645,16 @@ const showOverdueSection = computed(() => {
 								Complete Transaction
 							</Button>
 
+							 <!-- Add new Dispute Button -->
+							<Button
+								v-if="actions.canFinalizeReturn"
+								variant="destructive"
+								class="w-full"
+								@click="showDisputeDialog = true"
+							>
+								Raise Dispute
+							</Button>
+
 							<!-- No Actions Message -->
 							<p
 								v-if="
@@ -898,5 +910,11 @@ const showOverdueSection = computed(() => {
 		:show="showPaymentProofDialog"
 		:payment="selectedPayment"
 		@update:show="showPaymentProofDialog = $event"
+	/>
+
+	<!-- Add new DisputeDialog component before the end of template -->
+	<DisputeDialog
+		v-model:show="showDisputeDialog"
+		:rental="rental"
 	/>
 </template>
