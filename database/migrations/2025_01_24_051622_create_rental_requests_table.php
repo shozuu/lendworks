@@ -10,33 +10,35 @@ return new class extends Migration
     {
         Schema::create('rental_requests', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('listing_id')->constrained()->onDelete('cascade');
-            $table->foreignId('renter_id')->constrained('users')->onDelete('cascade');
-            $table->datetime('start_date');  
-            $table->datetime('end_date');  
+            $table->foreignId('listing_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('renter_id')->constrained('users')->cascadeOnDelete();
+            $table->dateTime('start_date');
+            $table->dateTime('end_date');
             $table->integer('base_price');
-            $table->integer('discount');  
-            $table->integer('service_fee'); 
+            $table->integer('discount');
+            $table->integer('service_fee');
             $table->integer('deposit_fee');
-            $table->integer('total_price'); 
+            $table->integer('total_price');
+            $table->integer('quantity_requested')->default(1);
+            $table->integer('quantity_approved')->nullable();
             $table->enum('status', [
-                'pending',                        // Initial state when request is made
-                'approved',                       // Owner approved, awaiting/processing payment
-                'to_handover',                    // Payment verified by admin
-                'pending_proof',                  // Waiting for handover/receive proofs
-                'active',                         // Item has been handed over and received
-                'completed',                      // Item has been returned and confirmed
-                'rejected',                       // Owner rejected the request
-                'cancelled',                      // Renter cancelled the request
-                'pending_return',                 // renter initiated return
-                'return_scheduled',               // lender confirmed return schedule
-                'pending_return_confirmation',     // renter and lender confirming return
-                'pending_final_confirmation',      // final confirmation before completion
-                'completed_pending_payments',      // completed but pending payments
-                'completed_with_payments',        // completed with all payments done
-                'overdue',                        // Rental is overdue without payment
+                'pending',
+                'approved',
+                'to_handover',
+                'pending_proof',
+                'active',
+                'completed',
+                'rejected',
+                'cancelled',
+                'pending_return',
+                'return_scheduled',
+                'pending_return_confirmation',
+                'pending_final_confirmation',
+                'completed_pending_payments',
+                'completed_with_payments',
+                'overdue',
                 'paid_overdue',
-                'disputed'                    // Rental is overdue but paid
+                'disputed'
             ])->default('pending');
             $table->timestamp('handover_at')->nullable();
             $table->timestamp('return_at')->nullable();

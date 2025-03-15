@@ -12,6 +12,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { ref } from "vue";
+import { Package } from "lucide-vue-next";
 import { formatLabel } from "@/lib/formatters";
 
 const props = defineProps({
@@ -70,6 +71,7 @@ const filterListings = (value) => {
 
 				<Link :href="route('listing.create')" class="shrink-0">
 					<Button size="default" class="sm:w-auto w-full">
+						<Package class="w-4 h-4" />
 						<span>Create Listing</span>
 					</Button>
 				</Link>

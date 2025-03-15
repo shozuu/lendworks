@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\RentalRequest;
 use App\Models\RentalCancellationReason;
-use Illuminate\Http\Request;
+use App\Models\LenderPickupSchedule;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -13,8 +13,24 @@ class MyRentalsController extends Controller
     public function index()
     {
         $rentals = RentalRequest::where('renter_id', Auth::id())
-            ->with(['listing.images', 'listing.user', 'payment_request'])
-            ->get();
+            ->with([
+                'listing.images',
+                'listing.user',
+                'listing.category',
+                'payment_request',
+                'timelineEvents',
+                'pickup_schedules',
+            ])
+            ->get()
+            ->map(function ($rental) {
+                // Get lender schedules for each rental that needs them
+                if ($rental->status === 'to_handover') {
+                    $rental->lender_schedules = LenderPickupSchedule::where('user_id', $rental->listing->user_id)
+                        ->where('is_active', true)
+                        ->get();
+                }
+                return $rental;
+            });
 
         $groupedListings = $rentals->groupBy(function ($rental) {
             // Move completed transactions to completed tab
@@ -107,6 +123,7 @@ class MyRentalsController extends Controller
             'groupedListings' => $groupedListings,
             'rentalStats' => $rentalStats,
             'cancellationReasons' => $cancellationReasons,
+            'userRole' => 'renter' 
         ]);
     }
 }

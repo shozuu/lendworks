@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use App\Traits\ChecksSuspendedUsers;
+use Illuminate\Support\Facades\DB;
 
 class ListingController extends Controller
 {
@@ -75,19 +76,33 @@ class ListingController extends Controller
             ]);
             $fields['location_id'] = $location->id;
         }
-
-        $listing = $request->user()->listings()->create($fields);
-
-        if ($request->hasFile('images')) {
-            foreach ($request->images as $index => $image) {
-                $path = $image->store('images/listing', 'public'); 
-
-                // save image details to the database
-                $listing->images()->create([
-                    'image_path' => $path,
-                    'order' => $index,
+        
+        try {
+            DB::transaction(function () use ($request, $fields) {
+                // Set initial available_quantity equal to quantity
+                $fields['available_quantity'] = $fields['quantity'];
+                
+                // Create listing
+                $listing = Listing::create([
+                    ...$fields,
+                    'user_id' => Auth::id(),
+                    'status' => 'pending'
                 ]);
-            }
+
+                if ($request->hasFile('images')) {
+                    foreach ($request->images as $index => $image) {
+                        $path = $image->store('images/listing', 'public'); 
+
+                        // save image details to the database
+                        $listing->images()->create([
+                            'image_path' => $path,
+                            'order' => $index,
+                        ]);
+                    }
+                }
+            });
+        } catch (Exception $e) {
+            return redirect()->route('my-listings')->with('status', 'Listing creation failed.');
         }
 
         return redirect()->route('my-listings')->with('status', 'Listing created successfully.');
@@ -230,6 +245,15 @@ class ListingController extends Controller
 
         $fields = $this->validateListing($request);
 
+        // If quantity is changing, update available_quantity 
+        if (isset($fields['quantity']) && $fields['quantity'] != $listing->quantity) {
+            // Calculate the change in quantity
+            $quantityDifference = $fields['quantity'] - $listing->quantity;
+            
+            // adjust available_quantity by the same amount
+            $fields['available_quantity'] = max(0, $listing->available_quantity + $quantityDifference);
+        }
+
         // Store the previous status
         $wasRejected = $listing->status === 'rejected';
 
@@ -238,8 +262,7 @@ class ListingController extends Controller
             $fields['status'] = 'pending';
         }
 
-        $listing->update($fields);
-
+        // Create new location if requested
         if ($request->new_location) {
             $location = $request->user()->locations()->create([
                 'name' => $request->location_name,
@@ -249,11 +272,6 @@ class ListingController extends Controller
                 'postal_code' => $request->postal_code,
             ]);
             $fields['location_id'] = $location->id;
-        }
-
-        // set status to pending when updating an approved listing
-        if ($listing->status === 'approved') {
-            $fields['status'] = 'pending';
         }
 
         $listing->update($fields);
@@ -327,6 +345,7 @@ class ListingController extends Controller
             'location_id' => ['required_if:new_location,false', 'nullable', 'exists:locations,id'],
             'value' => ['required', 'integer', 'gt:0'],
             'price' => ['required', 'integer', 'gt:0'],
+            'quantity' => ['required', 'integer', 'min:1', 'max:100'],
             'images' => ['required', 'array', 'min:1'], 
             'images.*' => ['required', 'image', 'file', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
             // new location fields if creating new location

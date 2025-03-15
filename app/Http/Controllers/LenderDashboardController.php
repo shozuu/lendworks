@@ -19,7 +19,12 @@ class LenderDashboardController extends Controller
         // Get rentals where user is the lender
         $rentals = RentalRequest::whereHas('listing', function ($query) use ($lender) {
             $query->where('user_id', $lender->id);
-        })->with(['listing.images', 'renter', 'payment_request'])->get();
+        })->with([
+            'listing.images', 
+            'renter', 
+            'payment_request',
+            'pickup_schedules'  // Add this to eager load pickup schedules
+        ])->get();
 
         // Group rentals by status
         $groupedListings = $rentals->groupBy(function ($rental) {
@@ -131,9 +136,9 @@ class LenderDashboardController extends Controller
             ->values()
             ->all();
 
-        // Get pickup schedules
+        // Get pickup schedules - move this before the Inertia::render
         $pickupSchedules = LenderPickupSchedule::where('user_id', $lender->id)
-            ->where('is_active', true)
+            ->where('is_active', true)  // Only get active schedules
             ->orderBy('day_of_week')
             ->orderBy('start_time')
             ->get();
@@ -143,7 +148,8 @@ class LenderDashboardController extends Controller
             'rentalStats' => $rentalStats,
             'rejectionReasons' => $rejectionReasons,
             'cancellationReasons' => $cancellationReasons,
-            'pickupSchedules' => $pickupSchedules,
+            'pickupSchedules' => $pickupSchedules,  // Pass to view
+            'scheduleManagementEnabled' => true
         ]);
     }
 }

@@ -469,15 +469,8 @@ class AdminController extends Controller
             'latestCancellation.cancellationReason',
             'timelineEvents.actor',  // Make sure actor is loaded for timeline
             'payment_request',
-            'completion_payments'
-        ]);
-
-        // Add this debug line to check the data
-        \Log::info('Rental Transaction Details:', [
-            'rental_id' => $rental->id,
-            'status' => $rental->status,
-            'has_completion_payments' => $rental->completion_payments->count(),
-            'available_actions' => $rental->available_actions
+            'completion_payments',
+            'pickup_schedules' // Add this line
         ]);
 
         return Inertia::render('Admin/RentalTransactionDetails', [

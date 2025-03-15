@@ -22,13 +22,21 @@ class Listing extends Model
         'category_id',
         'user_id',
         'location_id',
-        'deposit_fee'
+        'deposit_fee',
+        'quantity',           
+        'available_quantity' 
     ];
 
     protected $casts = [
         'is_available' => 'boolean',
         'is_rented' => 'boolean',
-        'status' => 'string'
+        'status' => 'string',
+        'quantity' => 'integer',          
+        'available_quantity' => 'integer'  
+    ];
+
+    protected $appends = [
+        'availability_details'
     ];
 
     // Relationships
@@ -133,6 +141,25 @@ class Listing extends Model
             'description' => $takedown->takedownReason->description,
             'feedback' => $takedown->custom_feedback,
             'date' => $takedown->created_at
+        ];
+    }
+
+    // calculate the quantity of the listing that is currently rented
+    public function getCurrentlyRentedQuantity()
+    {
+        return $this->rentalRequests()
+            ->whereIn('status', ['active', 'approved'])
+            ->sum('quantity_approved');
+    }
+
+    public function getAvailabilityDetailsAttribute()
+    {
+        $rentedQuantity = $this->getCurrentlyRentedQuantity();
+        
+        return [
+            'total_quantity' => $this->quantity,  // Total owned quantity
+            'rented_quantity' => $rentedQuantity, // Currently rented (approved) quantity
+            'available_quantity' => $this->available_quantity // Available for rent
         ];
     }
 

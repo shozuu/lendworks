@@ -28,10 +28,10 @@ const props = defineProps({
 		default: null,
 	},
 });
-console.log(props.currentRental);
 const dailyRate = props.listing.price;
 const itemValue = props.listing.value;
 const rentalDays = ref(7);
+const quantity = ref(1); // Add this line
 
 const rentalPrice = reactive({
 	basePrice: 0,
@@ -50,6 +50,7 @@ const rentalForm = useInertiaForm({
 	service_fee: 0,
 	deposit_fee: props.listing.deposit_fee,
 	total_price: 0,
+	quantity_requested: 1, // Add this line
 });
 
 const selectedDates = ref({
@@ -65,7 +66,8 @@ function updateRentalPrice() {
 		dailyRate,
 		itemValue,
 		rentalDays.value,
-		props.listing.deposit_fee
+		props.listing.deposit_fee,
+		quantity.value
 	);
 	Object.assign(rentalPrice, result);
 
@@ -74,7 +76,8 @@ function updateRentalPrice() {
 	rentalForm.discount = result.discount;
 	rentalForm.service_fee = result.fee;
 	rentalForm.deposit_fee = result.deposit;
-	rentalForm.total_price = result.totalPrice; // rental cost without deposit
+	rentalForm.total_price = result.totalPrice;
+	rentalForm.quantity_requested = quantity.value;
 }
 
 function updateRentalDays(startDate, endDate) {
@@ -120,6 +123,11 @@ watch(
 	},
 	{ deep: true }
 );
+
+// Add watch for quantity changes
+watch(quantity, () => {
+	updateRentalPrice();
+});
 
 const handleSubmit = () => {
 	if (!rentalForm.start_date || !rentalForm.end_date) {
@@ -228,6 +236,33 @@ onMounted(() => {
 					</p>
 				</div>
 				<template v-else>
+					<!-- Add this before the rental dates section -->
+					<div class="space-y-2">
+						<div class="font-semibold">Quantity</div>
+						<div class="flex items-center gap-2">
+							<Button
+								variant="outline"
+								size="sm"
+								:disabled="quantity === 1"
+								@click="quantity--"
+							>
+								-
+							</Button>
+							<span class="w-12 text-center">{{ quantity }}</span>
+							<Button
+								variant="outline"
+								size="sm"
+								:disabled="quantity >= listing.available_quantity"
+								@click="quantity++"
+							>
+								+
+							</Button>
+						</div>
+						<p class="text-muted-foreground text-xs">
+							{{ listing.available_quantity }} units available for rent
+						</p>
+					</div>
+
 					<div class="space-y-2">
 						<div class="font-semibold">Rental Dates</div>
 						<RentalDatesPicker v-model="selectedDates" :min-date="new Date()" />
@@ -242,7 +277,8 @@ onMounted(() => {
 						<div class="space-y-2">
 							<div class="flex items-center justify-between">
 								<div class="text-muted-foreground">
-									{{ formatNumber(dailyRate) }} x {{ rentalDays }} rental days
+									{{ formatNumber(dailyRate) }} × {{ rentalDays }} days ×
+									{{ quantity }} unit(s)
 								</div>
 								<div>{{ formatNumber(rentalPrice.basePrice) }}</div>
 							</div>
@@ -251,14 +287,14 @@ onMounted(() => {
 								<div class="text-muted-foreground">
 									Duration Discount ({{ rentalPrice.discountPercentage }}%)
 								</div>
-								 <div class="text-emerald-500 font-medium">
-                                    - {{ formatNumber(rentalPrice.discount) }}
-                                </div>
+								<div class="text-emerald-500 font-medium">
+									- {{ formatNumber(rentalPrice.discount) }}
+								</div>
 							</div>
 
 							<div class="flex items-center justify-between">
 								<div class="text-muted-foreground">LendWorks Fee</div>
-                                    {{ formatNumber(rentalPrice.fee) }}
+								{{ formatNumber(rentalPrice.fee) }}
 							</div>
 
 							<div class="flex items-center justify-between">
