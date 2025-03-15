@@ -627,9 +627,7 @@ const isConnectionHighlighted = (phase) => {
 							v-if="index < orderedPhases.length - 1"
 							class="h-1 transition-all duration-500 relative"
 							:class="[
-								'flex-1',
-								// Add shorter class for last segment
-								{ 'flex-[0.85]': index === orderedPhases.length - 2 },
+								'w-[calc(100%-0.5rem)]', // Fixed width for all segments
 								isPhaseCompleted(phase) 
 									? 'bg-emerald-500' 
 									: 'bg-border',
@@ -645,11 +643,8 @@ const isConnectionHighlighted = (phase) => {
 									isPhaseCompleted(phase) 
 										? 'bg-emerald-500' 
 										: 'bg-border',
-									{
-										'-left-2 -right-1': index === 0,
-										'-left-1 -right-1': index > 0 && index < orderedPhases.length - 2,
-										'-left-1': index === orderedPhases.length - 2
-									}
+									// Use fixed offsets for all segments
+									'-left-1 -right-1'
 								]"
 							></div>
 						</div>
