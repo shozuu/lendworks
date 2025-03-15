@@ -296,4 +296,36 @@ class ReturnController extends Controller
             return back()->with('error', 'Failed to raise dispute. Please try again.');
         }
     }
+
+    public function selectSchedule(Request $request, RentalRequest $rental, LenderPickupSchedule $lender_schedule)
+    {
+        if ($rental->renter_id !== Auth::id()) {
+            abort(403);
+        }
+
+        DB::transaction(function () use ($rental, $lender_schedule) {
+            // Reset existing selections
+            $rental->return_schedules()->update(['is_selected' => false]);
+
+            // Create return schedule
+            $schedule = ReturnSchedule::create([
+                'rental_request_id' => $rental->id,
+                'lender_pickup_schedule_id' => $lender_schedule->id,
+                'return_datetime' => now(),
+                'start_time' => $lender_schedule->start_time,
+                'end_time' => $lender_schedule->end_time,
+                'is_selected' => true
+            ]);
+
+            $rental->recordTimelineEvent('return_schedule_selected', Auth::id(), [
+                'datetime' => $schedule->return_datetime,
+                'start_time' => $schedule->start_time,
+                'end_time' => $schedule->end_time,
+                'day_of_week' => $schedule->return_datetime->format('l'),
+                'date' => $schedule->return_datetime->format('F j, Y')
+            ]);
+        });
+
+        return back()->with('success', 'Return schedule selected successfully.');
+    }
 }

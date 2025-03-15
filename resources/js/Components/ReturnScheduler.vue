@@ -18,11 +18,6 @@ const props = defineProps({
 });
 
 const initiateForm = useForm({});
-const scheduleForm = useForm({
-  return_datetime: '',
-  start_time: '',
-  end_time: ''
-});
 const confirmForm = useForm({});
 
 // Dialog state
@@ -103,35 +98,6 @@ const formatScheduleTime = (schedule) => {
   };
 
   return `${formatTimeString(schedule.start_time)} to ${formatTimeString(schedule.end_time)}`;
-};
-
-// Handle schedule selection
-const handleScheduleSubmit = (schedule) => {
-  const datetime = format(schedule.scheduleDate, 'yyyy-MM-dd');
-  
-  console.log('Submitting schedule:', {
-    return_datetime: datetime,
-    start_time: schedule.start_time,
-    end_time: schedule.end_time
-  });
-
-  // Reset form data before submitting
-  scheduleForm.clearErrors();
-  scheduleForm.return_datetime = datetime;
-  scheduleForm.start_time = schedule.start_time;
-  scheduleForm.end_time = schedule.end_time;
-
-  scheduleForm.post(route('return-schedules.store', props.rental.id), {
-    preserveScroll: true,
-    onError: (errors) => {
-      console.error('Submit failed:', errors);
-    },
-    onSuccess: () => {
-      console.log('Submit successful');
-      // Reset form after successful submission
-      scheduleForm.reset();
-    }
-  });
 };
 
 // Handle schedule confirmation by lender
@@ -437,83 +403,41 @@ const scheduleConfirmationMessage = computed(() => {
             </Button>
           </div>
 
-          <!-- Return Schedule Selection - Only visible to renter -->
-          <div v-if="showSchedulePicker" class="space-y-4">
-            <div 
-              v-for="schedule in availableSchedules" 
-              :key="schedule.id"
-              class="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-            >
-              <div class="flex items-center justify-between">
-                <div class="space-y-1">
-                  <div class="flex items-baseline gap-2">
-                    <p class="text-sm font-medium">{{ schedule.day_of_week }}</p>
-                    <p class="text-xs text-muted-foreground">
-                      {{ format(schedule.scheduleDate, 'MMM d, yyyy') }}
-                    </p>
-                  </div>
-                  <p class="text-sm text-muted-foreground">
-                    {{ schedule.formattedTime }}
+          <!-- Remove old schedule picker section -->
+
+          <!-- Selected Schedule Display -->
+          <div v-if="selectedSchedule" class="space-y-4">
+            <Alert variant="success">
+              <AlertDescription class="space-y-2">
+                <h4 class="font-medium">Return Schedule Selected</h4>
+                <p>The schedule has been selected and is awaiting lender confirmation.</p>
+              </AlertDescription>
+            </Alert>
+
+            <div class="p-4 border rounded-lg bg-muted/50">
+              <div class="space-y-2">
+                <h3 class="font-medium">Selected Return Details</h3>
+                <div class="space-y-1 text-sm">
+                  <p>
+                    <span class="text-muted-foreground">Date:</span> 
+                    {{ format(new Date(selectedSchedule.return_datetime), 'MMMM d, yyyy') }}
+                  </p>
+                  <p>
+                    <span class="text-muted-foreground">Time:</span>
+                    {{ formatTimeString(selectedSchedule.start_time) }} to {{ formatTimeString(selectedSchedule.end_time) }}
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  @click="handleScheduleSubmit(schedule)"
-                  :disabled="scheduleForm.processing"
-                >
-                  Select
-                </Button>
               </div>
             </div>
-
-            <p 
-              v-if="!availableSchedules.length" 
-              class="text-muted-foreground py-8 text-center text-sm"
-            >
-              No available schedules after the rental end date.
-            </p>
           </div>
 
+          <!-- Rest of the template remains the same -->
           <!-- Waiting message - Only visible to lender -->
           <div 
             v-if="showWaitingMessage" 
             class="p-4 text-center text-muted-foreground bg-muted/30 rounded-lg"
           >
             Waiting for renter to select a return schedule...
-          </div>
-
-          <!-- Selected Schedule Display -->
-          <div v-if="selectedSchedule && !selectedSchedule.is_confirmed" 
-              class="p-4 border rounded-lg"
-          >
-            <div class="space-y-3">
-              <div class="space-y-1">
-                <h3 class="font-medium">Proposed Return Schedule</h3>
-                <div class="flex items-baseline justify-between">
-                  <span class="text-sm">{{ selectedScheduleDetails.dayOfWeek }}</span>
-                  <span class="text-sm text-muted-foreground">
-                    {{ selectedScheduleDetails.date }}
-                  </span>
-                </div>
-                <p class="text-sm text-muted-foreground">
-                  {{ selectedScheduleDetails.timeFrame }}
-                </p>
-              </div>
-
-              <div v-if="userRole === 'lender'" class="pt-2 border-t">
-                <Button 
-                  class="w-full"
-                  @click="handleConfirmSchedule(selectedSchedule)"
-                  :disabled="confirmForm.processing"
-                >
-                  Confirm Return Schedule
-                </Button>
-              </div>
-
-              <div v-else class="pt-2 border-t text-center text-sm text-muted-foreground">
-                Waiting for lender to confirm schedule...
-              </div>
-            </div>
           </div>
 
           <!-- Confirmed Schedule Display -->

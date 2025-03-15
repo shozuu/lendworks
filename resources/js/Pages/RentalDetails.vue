@@ -22,6 +22,7 @@ import PaymentProofDialog from "@/Components/PaymentProofDialog.vue";
 import DisputeDialog from "@/Components/DisputeDialog.vue";
 import PickupScheduleDialog from "@/Components/PickupScheduleDialog.vue";
 import { format } from "date-fns";
+import ReturnScheduleDialog from "@/Components/ReturnScheduleDialog.vue";
 
 const props = defineProps({
 	rental: Object,
@@ -72,15 +73,18 @@ const showReturnDialog = ref(false);
 const returnDialogType = ref("submit");
 const showDisputeDialog = ref(false);
 const showScheduleDialog = ref(false);
+const showReturnScheduleDialog = ref(false);
 
 // Forms
 const approveForm = useForm({
 	quantity_approved: 1,
 });
+
 const rejectForm = useForm({
 	rejection_reason_id: "",
 	custom_feedback: "",
 });
+
 const cancelForm = useForm({
 	cancellation_reason_id: "",
 	custom_feedback: "",
@@ -392,8 +396,8 @@ const formatTime = (timeStr) => {
 												'text-red-500 font-medium': userRole === 'lender',
 											}"
 										>
-											{{ userRole === "lender" ? "-" : ""
-											}}{{ formatNumber(rental.service_fee) }}
+											{{ userRole === "lender" ? "-" : "" }}
+											{{ formatNumber(rental.service_fee) }}
 										</span>
 									</div>
 
@@ -534,7 +538,7 @@ const formatTime = (timeStr) => {
 								class="bg-destructive/10 p-4 mt-4 rounded-lg"
 							>
 								<p class="text-destructive text-sm">
-									⚠️ Overdue payment must be settled before proceeding with the return
+									 ⚠️ Overdue payment must be settled before proceeding with the return
 									process
 								</p>
 							</div>
@@ -679,7 +683,7 @@ const formatTime = (timeStr) => {
 							<template v-else-if="rental.status === 'disputed'">
 								<div class="space-y-4">
 									<p class="text-destructive text-sm font-medium">
-										⚠️ The lender has raised a dispute regarding the returned item
+										 ⚠️ The lender has raised a dispute regarding the returned item
 									</p>
 									<div class="bg-muted p-4 space-y-2 rounded-lg">
 										<p class="text-sm font-medium">Dispute Reason:</p>
@@ -826,6 +830,16 @@ const formatTime = (timeStr) => {
 								Choose Pickup Schedule
 							</Button>
 
+							<!-- Add new button in the Actions Card where return actions are -->
+							<Button
+								v-if="rental.status === 'pending_return' && userRole === 'renter'"
+								variant="default"
+								class="w-full"
+								@click="showReturnScheduleDialog = true"
+							>
+								Select Return Schedule
+							</Button>
+
 							<!-- No Actions Message -->
 							<p
 								v-if="
@@ -837,7 +851,8 @@ const formatTime = (timeStr) => {
 									!actions.canSubmitReturn &&
 									!actions.canConfirmReturn &&
 									!actions.canFinalizeReturn &&
-									!actions.canChoosePickupSchedule
+									!actions.canChoosePickupSchedule &&
+									!(rental.status === 'pending_return' && userRole === 'renter')
 								"
 								class="text-muted-foreground text-sm text-center"
 							>
@@ -1018,7 +1033,7 @@ const formatTime = (timeStr) => {
 								<!-- Lender specific message -->
 								<template v-if="userRole === 'lender'">
 									<p class="text-destructive text-sm font-medium">
-										⚠️ Your dispute claim has been rejected by the admin
+										 ⚠️ Your dispute claim has been rejected by the admin
 									</p>
 									<div class="mt-3 space-y-2">
 										<p class="text-sm font-medium">Reason for Rejection:</p>
@@ -1059,7 +1074,7 @@ const formatTime = (timeStr) => {
 									>
 										<div class="space-y-3">
 											<p class="text-primary text-sm font-medium">
-												✓ This dispute has been resolved with deposit deduction
+												 ✓ This dispute has been resolved with deposit deduction
 											</p>
 
 											<!-- Show amount details -->
@@ -1253,4 +1268,13 @@ const formatTime = (timeStr) => {
 		:userRole="userRole"
 		:lenderSchedules="lenderSchedules"
 	/>
+
+	<!-- Add this at the end of the template with other dialogs -->
+	<ReturnScheduleDialog
+		v-model:show="showReturnScheduleDialog"
+		:rental="rental"
+		:userRole="userRole"
+		:lenderSchedules="lenderSchedules"
+	/>
+
 </template>

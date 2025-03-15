@@ -114,6 +114,8 @@ Route::middleware(['auth'])->group(function () {
             ->name('rentals.finalize-return');
         Route::post('/rentals/{rental}/raise-dispute', 'raiseDispute')
             ->name('rentals.raise-dispute');
+        Route::patch('/rentals/{rental}/return-schedules/{lender_schedule}/select', 'selectSchedule')
+            ->name('return-schedules.select');
     });
 });
 
