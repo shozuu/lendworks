@@ -138,7 +138,6 @@ class LenderDashboardController extends Controller
 
         // Get pickup schedules - move this before the Inertia::render
         $pickupSchedules = LenderPickupSchedule::where('user_id', $lender->id)
-            ->where('is_active', true)  // Only get active schedules
             ->orderBy('day_of_week')
             ->orderBy('start_time')
             ->get();
