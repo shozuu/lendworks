@@ -70,6 +70,9 @@ class CompletionPaymentController extends Controller
             // Check and update completion status
             $rental->checkCompletionPaymentStatus();
 
+            // Check completion status and restore units if needed
+            $this->checkAndRestoreUnits($rental);
+
             DB::commit();
             return back()->with('success', 'Lender payment processed successfully.');
         } catch (\Exception $e) {
@@ -130,6 +133,9 @@ class CompletionPaymentController extends Controller
 
                 // Check and update completion status
                 $rental->checkCompletionPaymentStatus();
+
+                // Check completion status and restore units if needed
+                $this->checkAndRestoreUnits($rental);
             });
 
             return back()->with('success', 'Security deposit refund processed successfully.');
@@ -139,6 +145,41 @@ class CompletionPaymentController extends Controller
                 'error' => $e->getMessage()
             ]);
             return back()->with('error', 'Failed to process refund. ' . $e->getMessage());
+        }
+    }
+
+    protected function checkAndRestoreUnits(RentalRequest $rental)
+    {
+        // Check if both payments are completed
+        $hasLenderPayment = $rental->completion_payments()
+            ->where('type', 'lender_payment')
+            ->exists();
+            
+        $hasDepositRefund = $rental->completion_payments()
+            ->where('type', 'deposit_refund')
+            ->exists();
+
+        // If both payments exist, restore the units and update status
+        if ($hasLenderPayment && $hasDepositRefund) {
+            DB::transaction(function () use ($rental) {
+                // Update rental status
+                $rental->update(['status' => 'completed_with_payments']);
+
+                // Get the listing and restore units
+                $listing = $rental->listing;
+                $listing->increment('available_quantity', $rental->quantity_approved);
+
+                // Update listing rental status if needed
+                if ($listing->available_quantity > 0) {
+                    $listing->update(['is_rented' => false]);
+                }
+
+                // Add timeline event
+                $rental->recordTimelineEvent('units_restored', Auth::id(), [
+                    'restored_quantity' => $rental->quantity_approved,
+                    'new_available_quantity' => $listing->available_quantity
+                ]);
+            });
         }
     }
 }
