@@ -115,6 +115,20 @@ const showPaymentProof = (payment) => {
 
 // Add new ref for overdue payment dialog
 const showOverduePaymentDialog = ref(false);
+
+// Update the platformEarnings computed property
+const platformEarnings = computed(() => {
+    // The platform collects service fee from both renter and lender
+    const renterServiceFee = props.rental.service_fee; // Fee added to renter's payment
+    const lenderServiceFee = props.rental.service_fee; // Fee deducted from lender's earnings
+    const totalServiceFee = renterServiceFee + lenderServiceFee;
+    
+    return {
+        renterFee: renterServiceFee,
+        lenderFee: lenderServiceFee,
+        total: totalServiceFee
+    };
+});
 </script>
 
 <template>
@@ -497,6 +511,39 @@ const showOverduePaymentDialog = ref(false);
 							Waiting for renter to submit overdue payment
 						</div>
 					</div>
+				</div>
+			</CardContent>
+		</Card>
+
+		 <!-- Replace the Platform Earnings card content -->
+		<Card class="shadow-sm">
+			<CardHeader class="bg-card border-b">
+				<CardTitle>Platform Earnings</CardTitle>
+			</CardHeader>
+			<CardContent class="p-6">
+				<div class="space-y-4">
+					<div class="space-y-2">
+						<div class="flex justify-between items-center">
+							<span class="text-muted-foreground">Renter Service Fee:</span>
+							<span class="font-medium">{{ formatNumber(platformEarnings.renterFee) }}</span>
+						</div>
+						
+						<div class="flex justify-between items-center">
+							<span class="text-muted-foreground">Lender Service Fee:</span>
+							<span class="font-medium">{{ formatNumber(platformEarnings.lenderFee) }}</span>
+						</div>
+
+						<Separator class="my-2" />
+						
+						<div class="flex justify-between items-center">
+							<span class="font-medium">Total Platform Earnings:</span>
+							<span class="font-medium text-primary">{{ formatNumber(platformEarnings.total) }}</span>
+						</div>
+					</div>
+
+					<p class="text-muted-foreground text-xs">
+						Platform earnings include service fees collected from both renter's payment and lender's earnings
+					</p>
 				</div>
 			</CardContent>
 		</Card>
