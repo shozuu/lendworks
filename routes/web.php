@@ -190,6 +190,8 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     Route::post('/system/categories', [SystemManagementController::class, 'storeCategory'])->name('system.categories.store');
     Route::patch('/system/categories/{category}', [SystemManagementController::class, 'updateCategory'])->name('system.categories.update');
     Route::delete('/system/categories/{category}', [SystemManagementController::class, 'deleteCategory'])->name('system.categories.delete');
+    Route::post('/system/export-database', [SystemManagementController::class, 'exportDatabase'])
+        ->name('system.export-database');
 
     // Add revenue route
     Route::get('/revenue', [AdminController::class, 'revenue'])->name('revenue');

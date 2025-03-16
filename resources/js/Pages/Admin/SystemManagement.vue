@@ -30,12 +30,13 @@ import AdminLayout from "../../Layouts/AdminLayout.vue";
 import { Head, router } from "@inertiajs/vue3";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle2 } from "lucide-vue-next";
+import { AlertCircle, CheckCircle2, Download } from "lucide-vue-next";
 import { ref } from 'vue';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { usePage } from '@inertiajs/vue3';
 
 defineOptions({ layout: AdminLayout });
 
@@ -124,6 +125,28 @@ const confirmMaintenance = () => {
     performAction('maintenance');
     showMaintenanceDialog.value = false;
 };
+
+const exportDatabase = async () => {
+    try {
+        const response = await fetch(route('admin.system.export-database'), {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': usePage().props.csrf_token
+            }
+        });
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `database_export_${new Date().toISOString().slice(0,10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('Export failed:', error);
+    }
+};
 </script>
 
 <template>
@@ -141,6 +164,30 @@ const confirmMaintenance = () => {
             </TabsList>
 
             <TabsContent value="system" class="space-y-4">
+                <!-- Add this section before or after existing system buttons -->
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Database Management</CardTitle>
+                        <CardDescription>Export and manage database backups</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="font-medium">Database Backup</h4>
+                                    <p class="text-sm text-muted-foreground">
+                                        Export a complete SQL dump of the database
+                                    </p>
+                                </div>
+                                <Button @click="exportDatabase" class="gap-2">
+                                    <Download class="h-4 w-4" />
+                                    Export Database
+                                </Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                
                 <!-- Existing System Management Content -->
                 <div class="space-x-2">
                     <Button @click="performAction('clear-cache')">Clear Cache</Button>

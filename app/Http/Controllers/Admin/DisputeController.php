@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\RentalDispute;
+use App\Models\RentalDispute as Dispute; // Add this line to alias RentalDispute as Dispute
 use App\Notifications\DisputeStatusUpdated;
 use App\Notifications\DisputeResolved;
 use Illuminate\Http\Request;
@@ -12,22 +12,51 @@ use Illuminate\Support\Facades\DB;
 
 class DisputeController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $query = Dispute::query()
+            ->with(['rental.listing', 'rental.renter'])
+            ->latest();
+
+        // Apply search filter
+        if ($search = $request->input('search')) {
+            $query->where(function($q) use ($search) {
+                $q->where('reason', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%")
+                  ->orWhereHas('rental.listing', function($q) use ($search) {
+                      $q->where('title', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('rental.renter', function($q) use ($search) {
+                      $q->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Apply status filter
+        if ($status = $request->input('status')) {
+            if ($status !== 'all') {
+                $query->where('status', $status);
+            }
+        }
+
+        // Apply time period filter
+        if ($period = $request->input('period')) {
+            if ($period !== 'all') {
+                $query->where('created_at', '>=', now()->subDays($period));
+            }
+        }
+
         $stats = [
-            'total' => RentalDispute::count(),
-            'pending' => RentalDispute::where('status', 'pending')->count(),
-            'reviewed' => RentalDispute::where('status', 'reviewed')->count(),
-            'resolved' => RentalDispute::where('status', 'resolved')->count(),
+            'total' => Dispute::count(),
+            'pending' => Dispute::where('status', 'pending')->count(),
+            'reviewed' => Dispute::where('status', 'reviewed')->count(),
+            'resolved' => Dispute::where('status', 'resolved')->count(),
         ];
 
-        $disputes = RentalDispute::with(['rental.listing', 'rental.renter'])
-            ->latest()
-            ->paginate(10);
-
         return Inertia::render('Admin/Disputes', [
-            'disputes' => $disputes,
-            'stats' => $stats
+            'disputes' => $query->paginate(10)->withQueryString(),
+            'stats' => $stats,
+            'filters' => $request->only(['search', 'status', 'period'])
         ]);
     }
 

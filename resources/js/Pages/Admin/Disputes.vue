@@ -2,17 +2,79 @@
 import AdminLayout from "@/Layouts/AdminLayout.vue";
 import { Head } from "@inertiajs/vue3";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Link } from "@inertiajs/vue3";
+import { Link, router } from "@inertiajs/vue3";
 import { formatDate, formatDateTime } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-vue-next";
+import { Input } from "@/components/ui/input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import debounce from "lodash/debounce";
+import { ref, watch } from "vue";
 
 defineOptions({ layout: AdminLayout });
 
 const props = defineProps({
     disputes: Object,
-    stats: Object
+    stats: Object,
+    filters: {
+        type: Object,
+        default: () => ({
+            search: '',
+            status: 'all',
+            period: '30'
+        })
+    }
 });
+
+// Add filter state
+const search = ref(props.filters?.search ?? '');
+const status = ref(props.filters?.status ?? 'all');
+const period = ref(props.filters?.period ?? '30');
+
+// Status options
+const statusOptions = [
+    { value: 'all', label: 'All Status' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'reviewed', label: 'Under Review' },
+    { value: 'resolved', label: 'Resolved' }
+];
+
+// Time period options
+const periodOptions = [
+    { value: '7', label: 'Last 7 days' },
+    { value: '30', label: 'Last 30 days' },
+    { value: '90', label: 'Last 90 days' },
+    { value: 'all', label: 'All time' }
+];
+
+// Update filters
+const updateFilters = (newFilters) => {
+    router.get(
+        route('admin.disputes'),
+        { ...props.filters, ...newFilters },
+        { 
+            preserveState: true,
+            preserveScroll: true,
+            replace: true
+        }
+    );
+};
+
+// Debounced search
+const updateSearch = debounce((value) => {
+    updateFilters({ search: value, page: 1 });
+}, 300);
+
+// Watch for changes
+watch(search, updateSearch);
+watch(status, (newVal) => updateFilters({ status: newVal, page: 1 }));
+watch(period, (newVal) => updateFilters({ period: newVal, page: 1 }));
 
 const exportToCSV = () => {
     const headers = [
@@ -48,6 +110,7 @@ const exportToCSV = () => {
     <Head title="Disputes | Admin" />
 
     <div class="space-y-6">
+        <!-- Header with export button -->
         <div class="flex justify-between items-center">
             <h2 class="text-2xl font-semibold tracking-tight">Disputes</h2>
             <Button @click="exportToCSV" variant="outline" class="gap-2">
@@ -56,6 +119,7 @@ const exportToCSV = () => {
             </Button>
         </div>
 
+        <!-- Stats cards -->
         <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
                 <CardHeader>
@@ -68,6 +132,51 @@ const exportToCSV = () => {
             <!-- Add more stat cards similar to other admin pages -->
         </div>
 
+        <!-- Add Filters Section -->
+        <div class="flex flex-col sm:flex-row gap-4">
+            <!-- Search Input -->
+            <div class="flex-1">
+                <Input 
+                    type="search" 
+                    placeholder="Search disputes..." 
+                    v-model="search"
+                />
+            </div>
+
+            <!-- Status Filter -->
+            <Select v-model="status">
+                <SelectTrigger class="w-[180px]">
+                    <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem 
+                        v-for="option in statusOptions" 
+                        :key="option.value" 
+                        :value="option.value"
+                    >
+                        {{ option.label }}
+                    </SelectItem>
+                </SelectContent>
+            </Select>
+
+            <!-- Time Period Filter -->
+            <Select v-model="period">
+                <SelectTrigger class="w-[180px]">
+                    <SelectValue placeholder="Time period" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem 
+                        v-for="option in periodOptions" 
+                        :key="option.value" 
+                        :value="option.value"
+                    >
+                        {{ option.label }}
+                    </SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
+
+        <!-- Disputes Card -->
         <Card>
             <CardHeader>
                 <CardTitle>Recent Disputes</CardTitle>
