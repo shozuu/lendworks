@@ -105,33 +105,43 @@ defineProps({
                     </Card>
                 </Link>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle class="text-sm font-medium">
-                            Monthly Revenue
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold">₱{{ (stats?.revenueStats?.monthly || 0).toLocaleString() }}</div>
-                        <p class="text-xs text-muted-foreground">
-                            Platform fees this month
-                        </p>
-                    </CardContent>
-                </Card>
+                <Link 
+                    :href="route('admin.revenue')"
+                    class="transition-transform hover:scale-105"
+                >
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-sm font-medium">
+                                Monthly Revenue
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="text-2xl font-bold">₱{{ (stats?.revenueStats?.monthly || 0).toLocaleString() }}</div>
+                            <p class="text-xs text-muted-foreground">
+                                Platform fees this month
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle class="text-sm font-medium">
-                            Total Revenue
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold">₱{{ (stats?.revenueStats?.total || 0).toLocaleString() }}</div>
-                        <p class="text-xs text-muted-foreground">
-                            All-time platform earnings
-                        </p>
-                    </CardContent>
-                </Card>
+                <Link 
+                    :href="route('admin.revenue')"
+                    class="transition-transform hover:scale-105"
+                >
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-sm font-medium">
+                                Total Revenue
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="text-2xl font-bold">₱{{ (stats?.revenueStats?.total || 0).toLocaleString() }}</div>
+                            <p class="text-xs text-muted-foreground">
+                                All-time platform earnings
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
 
                 <Card>
                     <CardHeader>

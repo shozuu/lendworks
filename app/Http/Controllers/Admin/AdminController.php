@@ -752,4 +752,61 @@ class AdminController extends Controller
             'stats' => $stats
         ]);
     }
+
+    public function revenue(Request $request)
+    {
+        $period = $request->input('period', '30');
+        $sort = $request->input('sort', 'latest');
+
+        // Calculate revenue stats
+        $revenue = [
+            'total' => RentalRequest::whereIn('status', ['completed', 'completed_with_payments'])
+                                   ->sum(DB::raw('service_fee * 2')),
+            'monthly' => RentalRequest::whereIn('status', ['completed', 'completed_with_payments'])
+                                     ->whereMonth('created_at', now()->month)
+                                     ->sum(DB::raw('service_fee * 2')),
+            'today' => RentalRequest::whereIn('status', ['completed', 'completed_with_payments'])
+                                   ->whereDate('created_at', today())
+                                   ->sum(DB::raw('service_fee * 2')),
+            'average' => RentalRequest::whereIn('status', ['completed', 'completed_with_payments'])
+                                     ->avg(DB::raw('service_fee * 2')) ?? 0,
+            'lastWeek' => RentalRequest::whereIn('status', ['completed', 'completed_with_payments'])
+                                      ->where('created_at', '>=', now()->subDays(7))
+                                      ->sum(DB::raw('service_fee * 2')),
+            'lastMonth' => RentalRequest::whereIn('status', ['completed', 'completed_with_payments'])
+                                       ->where('created_at', '>=', now()->subDays(30))
+                                       ->sum(DB::raw('service_fee * 2')),
+            'lastQuarter' => RentalRequest::whereIn('status', ['completed', 'completed_with_payments'])
+                                         ->where('created_at', '>=', now()->subDays(90))
+                                         ->sum(DB::raw('service_fee * 2')),
+        ];
+
+        // Get transactions query
+        $query = RentalRequest::with(['listing:id,title', 'renter:id,name'])
+            ->whereIn('status', ['completed', 'completed_with_payments'])
+            ->where('created_at', '>=', now()->subDays($period));
+
+        // Apply sorting
+        switch ($sort) {
+            case 'oldest':
+                $query->oldest();
+                break;
+            case 'highest':
+                $query->orderByDesc('service_fee');
+                break;
+            case 'lowest':
+                $query->orderBy('service_fee');
+                break;
+            default:
+                $query->latest();
+        }
+
+        $transactions = $query->paginate(10)->appends($request->query());
+
+        return Inertia::render('Admin/Revenue', [
+            'revenue' => $revenue,
+            'transactions' => $transactions,
+            'filters' => $request->only(['period', 'sort'])
+        ]);
+    }
 }

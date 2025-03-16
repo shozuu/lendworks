@@ -10,6 +10,7 @@ import {
     Receipt,
     AlertTriangle,
     Settings,
+    CreditCard,
 } from "lucide-vue-next";
 
 const theme = ref(document.body.getAttribute("data-theme"));
@@ -50,6 +51,7 @@ const navigation = [
     { name: "Users", href: route("admin.users"), component: "Admin/Users", icon: Users },
     { name: "Listings", href: route("admin.listings"), component: "Admin/Listings", icon: PackageSearch },
     { name: "Rental Transactions", href: route("admin.rental-transactions"), component: "Admin/RentalTransactions", icon: ClipboardList },
+    { name: "Revenue", href: route("admin.revenue"), component: "Admin/Revenue", icon: CreditCard },
     { name: "Payments", href: route("admin.payments"), component: "Admin/Payments/Index", icon: Receipt },
     { name: "Disputes", href: route("admin.disputes"), component: "Admin/Disputes", icon: AlertTriangle },
     { 
