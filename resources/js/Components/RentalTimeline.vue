@@ -376,16 +376,18 @@ const showHistoricalPayment = ref(false);
 
 const showPaymentDetails = (event) => {
 	if (event.metadata?.payment_request) {
+		const isOverduePayment = event.event_type.includes('overdue_payment');
 		selectedHistoricalPayment.value = props.passPayment
 			? props.passPayment(event)
 			: {
 					...event.metadata.payment_request,
 					rental_request: {
 						...props.rental,
-						total_price: props.rental.total_price,
+						total_price: isOverduePayment ? props.rental.overdue_fee : props.rental.total_price,
 						listing: props.rental.listing,
 						renter: props.rental.renter,
 					},
+					amount: isOverduePayment ? props.rental.overdue_fee : event.metadata.payment_request.amount,
 			  };
 		showHistoricalPayment.value = true;
 	}
@@ -538,15 +540,6 @@ const showReturnProof = (event) => {
 									</p>
 								</div>
 							</div>
-							<Button
-								v-if="event.metadata.payment_request"
-								variant="outline"
-								size="sm"
-								class="mt-2"
-								@click="showPaymentDetails(event)"
-							>
-								View Payment Details
-							</Button>
 						</template>
 
 						<!-- Rejection/Cancellation Details -->
