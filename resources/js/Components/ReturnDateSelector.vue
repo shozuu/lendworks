@@ -20,6 +20,11 @@ const selectForm = useForm({
 const emit = defineEmits(["schedule-selected"]);
 
 const handleSelectDate = (slot) => {
+  // Format the return datetime by combining the context date with slot time
+  const returnDate = new Date(returnDateContext.value);
+  const [hours, minutes] = slot.start_time.split(':');
+  returnDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
   selectForm.patch(
     route("return-schedules.select", {
       rental: props.rental.id,
@@ -27,8 +32,11 @@ const handleSelectDate = (slot) => {
     }),
     {
       preserveScroll: true,
-      start_time: slot.start_time,
-      end_time: slot.end_time,
+      data: {
+        return_datetime: returnDate.toISOString(),
+        start_time: slot.start_time,
+        end_time: slot.end_time
+      },
       onSuccess: () => {
         emit("schedule-selected");
       },

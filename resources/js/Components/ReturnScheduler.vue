@@ -169,10 +169,10 @@ const returnProofType = ref('submit');
 const selectedScheduleDetails = computed(() => {
   if (!selectedSchedule.value) return null;
 
-  const date = new Date(selectedSchedule.value.return_datetime);
+  const scheduleDate = new Date(selectedSchedule.value.return_datetime);
   return {
-    dayOfWeek: format(date, 'EEEE'),
-    date: format(date, 'MMMM d, yyyy'),
+    dayOfWeek: format(scheduleDate, 'EEEE'),
+    date: format(scheduleDate, 'MMMM d, yyyy'),
     timeFrame: `${formatTimeString(selectedSchedule.value.start_time)} to ${formatTimeString(selectedSchedule.value.end_time)}`
   };
 });
@@ -403,51 +403,90 @@ const scheduleConfirmationMessage = computed(() => {
             </Button>
           </div>
 
-          <!-- Remove old schedule picker section -->
+          <!-- Add Return Schedule Section similar to Pickup Schedule -->
+          <Card v-if="selectedSchedule" class="shadow-sm">
+            <CardHeader class="bg-card border-b">
+              <CardTitle class="text-lg">Return Details</CardTitle>
+            </CardHeader>
+            <CardContent class="p-6">
+              <div class="space-y-6">
+                <!-- Meetup Location -->
+                <div class="space-y-2">
+                  <h4 class="font-medium">Meetup Location</h4>
+                  <div class="p-4 border rounded-lg bg-muted/30">
+                    <div class="space-y-2">
+                      <p class="font-medium">{{ rental.listing.location.address }}</p>
+                      <p class="text-muted-foreground text-sm">
+                        {{ rental.listing.location.city }},
+                        {{ rental.listing.location.province }}
+                        {{ rental.listing.location.postal_code }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-          <!-- Selected Schedule Display -->
-          <div v-if="selectedSchedule" class="space-y-4">
-            <Alert variant="info">
-              <AlertDescription class="space-y-2">
-                <h4 class="font-medium">{{ userRole === 'renter' ? 'Waiting for Confirmation' : 'Return Schedule Selected' }}</h4>
-                <p v-if="userRole === 'renter'">
-                  Your selected schedule is awaiting confirmation from the lender. You will be notified once confirmed.
-                </p>
-                <p v-else>
-                  The renter has selected a return schedule. Please review and confirm to proceed with the return process.
-                </p>
-              </AlertDescription>
-            </Alert>
-          
-            <div class="p-4 border rounded-lg bg-muted/50">
-              <div class="space-y-2">
-                <h3 class="font-medium">Selected Return Details</h3>
-                <div class="space-y-1 text-sm">
-                  <p>
-                    <span class="text-muted-foreground">Date:</span> 
-                    {{ format(new Date(selectedSchedule.return_datetime), 'MMMM d, yyyy') }}
-                  </p>
-                  <p>
-                    <span class="text-muted-foreground">Time:</span>
-                    {{ formatTimeString(selectedSchedule.start_time) }} to {{ formatTimeString(selectedSchedule.end_time) }}
-                  </p>
+                <!-- Schedule Information -->
+                <div class="space-y-2">
+                  <h4 class="font-medium">Scheduled Time</h4>
+                  <div class="p-4 border rounded-lg bg-muted/30">
+                    <div class="space-y-3">
+                      <div class="flex items-baseline justify-between">
+                        <span class="font-medium">{{ format(new Date(selectedSchedule.return_datetime), 'EEEE') }}</span>
+                        <span class="text-sm text-muted-foreground">
+                          {{ format(new Date(selectedSchedule.return_datetime), 'MMMM d, yyyy') }}
+                        </span>
+                      </div>
+                      <div class="flex items-center justify-between">
+                        <span class="text-sm text-muted-foreground">Time Frame</span>
+                        <span class="font-medium">
+                          {{ formatTimeString(selectedSchedule.start_time) }} to {{ formatTimeString(selectedSchedule.end_time) }}
+                        </span>
+                      </div>
+                      <!-- Add Status Message -->
+                      <div class="mt-2 pt-2 border-t">
+                        <p class="text-sm" :class="selectedSchedule.is_confirmed ? 'text-primary' : 'text-muted-foreground'">
+                          <template v-if="selectedSchedule.is_confirmed">
+                            {{ userRole === 'renter' ? 'Schedule confirmed by lender' : 'You have confirmed this schedule' }}
+                          </template>
+                          <template v-else>
+                            {{ userRole === 'renter' ? 'Awaiting lender confirmation' : 'Schedule needs your confirmation' }}
+                          </template>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Important Notes -->
+                <div class="space-y-2">
+                  <h4 class="font-medium">Important Notes</h4>
+                  <ul class="space-y-2 text-sm text-muted-foreground">
+                    <li class="flex items-center gap-2">
+                      <span class="text-primary">•</span>
+                      <span>Please arrive at the meetup location on time</span>
+                    </li>
+                    <li class="flex items-center gap-2">
+                      <span class="text-primary">•</span>
+                      <span>Take photos of the item during handover for proof</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <!-- Lender Confirmation Button -->
+                <div v-if="userRole === 'lender' && !selectedSchedule.is_confirmed">
+                  <Button 
+                    class="w-full" 
+                    @click="handleConfirmSchedule"
+                    :disabled="confirmForm.processing"
+                  >
+                    Confirm Return Schedule
+                  </Button>
                 </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <!-- Add confirm button for lender after selected schedule display -->
-          <div v-if="selectedSchedule && userRole === 'lender' && !selectedSchedule.is_confirmed" class="mt-4">
-            <Button 
-              class="w-full" 
-              @click="handleConfirmSchedule"
-              :disabled="confirmForm.processing"
-            >
-              Confirm Return Schedule
-            </Button>
-          </div>
-
-          <!-- Rest of the template remains the same -->
+          <!-- Rest of the existing template code -->
           <!-- Waiting message - Only visible to lender -->
           <div 
             v-if="showWaitingMessage" 
