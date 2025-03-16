@@ -239,6 +239,13 @@ const formatTime = (timeStr) => {
 		hour12: true,
 	});
 };
+
+// Add this computed property
+const showReturnScheduleButton = computed(() => 
+  props.rental.status === 'pending_return' && 
+  props.userRole === 'renter' && 
+  !props.rental.return_schedules?.some(s => s.is_selected)
+);
 </script>
 
 <template>
@@ -830,9 +837,9 @@ const formatTime = (timeStr) => {
 								Choose Pickup Schedule
 							</Button>
 
-							<!-- Add new button in the Actions Card where return actions are -->
+							 <!-- Replace the existing return schedule button with this -->
 							<Button
-								v-if="rental.status === 'pending_return' && userRole === 'renter'"
+								v-if="showReturnScheduleButton"
 								variant="default"
 								class="w-full"
 								@click="showReturnScheduleDialog = true"
@@ -852,7 +859,8 @@ const formatTime = (timeStr) => {
 									!actions.canConfirmReturn &&
 									!actions.canFinalizeReturn &&
 									!actions.canChoosePickupSchedule &&
-									!(rental.status === 'pending_return' && userRole === 'renter')
+									!actions.canRaiseDispute &&
+									!showReturnScheduleButton
 								"
 								class="text-muted-foreground text-sm text-center"
 							>

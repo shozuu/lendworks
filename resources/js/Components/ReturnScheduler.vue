@@ -431,6 +431,17 @@ const scheduleConfirmationMessage = computed(() => {
             </div>
           </div>
 
+          <!-- Add confirm button for lender after selected schedule display -->
+          <div v-if="selectedSchedule && userRole === 'lender' && !selectedSchedule.is_confirmed" class="mt-4">
+            <Button 
+              class="w-full" 
+              @click="handleConfirmSchedule"
+              :disabled="confirmForm.processing"
+            >
+              Confirm Return Schedule
+            </Button>
+          </div>
+
           <!-- Rest of the template remains the same -->
           <!-- Waiting message - Only visible to lender -->
           <div 
