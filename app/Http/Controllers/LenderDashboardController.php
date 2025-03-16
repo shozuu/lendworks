@@ -28,7 +28,31 @@ class LenderDashboardController extends Controller
 
         // Group rentals by status
         $groupedListings = $rentals->groupBy(function ($rental) {
-            // Move completed transactions to completed tab
+            // Handle completed transactions based on payment status
+            if ($rental->status === 'completed_pending_payments') {
+                // Check if both payments exist
+                $hasLenderPayment = $rental->completion_payments()
+                    ->where('type', 'lender_payment')
+                    ->exists();
+                    
+                $hasDepositRefund = $rental->completion_payments()
+                    ->where('type', 'deposit_refund')
+                    ->exists();
+
+                // If both payments exist, consider it as completed_with_payments
+                if ($hasLenderPayment && $hasDepositRefund) {
+                    // Update the rental status
+                    $rental->update(['status' => 'completed_with_payments']);
+                    return 'completed_with_payments';
+                }
+                
+                return 'completed_pending_payments';
+            }
+
+            if ($rental->status === 'completed_with_payments') {
+                return 'completed_with_payments';
+            }
+
             if ($rental->status === 'completed' || 
                 $rental->status === 'completed_pending_payments' || 
                 $rental->status === 'completed_with_payments') {

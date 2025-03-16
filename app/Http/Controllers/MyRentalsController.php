@@ -12,6 +12,7 @@ class MyRentalsController extends Controller
 {
     public function index()
     {
+        // Update the rental query to include completion_payments
         $rentals = RentalRequest::where('renter_id', Auth::id())
             ->with([
                 'listing.images',
@@ -20,6 +21,7 @@ class MyRentalsController extends Controller
                 'payment_request',
                 'timelineEvents',
                 'pickup_schedules',
+                'completion_payments'  // Add this line
             ])
             ->get()
             ->map(function ($rental) {
@@ -29,6 +31,22 @@ class MyRentalsController extends Controller
                         ->where('is_active', true)
                         ->get();
                 }
+
+                // Check and update completion status
+                if ($rental->status === 'completed_pending_payments') {
+                    $hasLenderPayment = $rental->completion_payments()
+                        ->where('type', 'lender_payment')
+                        ->exists();
+                        
+                    $hasDepositRefund = $rental->completion_payments()
+                        ->where('type', 'deposit_refund')
+                        ->exists();
+
+                    if ($hasLenderPayment && $hasDepositRefund) {
+                        $rental->update(['status' => 'completed_with_payments']);
+                    }
+                }
+
                 return $rental;
             });
 

@@ -79,19 +79,13 @@ const depositRefund = computed(() =>
 	props.rental.completion_payments?.find((p) => p.type === "deposit_refund")
 );
 
-// Update completion status check to show success state
+// Update showSuccessStatus computed
 const showSuccessStatus = computed(() => {
-	console.log("Checking Success Status:", {
-		status: props.rental.status,
-		hasLenderPayment: props.rental.available_actions.hasLenderPayment,
-		hasDepositRefund: props.rental.available_actions.hasDepositRefund,
-	});
-
-	return (
-		props.rental.status === "completed_with_payments" &&
-		props.rental.available_actions.hasLenderPayment &&
-		props.rental.available_actions.hasDepositRefund
-	);
+    return (
+        props.rental.status === 'completed_with_payments' ||
+        (props.rental.available_actions.hasLenderPayment && 
+         props.rental.available_actions.hasDepositRefund)
+    );
 });
 
 // Update/Add these computed properties

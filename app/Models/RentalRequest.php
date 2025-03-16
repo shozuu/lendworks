@@ -665,4 +665,26 @@ class RentalRequest extends Model
         
         return $this;
     }
+
+    /**
+     * Check and update completion payment status
+     */
+    public function checkCompletionPaymentStatus()
+    {
+        if ($this->status !== 'completed_pending_payments') {
+            return;
+        }
+
+        $hasLenderPayment = $this->completion_payments()
+            ->where('type', 'lender_payment')
+            ->exists();
+            
+        $hasDepositRefund = $this->completion_payments()
+            ->where('type', 'deposit_refund')
+            ->exists();
+
+        if ($hasLenderPayment && $hasDepositRefund) {
+            $this->update(['status' => 'completed_with_payments']);
+        }
+    }
 }

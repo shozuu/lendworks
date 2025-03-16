@@ -67,6 +67,9 @@ class CompletionPaymentController extends Controller
                 'processed_at' => now()->toDateTimeString()
             ]);
 
+            // Check and update completion status
+            $rental->checkCompletionPaymentStatus();
+
             DB::commit();
             return back()->with('success', 'Lender payment processed successfully.');
         } catch (\Exception $e) {
@@ -124,6 +127,9 @@ class CompletionPaymentController extends Controller
                     'processed_by' => Auth::id(),
                     'processed_at' => now()->toDateTimeString()
                 ]);
+
+                // Check and update completion status
+                $rental->checkCompletionPaymentStatus();
             });
 
             return back()->with('success', 'Security deposit refund processed successfully.');
