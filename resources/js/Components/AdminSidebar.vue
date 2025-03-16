@@ -59,6 +59,12 @@ const navigation = [
         href: route("admin.system"), 
         component: "Admin/System",
         icon: Settings 
+    },
+    { 
+        name: "System Logs", 
+        href: route("admin.logs"), 
+        component: "Admin/Logs",
+        icon: ClipboardList 
     }
 ];
 </script>

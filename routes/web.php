@@ -28,6 +28,7 @@ use App\Http\Controllers\LenderPickupScheduleController;
 use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\Admin\CompletionPaymentController;  // Add this import at the top
 use App\Http\Controllers\Admin\DisputeController;
+use App\Http\Controllers\Admin\LogController;  // Update this line with correct namespace
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\CheckMaintenanceMode;
 use Illuminate\Support\Facades\Route;
@@ -195,7 +196,13 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
 
     // Add revenue route
     Route::get('/revenue', [AdminController::class, 'revenue'])->name('revenue');
+
+    // Update the logs routes with the correct controller namespace
+    Route::get('/logs', [LogController::class, 'index'])->name('logs');
+    Route::get('/logs/export', [LogController::class, 'export'])->name('logs.export');
 });
+
+// ...existing code...
 
 Route::middleware(['web', CheckMaintenanceMode::class])->group(function() {
     Route::get('/', [ListingController::class, 'index'])->name('home');
