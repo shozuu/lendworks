@@ -304,45 +304,35 @@ class ReturnController extends Controller
             abort(403);
         }
 
-        DB::transaction(function () use ($rental, $lender_schedule) {
+        // Add validation for the schedule data
+        $validated = $request->validate([
+            'return_datetime' => 'required|date',
+            'start_time' => 'required|string',
+            'end_time' => 'required|string'
+        ]);
+
+        DB::transaction(function () use ($rental, $lender_schedule, $validated) {
             // Reset existing selections
             $rental->return_schedules()->update(['is_selected' => false]);
 
-            // Calculate return datetime based on rental status
-            if ($rental->is_overdue) {
-                // If overdue, use today's date
-                $returnDatetime = now()->startOfDay();
-            } elseif ($rental->status === 'pending_return') {
-                // If early return initiated, use the timeline event date
-                $timelineEvent = $rental->timeline_events()
-                    ->where('event_type', 'return_initiated')
-                    ->latest()
-                    ->first();
-
-                $returnDatetime = $timelineEvent 
-                    ? Carbon::parse($timelineEvent->created_at)->startOfDay()
-                    : Carbon::parse($rental->end_date)->startOfDay();
-            } else {
-                // Default to rental end date
-                $returnDatetime = Carbon::parse($rental->end_date)->startOfDay();
-            }
-
-            // Create return schedule
+            // Create new schedule with all required fields
             $schedule = ReturnSchedule::create([
                 'rental_request_id' => $rental->id,
                 'lender_pickup_schedule_id' => $lender_schedule->id,
-                'return_datetime' => $returnDatetime,
-                'start_time' => $lender_schedule->start_time,
-                'end_time' => $lender_schedule->end_time,
+                'return_datetime' => $validated['return_datetime'],
+                'start_time' => $validated['start_time'],
+                'end_time' => $validated['end_time'],
                 'is_selected' => true
             ]);
+
+            // Log the created schedule for debugging
+            \Log::info('Return schedule created:', $schedule->toArray());
 
             $rental->recordTimelineEvent('return_schedule_selected', Auth::id(), [
                 'datetime' => $schedule->return_datetime,
                 'start_time' => $schedule->start_time,
                 'end_time' => $schedule->end_time,
-                'day_of_week' => $schedule->return_datetime->format('l'),
-                'date' => $schedule->return_datetime->format('F j, Y')
+                'day_of_week' => Carbon::parse($schedule->return_datetime)->format('l')
             ]);
         });
 

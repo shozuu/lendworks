@@ -439,7 +439,7 @@ const scheduleConfirmationMessage = computed(() => {
                       <div class="flex items-center justify-between">
                         <span class="text-sm text-muted-foreground">Time Frame</span>
                         <span class="font-medium">
-                          {{ formatTimeString(selectedSchedule.start_time) }} to {{ formatTimeString(selectedSchedule.end_time) }}
+                          {{ formatTimeString(selectedSchedule.start_time) }} - {{ formatTimeString(selectedSchedule.end_time) }}
                         </span>
                       </div>
                       <!-- Add Status Message -->

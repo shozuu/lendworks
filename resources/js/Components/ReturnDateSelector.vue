@@ -25,6 +25,19 @@ const handleSelectDate = (slot) => {
   const [hours, minutes] = slot.start_time.split(':');
   returnDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
+  // Set form data before making the request
+  selectForm.return_datetime = returnDate.toISOString();
+  selectForm.start_time = slot.start_time;
+  selectForm.end_time = slot.end_time;
+
+  // Debug log to verify data
+  console.log('Submitting schedule data:', {
+    return_datetime: selectForm.return_datetime,
+    start_time: selectForm.start_time,
+    end_time: selectForm.end_time,
+    lender_schedule: slot.original.id
+  });
+
   selectForm.patch(
     route("return-schedules.select", {
       rental: props.rental.id,
@@ -32,14 +45,13 @@ const handleSelectDate = (slot) => {
     }),
     {
       preserveScroll: true,
-      data: {
-        return_datetime: returnDate.toISOString(),
-        start_time: slot.start_time,
-        end_time: slot.end_time
-      },
       onSuccess: () => {
+        console.log('Schedule selected successfully');
         emit("schedule-selected");
       },
+      onError: (errors) => {
+        console.error('Schedule selection failed:', errors);
+      }
     }
   );
 };
