@@ -331,6 +331,96 @@ const lenderEarnings = computed(() => {
 						</div>
 					</CardContent>
 				</Card>
+
+				<!-- Overdue Payment Management - Moved here -->
+				<Card v-if="hasOverdueFees" class="shadow-sm">
+					<CardHeader class="bg-card border-b">
+						<CardTitle class="flex items-center gap-2">
+							<Clock class="w-4 h-4 text-destructive" />
+							Overdue Payment Management
+						</CardTitle>
+					</CardHeader>
+					<CardContent class="p-6">
+						<div class="grid sm:grid-cols-2 gap-6">
+							<!-- Overdue Calculation -->
+							<div class="space-y-3">
+								<h3 class="font-medium">Overdue Calculation</h3>
+								<div class="space-y-2 text-sm">
+									<div class="flex justify-between">
+										<span class="text-muted-foreground">Daily Rate:</span>
+										<span>{{ formatNumber(rental.listing.price) }}</span>
+									</div>
+									<div class="flex justify-between">
+										<span class="text-muted-foreground">Days Overdue:</span>
+										<span>{{ rental.overdue_days }}</span>
+									</div>
+									<Separator class="my-2" />
+									<div class="flex justify-between font-medium">
+										<span>Total Overdue Fee:</span>
+										<span class="text-destructive">{{ formatNumber(rental.overdue_fee) }}</span>
+									</div>
+								</div>
+							</div>
+
+							<!-- Payment Status -->
+							<div class="space-y-3">
+								<!-- Pending Payment -->
+								<div v-if="rental.payment_request?.type === 'overdue' && rental.payment_request?.status === 'pending'" 
+									class="space-y-3"
+								>
+									<h3 class="font-medium text-yellow-500">Payment Pending Verification</h3>
+									<div class="space-y-2 p-4 bg-muted rounded-lg text-sm">
+										<div class="flex justify-between">
+											<span class="text-muted-foreground">Amount:</span>
+											<span>{{ formatNumber(rental.overdue_fee) }}</span>
+										</div>
+										<div class="flex justify-between">
+											<span class="text-muted-foreground">Reference:</span>
+											<span>{{ rental.payment_request.reference_number }}</span>
+										</div>
+										<Button 
+											variant="default"
+											size="sm"
+											class="w-full mt-2"
+											@click="showOverduePaymentDialog = true"
+										>
+											Review Payment
+										</Button>
+									</div>
+								</div>
+
+								<!-- Verified Payment -->
+								<div v-else-if="rental.overdue_payment" class="space-y-3">
+									<h3 class="font-medium text-emerald-500">Payment Verified</h3>
+									<div class="space-y-2 p-4 bg-muted rounded-lg text-sm">
+										<div class="flex justify-between">
+											<span class="text-muted-foreground">Amount:</span>
+											<span>{{ formatNumber(rental.overdue_payment.amount) }}</span>
+										</div>
+										<div class="flex justify-between">
+											<span class="text-muted-foreground">Verified On:</span>
+											<span>{{ formatDateTime(rental.overdue_payment.verified_at) }}</span>
+										</div>
+										<Button
+											v-if="rental.overdue_payment.proof_path"
+											variant="outline"
+											size="sm"
+											class="w-full mt-2"
+											@click="showPaymentProof(rental.overdue_payment)"
+										>
+											View Payment Proof
+										</Button>
+									</div>
+								</div>
+
+								<!-- No Payment -->
+								<div v-else class="text-sm text-muted-foreground text-center p-4 bg-muted/30 rounded-lg">
+									Waiting for renter to submit overdue payment
+								</div>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
 			</div>
 
 			<!-- Right Column -->
@@ -510,98 +600,6 @@ const lenderEarnings = computed(() => {
 				</Card>
 			</div>
 		</div>
-
-		 <!-- Add this section before the Completion Payments card -->
-		<Card v-if="hasOverdueFees" class="shadow-sm">
-			<CardHeader class="bg-card border-b">
-				<CardTitle>Overdue Payment Management</CardTitle>
-			</CardHeader>
-			<CardContent class="p-6">
-				<div class="space-y-6">
-					<!-- Overdue Calculation -->
-					<div class="space-y-3">
-						<h3 class="font-medium">Overdue Calculation</h3>
-						<div class="space-y-2 text-sm">
-							<div class="flex justify-between">
-								<span class="text-muted-foreground">Daily Rate:</span>
-								<span>{{ formatNumber(rental.listing.price) }}</span>
-							</div>
-							<div class="flex justify-between">
-								<span class="text-muted-foreground">Days Overdue:</span>
-								<span>{{ rental.overdue_days }}</span>
-							</div>
-							<Separator class="my-2" />
-							<div class="flex justify-between font-medium">
-								<span>Total Overdue Fee:</span>
-								<span class="text-destructive">{{ formatNumber(rental.overdue_fee) }}</span>
-							</div>
-						</div>
-					</div>
-
-					<!-- Payment Status & Admin Actions -->
-					<div class="space-y-3">
-						<!-- Pending Payment -->
-						<div v-if="rental.payment_request?.type === 'overdue' && rental.payment_request?.status === 'pending'" 
-							class="space-y-4"
-						>
-							<h3 class="font-medium text-yellow-500">Payment Pending Verification</h3>
-							<div class="space-y-2 p-4 bg-muted rounded-lg text-sm">
-								<div class="flex justify-between">
-									<span class="text-muted-foreground">Amount Submitted:</span>
-									<span>{{ formatNumber(rental.overdue_fee) }}</span>
-								</div>
-								<div class="flex justify-between">
-									<span class="text-muted-foreground">Reference:</span>
-									<span>{{ rental.payment_request.reference_number }}</span>
-								</div>
-								<!-- Admin Actions -->
-								<div class="flex flex-col gap-2 mt-4 pt-4 border-t">
-									<Button 
-										variant="default"
-										@click="showOverduePaymentDialog = true"
-									>
-										Review Payment
-									</Button>
-								</div>
-							</div>
-						</div>
-
-						<!-- Verified Payment -->
-						<div v-else-if="rental.overdue_payment" class="space-y-3">
-							<h3 class="font-medium text-emerald-500">Payment Verified</h3>
-							<div class="space-y-2 p-4 bg-muted rounded-lg text-sm">
-								<div class="flex justify-between">
-									<span class="text-muted-foreground">Amount Paid:</span>
-									<span class="font-medium">{{ formatNumber(rental.overdue_payment.amount) }}</span>
-								</div>
-								<div class="flex justify-between">
-									<span class="text-muted-foreground">Reference:</span>
-									<span class="font-medium">{{ rental.overdue_payment.reference_number }}</span>
-								</div>
-								<div class="flex justify-between">
-									<span class="text-muted-foreground">Verified On:</span>
-									<span class="font-medium">{{ formatDateTime(rental.overdue_payment.verified_at) }}</span>
-								</div>
-								<Button
-									v-if="rental.overdue_payment.proof_path"
-									variant="outline"
-									size="sm"
-									class="mt-2"
-									@click="showPaymentProof(rental.overdue_payment)"
-								>
-									View Payment Proof
-								</Button>
-							</div>
-						</div>
-
-						<!-- No Payment Submitted -->
-						<div v-else-if="rental.is_overdue" class="text-sm text-muted-foreground text-center p-4 bg-muted/30 rounded-lg">
-							Waiting for renter to submit overdue payment
-						</div>
-					</div>
-				</div>
-			</CardContent>
-		</Card>
 
 		<!-- Completion Payments -->
 		<Card v-if="needsCompletionPayments" class="shadow-sm">
