@@ -58,6 +58,15 @@ class CompletionPaymentController extends Controller
                 'processed_at' => now(),
             ]);
 
+            // Add timeline event
+            $rental->recordTimelineEvent('lender_payment_processed', Auth::id(), [
+                'amount' => $validated['amount'],
+                'reference_number' => $validated['reference_number'],
+                'proof_path' => $imagePath,
+                'processed_by' => Auth::id(),
+                'processed_at' => now()->toDateTimeString()
+            ]);
+
             DB::commit();
             return back()->with('success', 'Lender payment processed successfully.');
         } catch (\Exception $e) {
@@ -105,6 +114,15 @@ class CompletionPaymentController extends Controller
                     'notes' => $validated['notes'],
                     'admin_id' => Auth::id(),
                     'processed_at' => now(),
+                ]);
+
+                // Add timeline event
+                $rental->recordTimelineEvent('deposit_refund_processed', Auth::id(), [
+                    'amount' => $validated['amount'],
+                    'reference_number' => $validated['reference_number'],
+                    'proof_path' => $imagePath,
+                    'processed_by' => Auth::id(),
+                    'processed_at' => now()->toDateTimeString()
                 ]);
             });
 
