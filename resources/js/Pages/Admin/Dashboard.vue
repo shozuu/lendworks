@@ -30,7 +30,7 @@ Changes Made:
 
 <script setup>
 import AdminLayout from "../../Layouts/AdminLayout.vue";
-import { Head } from "@inertiajs/vue3";
+import { Head, Link } from "@inertiajs/vue3"; // Add Link import
 import {
     Card,
     CardContent,
@@ -67,33 +67,43 @@ defineProps({
         <div>
             <h3 class="text-lg font-medium mb-4">Transaction Analytics</h3>
             <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle class="text-sm font-medium">
-                            Completed Transactions
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold">{{ stats?.transactionStats?.completed || 0 }}</div>
-                        <p class="text-xs text-muted-foreground">
-                            Last 30 days
-                        </p>
-                    </CardContent>
-                </Card>
+                <Link 
+                    :href="route('admin.rental-transactions', { status: 'completed' })"
+                    class="transition-transform hover:scale-105"
+                >
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-sm font-medium">
+                                Completed Transactions
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="text-2xl font-bold">{{ stats?.transactionStats?.completed || 0 }}</div>
+                            <p class="text-xs text-muted-foreground">
+                                Last 30 days
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle class="text-sm font-medium">
-                            Active Rentals
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold">{{ stats?.transactionStats?.active || 0 }}</div>
-                        <p class="text-xs text-muted-foreground">
-                            Currently ongoing
-                        </p>
-                    </CardContent>
-                </Card>
+                <Link 
+                    :href="route('admin.rental-transactions', { status: 'active' })"
+                    class="transition-transform hover:scale-105"
+                >
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-sm font-medium">
+                                Active Rentals
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="text-2xl font-bold">{{ stats?.transactionStats?.active || 0 }}</div>
+                            <p class="text-xs text-muted-foreground">
+                                Currently ongoing
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
 
                 <Card>
                     <CardHeader>
@@ -191,83 +201,113 @@ defineProps({
         <div>
             <h3 class="text-lg font-medium mb-4">User Statistics</h3>
             <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle class="text-sm font-medium">
-                            Total Users
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold">{{ stats?.totalUsers || 0 }}</div>
-                        <p class="text-xs text-muted-foreground">
-                            {{ stats?.verifiedUsers || 0 }} verified
-                        </p>
-                    </CardContent>
-                </Card>
+                <Link 
+                    :href="route('admin.users')"
+                    class="transition-transform hover:scale-105"
+                >
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-sm font-medium">
+                                Total Users
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="text-2xl font-bold">{{ stats?.totalUsers || 0 }}</div>
+                            <p class="text-xs text-muted-foreground">
+                                {{ stats?.verifiedUsers || 0 }} verified
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle class="text-sm font-medium">
-                            Active Users
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold">{{ stats?.activeUsers || 0 }}</div>
-                        <p class="text-xs text-muted-foreground">
-                            {{ stats?.suspendedUsers || 0 }} suspended
-                        </p>
-                    </CardContent>
-                </Card>
+                <Link 
+                    :href="route('admin.users', { status: 'active' })"
+                    class="transition-transform hover:scale-105"
+                >
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-sm font-medium">
+                                Active Users
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="text-2xl font-bold">{{ stats?.activeUsers || 0 }}</div>
+                            <p class="text-xs text-muted-foreground">
+                                {{ stats?.suspendedUsers || 0 }} suspended
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle class="text-sm font-medium">
-                            Total Listings
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold">{{ stats?.totalListings || 0 }}</div>
-                        <p class="text-xs text-muted-foreground">
-                            {{ stats?.activeListings || 0 }} active
-                        </p>
-                    </CardContent>
-                </Card>
+                <Link 
+                    :href="route('admin.listings')"
+                    class="transition-transform hover:scale-105"
+                >
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-sm font-medium">
+                                Total Listings
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="text-2xl font-bold">{{ stats?.totalListings || 0 }}</div>
+                            <p class="text-xs text-muted-foreground">
+                                {{ stats?.activeListings || 0 }} active
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle class="text-sm font-medium">
-                            New Users This Month
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold">{{ stats?.newUsersThisMonth || 0 }}</div>
-                    </CardContent>
-                </Card>
+                <Link 
+                    :href="route('admin.users', { verified: 'unverified' })"
+                    class="transition-transform hover:scale-105"
+                >
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-sm font-medium">
+                                New Users This Month
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="text-2xl font-bold">{{ stats?.newUsersThisMonth || 0 }}</div>
+                        </CardContent>
+                    </Card>
+                </Link>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle class="text-sm font-medium">
-                            Pending Approvals
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold">{{ stats?.pendingApprovals || 0 }}</div>
-                    </CardContent>
-                </Card>
+                <Link 
+                    :href="route('admin.listings', { status: 'pending' })"
+                    class="transition-transform hover:scale-105"
+                >
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-sm font-medium">
+                                Pending Approvals
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="text-2xl font-bold">{{ stats?.pendingApprovals || 0 }}</div>
+                        </CardContent>
+                    </Card>
+                </Link>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle class="text-sm font-medium">
-                            Unverified Users
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold">{{ stats?.unverifiedUsers || 0 }}</div>
-                        <p class="text-xs text-muted-foreground">
-                            Pending email verification
-                        </p>
-                    </CardContent>
-                </Card>
+                <Link 
+                    :href="route('admin.users', { verified: 'unverified' })"
+                    class="transition-transform hover:scale-105"
+                >
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-sm font-medium">
+                                Unverified Users
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="text-2xl font-bold">{{ stats?.unverifiedUsers || 0 }}</div>
+                            <p class="text-xs text-muted-foreground">
+                                Pending email verification
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
             </div>
         </div>
 
@@ -275,29 +315,34 @@ defineProps({
         <div>
             <h3 class="text-lg font-medium mb-4">Listing Statistics</h3>
             <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle class="text-sm font-medium">
-                            Listing Status Distribution
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="space-y-2">
-                            <div class="flex justify-between">
-                                <span>Approved:</span>
-                                <span class="font-bold">{{ stats?.listingStats?.approved || 0 }}</span>
+                <Link 
+                    :href="route('admin.listings')"
+                    class="transition-transform hover:scale-105"
+                >
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-sm font-medium">
+                                Listing Status Distribution
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span>Approved:</span>
+                                    <span class="font-bold">{{ stats?.listingStats?.approved || 0 }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Rejected:</span>
+                                    <span class="font-bold">{{ stats?.listingStats?.rejected || 0 }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Taken Down:</span>
+                                    <span class="font-bold">{{ stats?.listingStats?.takenDown || 0 }}</span>
+                                </div>
                             </div>
-                            <div class="flex justify-between">
-                                <span>Rejected:</span>
-                                <span class="font-bold">{{ stats?.listingStats?.rejected || 0 }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span>Taken Down:</span>
-                                <span class="font-bold">{{ stats?.listingStats?.takenDown || 0 }}</span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                </Link>
 
                 <Card>
                     <CardHeader>
