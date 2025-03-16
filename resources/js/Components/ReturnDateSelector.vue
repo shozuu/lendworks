@@ -23,10 +23,12 @@ const handleSelectDate = (slot) => {
   selectForm.patch(
     route("return-schedules.select", {
       rental: props.rental.id,
-      lender_schedule: slot.id,
+      lender_schedule: slot.original.id,
     }),
     {
       preserveScroll: true,
+      start_time: slot.start_time,
+      end_time: slot.end_time,
       onSuccess: () => {
         emit("schedule-selected");
       },
@@ -53,50 +55,135 @@ const formatScheduleTime = (schedule) => {
   )}`;
 };
 
-const availableTimeSlots = computed(() => {
-  if (!props.lenderSchedules?.length) return [];
+// Parse time helper
+const parseTime = (timeStr) => {
+  const [hours, minutes] = timeStr.split(":");
+  return { hours: parseInt(hours), minutes: parseInt(minutes) };
+};
+
+const daysMap = {
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6,
+  Sunday: 0,
+};
+
+// Update isPastTimeSlot to match PickupDateSelector logic
+const isPastTimeSlot = (schedule) => {
+  const now = new Date();
+  const today = now.getDay();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+
+  const { hours: endHour, minutes: endMinute } = parseTime(schedule.end_time);
+
+  // If it's the same day, check if current time is past the end time
+  if (daysMap[schedule.day_of_week] === today) {
+    return (
+      currentHour > endHour || (currentHour === endHour && currentMinute > endMinute)
+    );
+  }
+
+  return false;
+};
+
+// Update getScheduleDate to use return date
+const getScheduleDate = (schedule) => {
+  const returnDate = new Date(returnDateContext.value);
+  const dayOfWeek = format(returnDate, "EEEE");
+
+  // Only return date if schedule matches return day
+  if (schedule.day_of_week === dayOfWeek) {
+    return returnDate;
+  }
+
+  return null;
+};
+
+// Add time slot generation helper
+const generateTimeSlots = (schedule) => {
+  const { hours: startHour, minutes: startMin } = parseTime(schedule.start_time);
+  const { hours: endHour, minutes: endMin } = parseTime(schedule.end_time);
+
+  const slots = [];
+  const slotDuration = 120; // 2 hours per slot
   
+  let currentSlotStart = startHour * 60 + startMin;
+  const endTime = endHour * 60 + endMin;
+
+  while (currentSlotStart < endTime) {
+    const slotEnd = Math.min(currentSlotStart + slotDuration, endTime);
+    
+    slots.push({
+      id: schedule.id,
+      day_of_week: schedule.day_of_week,
+      start_time: `${Math.floor(currentSlotStart / 60).toString().padStart(2, "0")}:${(currentSlotStart % 60).toString().padStart(2, "0")}`,
+      end_time: `${Math.floor(slotEnd / 60).toString().padStart(2, "0")}:${(slotEnd % 60).toString().padStart(2, "0")}`,
+      original: schedule
+    });
+
+    currentSlotStart = slotEnd;
+  }
+
+  return slots;
+};
+
+// Update availableTimeSlots to match PickupDateSelector logic
+const availableTimeSlots = computed(() => {
+  const returnDate = new Date(returnDateContext.value);
+  const now = new Date();
+  const dayOfWeek = format(returnDate, "EEEE");
+
   return props.lenderSchedules
-    .filter(schedule => schedule.is_active)
-    .map(schedule => ({
-      ...schedule,
-      formattedTime: formatScheduleTime(schedule)
+    ?.filter((schedule) => {
+      // Must be active and match return day
+      if (!schedule.is_active || schedule.day_of_week !== dayOfWeek) {
+        return false;
+      }
+
+      // If it's today, check if time slot hasn't passed
+      if (format(now, "yyyy-MM-dd") === format(returnDate, "yyyy-MM-dd")) {
+        return !isPastTimeSlot(schedule);
+      }
+
+      return true;
+    })
+    .flatMap(schedule => generateTimeSlots(schedule))
+    .map(slot => ({
+      ...slot,
+      formattedTime: formatScheduleTime(slot)
     }))
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
 });
 
-// Add new computed property for the return date context
 const returnDateContext = computed(() => {
   if (props.rental.is_overdue) {
-    return format(new Date(), 'MMMM d, yyyy'); // Current date for overdue rentals
+    return new Date();
   }
   
   if (props.rental.status === 'pending_return') {
-    // If return was initiated early, show initiation date
     const timelineEvent = props.rental.timeline_events.find(e => e.event_type === 'return_initiated');
     if (timelineEvent) {
-      return format(new Date(timelineEvent.created_at), 'MMMM d, yyyy');
+      return new Date(timelineEvent.created_at);
     }
   }
   
-  // Default to rental end date
-  return format(new Date(props.rental.end_date), 'MMMM d, yyyy');
+  return new Date(props.rental.end_date);
 });
 
-// Add new computed property for context message
 const contextMessage = computed(() => {
   if (props.rental.is_overdue) {
-    return 'Select a return time for today';
+    return `Select a time slot to return the item today`;
   }
   
   if (props.rental.status === 'pending_return') {
-    const timelineEvent = props.rental.timeline_events.find(e => e.event_type === 'return_initiated');
-    if (timelineEvent) {
-      return 'Select a return time for the initiated return date';
-    }
+    return 'Choose when you would like to return the item';
   }
   
-  return 'Select a return time for the rental end date';
+  return `Select a time slot to return the item on the end date`;
 });
 </script>
 
@@ -104,16 +191,22 @@ const contextMessage = computed(() => {
   <Card class="shadow-sm">
     <CardHeader class="bg-card border-b">
       <CardTitle>Return Schedule</CardTitle>
-      <p class="text-muted-foreground text-sm">
-        {{ contextMessage }}
-      </p>
-      <p class="text-sm font-medium mt-1">{{ returnDateContext }}</p>
+      <p class="text-muted-foreground text-sm">{{ contextMessage }}</p>
+      <div class="mt-2 p-3 bg-muted rounded-lg">
+        <div class="flex items-baseline justify-between">
+          <span class="font-medium">{{ format(returnDateContext, "EEEE") }}</span>
+          <span class="text-sm text-muted-foreground">
+            {{ format(returnDateContext, "MMMM d, yyyy") }}
+          </span>
+        </div>
+      </div>
     </CardHeader>
     <CardContent class="p-0">
       <div class="px-6 py-4">
         <div v-if="availableTimeSlots.length" class="space-y-4">
+          <h4 class="text-sm font-medium">Available Time Slots</h4>
           <div class="bg-muted/50 p-3 rounded-lg">
-            <div class="mt-2 space-y-2">
+            <div class="space-y-2">
               <div
                 v-for="slot in availableTimeSlots"
                 :key="slot.id"
@@ -133,7 +226,7 @@ const contextMessage = computed(() => {
           </div>
         </div>
         <p v-else class="text-muted-foreground py-8 text-center text-sm">
-          No available time slots.
+          No available time slots for this date.
         </p>
       </div>
     </CardContent>

@@ -307,11 +307,30 @@ class ReturnController extends Controller
             // Reset existing selections
             $rental->return_schedules()->update(['is_selected' => false]);
 
+            // Calculate return datetime based on rental status
+            if ($rental->is_overdue) {
+                // If overdue, use today's date
+                $returnDatetime = now()->startOfDay();
+            } elseif ($rental->status === 'pending_return') {
+                // If early return initiated, use the timeline event date
+                $timelineEvent = $rental->timeline_events()
+                    ->where('event_type', 'return_initiated')
+                    ->latest()
+                    ->first();
+
+                $returnDatetime = $timelineEvent 
+                    ? Carbon::parse($timelineEvent->created_at)->startOfDay()
+                    : Carbon::parse($rental->end_date)->startOfDay();
+            } else {
+                // Default to rental end date
+                $returnDatetime = Carbon::parse($rental->end_date)->startOfDay();
+            }
+
             // Create return schedule
             $schedule = ReturnSchedule::create([
                 'rental_request_id' => $rental->id,
                 'lender_pickup_schedule_id' => $lender_schedule->id,
-                'return_datetime' => now(),
+                'return_datetime' => $returnDatetime,
                 'start_time' => $lender_schedule->start_time,
                 'end_time' => $lender_schedule->end_time,
                 'is_selected' => true
