@@ -407,13 +407,18 @@ const scheduleConfirmationMessage = computed(() => {
 
           <!-- Selected Schedule Display -->
           <div v-if="selectedSchedule" class="space-y-4">
-            <Alert variant="success">
+            <Alert variant="info">
               <AlertDescription class="space-y-2">
-                <h4 class="font-medium">Return Schedule Selected</h4>
-                <p>The schedule has been selected and is awaiting lender confirmation.</p>
+                <h4 class="font-medium">{{ userRole === 'renter' ? 'Waiting for Confirmation' : 'Return Schedule Selected' }}</h4>
+                <p v-if="userRole === 'renter'">
+                  Your selected schedule is awaiting confirmation from the lender. You will be notified once confirmed.
+                </p>
+                <p v-else>
+                  The renter has selected a return schedule. Please review and confirm to proceed with the return process.
+                </p>
               </AlertDescription>
             </Alert>
-
+          
             <div class="p-4 border rounded-lg bg-muted/50">
               <div class="space-y-2">
                 <h3 class="font-medium">Selected Return Details</h3>
