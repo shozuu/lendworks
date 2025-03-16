@@ -106,10 +106,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/rentals/{rental}/finalize-return', 'finalizeReturn')
             ->name('rentals.finalize-return');
     });
-
-    // Add the overdue payment route
-    Route::post('/rentals/{rental}/submit-overdue-payment', [PaymentController::class, 'storeOverduePayment'])
-        ->name('rentals.submit-overdue-payment');
 });
 
 // Admin routes with auth and admin middleware

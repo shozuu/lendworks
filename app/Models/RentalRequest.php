@@ -314,11 +314,15 @@ class RentalRequest extends Model
 
     public function getOverdueFeeAttribute()
     {
-        if (!$this->is_overdue) {
+        if (!$this->is_overdue || !$this->listing || !$this->listing->price) {
             return 0;
         }
-        // Ensure we're returning a positive number
-        return abs($this->listing->price * $this->overdue_days);
+        
+        // Ensure positive values and proper number formatting
+        $dailyRate = abs((float)$this->listing->price);
+        $overdueDays = abs($this->overdue_days);
+        
+        return $dailyRate * $overdueDays;
     }
 
     // Add these new methods

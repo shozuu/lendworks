@@ -259,7 +259,7 @@ const formatEventMessage = (event) => {
 		case "cancelled":
 			return performedByViewer
 				? "You cancelled the request"
-				: `${actorLabel} cancelled the request`;
+				: `${actorLabel} cancelled the request`; // Add semicolon here
 
 		case "receive":
 			if (isLatest) {
@@ -267,7 +267,7 @@ const formatEventMessage = (event) => {
 			}
 			return performedByViewer
 				? "You confirmed receiving the item"
-				: `${actorLabel} confirmed receiving the item`;
+				: `${actorLabel} confirmed receiving the item`; // Fixed missing semicolon
 
 		case "pickup_schedule_selected":
 			if (isLatest) {
@@ -489,7 +489,7 @@ const showReturnProof = (event) => {
 						<!-- Payment Details -->
 						<template
 							v-if="
-								['payment_submitted', 'payment_verified', 'payment_rejected', 'overdue_payment_submitted', 'overdue_payment_verified', 'overdue_payment_rejected'].includes(
+								['payment_submitted', 'payment_verified', 'payment_rejected'].includes(
 									event.event_type
 								)
 							"
@@ -524,7 +524,7 @@ const showReturnProof = (event) => {
 							</Button>
 						</template>
 
-						 <!-- Add specialized template for overdue payments -->
+						<!-- Overdue Payment Details -->
 						<template v-if="['overdue_payment_submitted', 'overdue_payment_verified', 'overdue_payment_rejected'].includes(event.event_type)">
 							<div class="flex flex-col items-start justify-between">
 								<div>
@@ -533,22 +533,19 @@ const showReturnProof = (event) => {
 										{{ event.metadata.reference_number }}
 									</p>
 									 <p class="text-xs mt-1">
-										<span class="font-medium">Overdue Fee Paid:</span>
-										{{ formatNumber(event.metadata.amount || props.rental.overdue_fee) }}
+										<span class="font-medium">Overdue Payment:</span>
+										{{ formatNumber(props.rental.overdue_fee) }}
 									</p>
 								</div>
 							</div>
-							<p v-if="event.metadata.feedback" class="text-muted-foreground mt-2 text-xs italic">
-								"{{ event.metadata.feedback }}"
-							</p>
 							<Button
-								v-if="event.metadata.proof_path"
+								v-if="event.metadata.payment_request"
 								variant="outline"
 								size="sm"
 								class="mt-2"
-								@click="showPaymentProof(event)"
+								@click="showPaymentDetails(event)"
 							>
-								View Payment Proof
+								View Payment Details
 							</Button>
 						</template>
 
