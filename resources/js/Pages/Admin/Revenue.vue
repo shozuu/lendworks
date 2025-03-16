@@ -22,6 +22,9 @@ import { ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
 import { formatDate } from "@/lib/formatters";
 import PaginationLinks from "@/Components/PaginationLinks.vue";
+import { Link } from "@inertiajs/vue3";  // Add Link import if not already present
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-vue-next";
 
 defineOptions({ layout: AdminLayout });
 
@@ -47,6 +50,44 @@ watch([period, sort], ([newPeriod, newSort]) => {
         { preserveState: true }
     );
 });
+
+const exportToCSV = () => {
+    // Create CSV headers
+    const headers = [
+        'Date',
+        'Listing Title',
+        'Renter',
+        'Rental Amount',
+        'Platform Fee',
+        'Total Earnings',
+        'Status'
+    ].join(',');
+
+    // Convert transactions to CSV rows - Fix: Use props.transactions instead of transactions
+    const rows = props.transactions.data.map(transaction => [
+        formatDate(transaction.created_at),
+        `"${transaction.listing.title}"`, // Quote titles to handle commas
+        `"${transaction.renter.name}"`,
+        transaction.total_price,
+        transaction.service_fee,
+        transaction.service_fee * 2,
+        transaction.status
+    ].join(','));
+
+    // Combine headers and rows
+    const csv = [headers, ...rows].join('\n');
+
+    // Create download link
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `revenue-transactions-${formatDate(new Date())}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+};
 </script>
 
 <template>
@@ -128,6 +169,12 @@ watch([period, sort], ([newPeriod, newSort]) => {
                         <SelectItem value="lowest">Lowest Amount</SelectItem>
                     </SelectContent>
                 </Select>
+
+                <!-- Add export button -->
+                <Button @click="exportToCSV" variant="outline" class="gap-2">
+                    <Download class="h-4 w-4" />
+                    Export CSV
+                </Button>
             </div>
         </div>
 
@@ -149,7 +196,12 @@ watch([period, sort], ([newPeriod, newSort]) => {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow v-for="transaction in transactions.data" :key="transaction.id">
+                        <TableRow 
+                            v-for="transaction in transactions.data" 
+                            :key="transaction.id"
+                            class="cursor-pointer hover:bg-muted/50 transition-colors"
+                            @click="router.visit(route('admin.rental-transactions.show', transaction.id))"
+                        >
                             <TableCell>{{ formatDate(transaction.created_at) }}</TableCell>
                             <TableCell>
                                 <div class="font-medium">{{ transaction.listing.title }}</div>
@@ -174,3 +226,9 @@ watch([period, sort], ([newPeriod, newSort]) => {
         <PaginationLinks :paginator="transactions" />
     </div>
 </template>
+
+<style scoped>
+.cursor-pointer {
+    cursor: pointer;
+}
+</style>
