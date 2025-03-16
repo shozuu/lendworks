@@ -3,21 +3,58 @@ import AdminLayout from "@/Layouts/AdminLayout.vue";
 import { Head } from "@inertiajs/vue3";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "@inertiajs/vue3";
-import { formatDateTime } from "@/lib/formatters";
+import { formatDate, formatDateTime } from "@/lib/formatters";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-vue-next";
 
 defineOptions({ layout: AdminLayout });
 
-defineProps({
+const props = defineProps({
     disputes: Object,
     stats: Object
 });
+
+const exportToCSV = () => {
+    const headers = [
+        'Date',
+        'Rental ID',
+        'Reason',
+        'Description',
+        'Status'
+    ].join(',');
+
+    const rows = props.disputes.data.map(dispute => [
+        formatDate(dispute.created_at),
+        dispute.rental.id,
+        `"${dispute.reason}"`,
+        `"${dispute.description}"`,
+        dispute.status
+    ].join(','));
+
+    const csv = [headers, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `disputes-${formatDate(new Date())}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+};
 </script>
 
 <template>
     <Head title="Disputes | Admin" />
 
     <div class="space-y-6">
-        <h2 class="text-2xl font-semibold tracking-tight">Disputes</h2>
+        <div class="flex justify-between items-center">
+            <h2 class="text-2xl font-semibold tracking-tight">Disputes</h2>
+            <Button @click="exportToCSV" variant="outline" class="gap-2">
+                <Download class="h-4 w-4" />
+                Export CSV
+            </Button>
+        </div>
 
         <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>

@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import PaginationLinks from "@/Components/PaginationLinks.vue";
 import { ref } from "vue";
-import { ChevronRight } from "lucide-vue-next";
+import { ChevronRight, Download } from "lucide-vue-next";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import PaymentRequestCard from "@/Components/PaymentRequestCard.vue";
 import OverduePaymentDialog from "@/Components/OverduePaymentDialog.vue";
@@ -121,6 +121,39 @@ const getRenterName = (payment) => {
 const getRentalPrice = (payment) => {
     return payment?.rental_request?.total_price || 0;
 };
+
+const exportToCSV = () => {
+    const headers = [
+        'Date',
+        'Reference Number',
+        'Listing',
+        'Renter',
+        'Amount',
+        'Service Fee',
+        'Status'
+    ].join(',');
+
+    const rows = props.payments.data.map(payment => [
+        formatDate(payment.created_at),
+        payment.reference_number,
+        `"${payment.rental_request.listing.title}"`,
+        `"${payment.rental_request.renter.name}"`,
+        payment.rental_request.total_price,
+        payment.rental_request.service_fee,
+        payment.status
+    ].join(','));
+
+    const csv = [headers, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `payments-${formatDate(new Date())}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+};
 </script>
 
 <template>
@@ -144,6 +177,12 @@ const getRentalPrice = (payment) => {
 					<Badge variant="success">Verified: {{ stats.verified }}</Badge>
 					<Badge variant="destructive">Rejected: {{ stats.rejected }}</Badge>
 				</div>
+
+				<!-- Export CSV Button -->
+				<Button @click="exportToCSV" variant="outline" class="gap-2">
+					<Download class="h-4 w-4" />
+					Export CSV
+				</Button>
 			</div>
 		</div>
 

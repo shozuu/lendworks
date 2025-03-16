@@ -2,6 +2,7 @@
 import AdminLayout from "@/Layouts/AdminLayout.vue";
 import { Head, router } from "@inertiajs/vue3";
 import { Badge } from "@/components/ui/badge";
+import { formatDate } from "@/lib/formatters";
 import {
     Select,
     SelectContent,
@@ -13,6 +14,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import PaginationLinks from "@/Components/PaginationLinks.vue";
 import TransactionCard from "@/Components/TransactionCard.vue";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-vue-next";
 
 defineOptions({ layout: AdminLayout });
 
@@ -79,6 +82,41 @@ const handleSearch = (event) => {
     timeout = setTimeout(() => {
         updateFilters({ search: event.target.value });
     }, 300);
+};
+
+const exportToCSV = () => {
+    const headers = [
+        'Date',
+        'Listing',
+        'Lender',
+        'Renter',
+        'Start Date',
+        'End Date',
+        'Total Price',
+        'Status'
+    ].join(',');
+
+    const rows = props.transactions.data.map(transaction => [
+        formatDate(transaction.created_at),
+        `"${transaction.listing.title}"`,
+        `"${transaction.listing.user.name}"`,
+        `"${transaction.renter.name}"`,
+        formatDate(transaction.start_date),
+        formatDate(transaction.end_date),
+        transaction.total_price,
+        transaction.status
+    ].join(','));
+
+    const csv = [headers, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transactions-${formatDate(new Date())}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
 };
 </script>
 
@@ -153,6 +191,11 @@ const handleSearch = (event) => {
                         </SelectItem>
                     </SelectContent>
                 </Select>
+
+                <Button @click="exportToCSV" variant="outline" class="gap-2">
+                    <Download class="h-4 w-4" />
+                    Export CSV
+                </Button>
             </div>
         </div>
 

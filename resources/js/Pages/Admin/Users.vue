@@ -19,6 +19,7 @@ import debounce from "lodash/debounce";
 import { ref, watch } from "vue";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import { formatDate } from "@/lib/formatters";
+import { Download } from "lucide-vue-next";
 
 defineOptions({ layout: AdminLayout });
 
@@ -106,6 +107,37 @@ const handleAction = () => {
 			onSuccess: () => (showDialog.value = false),
 		}
 	);
+};
+
+const exportToCSV = () => {
+    const headers = [
+        'Name',
+        'Email',
+        'Status',
+        'Verification',
+        'Listings Count',
+        'Join Date'
+    ].join(',');
+
+    const rows = props.users.data.map(user => [
+        `"${user.name}"`,
+        `"${user.email}"`,
+        user.status,
+        user.email_verified_at ? 'Verified' : 'Unverified',
+        user.listings_count,
+        formatDate(user.created_at)
+    ].join(','));
+
+    const csv = [headers, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `users-${formatDate(new Date())}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
 };
 </script>
 
@@ -201,6 +233,11 @@ const handleAction = () => {
 							<SelectItem value="listings">Most Listings</SelectItem>
 						</SelectContent>
 					</Select>
+
+					<Button @click="exportToCSV" variant="outline" class="gap-2">
+						<Download class="h-4 w-4" />
+						Export CSV
+					</Button>
 				</div>
 			</div>
 		</div>
