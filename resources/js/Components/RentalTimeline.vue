@@ -20,7 +20,6 @@ import { ref, computed } from "vue";
 import PaymentDialog from "@/Components/PaymentDialog.vue";
 import HandoverProofDialog from "@/Components/HandoverProofDialog.vue";
 import { Button } from "@/components/ui/button";
-
 const props = defineProps({
 	events: {
 		type: Array,

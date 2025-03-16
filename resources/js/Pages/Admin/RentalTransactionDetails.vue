@@ -129,6 +129,22 @@ const platformEarnings = computed(() => {
         total: totalServiceFee
     };
 });
+
+// Add new computed property for lender earnings
+const lenderEarnings = computed(() => {
+    const basePrice = props.rental.base_price;
+    const discount = props.rental.discount;
+    const serviceFee = props.rental.service_fee;
+    const overdueFee = props.rental.overdue_payment ? props.rental.overdue_fee : 0;
+
+    return {
+        basePrice,
+        discount,
+        serviceFee,
+        overdueFee,
+        total: basePrice - discount - serviceFee + overdueFee
+    };
+});
 </script>
 
 <template>
@@ -379,6 +395,78 @@ const platformEarnings = computed(() => {
 					</CardContent>
 				</Card>
 
+				 <!-- Lender Earnings Card - Add this before Platform Earnings -->
+				<Card class="shadow-sm">
+					<CardHeader class="bg-card border-b">
+						<CardTitle class="flex items-center gap-2">
+							<DollarSign class="w-4 h-4 text-emerald-500" />
+							Lender Earnings
+						</CardTitle>
+					</CardHeader>
+					<CardContent class="p-4">
+						<div class="space-y-3">
+							<div class="grid gap-2 text-sm">
+								<div class="flex justify-between items-center">
+									<span class="text-muted-foreground">Base Price:</span>
+									<span>{{ formatNumber(lenderEarnings.basePrice) }}</span>
+								</div>
+								<div class="flex justify-between items-center text-destructive">
+									<span class="text-muted-foreground">Duration Discount:</span>
+									<span>-{{ formatNumber(lenderEarnings.discount) }}</span>
+								</div>
+								<div class="flex justify-between items-center text-destructive">
+									<span class="text-muted-foreground">Platform Fee:</span>
+									<span>-{{ formatNumber(lenderEarnings.serviceFee) }}</span>
+								</div>
+								<div v-if="lenderEarnings.overdueFee" class="flex justify-between items-center text-emerald-500">
+									<span class="text-muted-foreground">Overdue Fee:</span>
+									<span>+{{ formatNumber(lenderEarnings.overdueFee) }}</span>
+								</div>
+								<Separator class="my-1" />
+								<div class="flex justify-between items-center font-medium">
+									<span>Total Earnings:</span>
+									<span class="text-emerald-500">{{ formatNumber(lenderEarnings.total) }}</span>
+								</div>
+							</div>
+							<p class="text-muted-foreground text-xs">
+								Final earnings after deducting platform fees and discounts
+							</p>
+						</div>
+					</CardContent>
+				</Card>
+
+				<!-- Platform Earnings Card - Moved and Restyled -->
+				<Card class="shadow-sm">
+					<CardHeader class="bg-card border-b">
+						<CardTitle class="flex items-center gap-2">
+							<Wallet class="w-4 h-4 text-primary" />
+							Platform Earnings
+						</CardTitle>
+					</CardHeader>
+					<CardContent class="p-4">
+						<div class="space-y-3">
+							<div class="grid gap-2 text-sm">
+								<div class="flex justify-between items-center">
+									<span class="text-muted-foreground">Renter Fee:</span>
+									<span>{{ formatNumber(platformEarnings.renterFee) }}</span>
+								</div>
+								<div class="flex justify-between items-center">
+									<span class="text-muted-foreground">Lender Fee:</span>
+									<span>{{ formatNumber(platformEarnings.lenderFee) }}</span>
+								</div>
+								<Separator class="my-1" />
+								<div class="flex justify-between items-center font-medium">
+									<span>Total:</span>
+									<span class="text-primary">{{ formatNumber(platformEarnings.total) }}</span>
+								</div>
+							</div>
+							<p class="text-muted-foreground text-xs">
+								Total fees collected from both parties
+							</p>
+						</div>
+					</CardContent>
+				</Card>
+
 				<!-- Status Details -->
 				<Card
 					v-if="rental.latest_rejection || rental.latest_cancellation"
@@ -511,39 +599,6 @@ const platformEarnings = computed(() => {
 							Waiting for renter to submit overdue payment
 						</div>
 					</div>
-				</div>
-			</CardContent>
-		</Card>
-
-		 <!-- Replace the Platform Earnings card content -->
-		<Card class="shadow-sm">
-			<CardHeader class="bg-card border-b">
-				<CardTitle>Platform Earnings</CardTitle>
-			</CardHeader>
-			<CardContent class="p-6">
-				<div class="space-y-4">
-					<div class="space-y-2">
-						<div class="flex justify-between items-center">
-							<span class="text-muted-foreground">Renter Service Fee:</span>
-							<span class="font-medium">{{ formatNumber(platformEarnings.renterFee) }}</span>
-						</div>
-						
-						<div class="flex justify-between items-center">
-							<span class="text-muted-foreground">Lender Service Fee:</span>
-							<span class="font-medium">{{ formatNumber(platformEarnings.lenderFee) }}</span>
-						</div>
-
-						<Separator class="my-2" />
-						
-						<div class="flex justify-between items-center">
-							<span class="font-medium">Total Platform Earnings:</span>
-							<span class="font-medium text-primary">{{ formatNumber(platformEarnings.total) }}</span>
-						</div>
-					</div>
-
-					<p class="text-muted-foreground text-xs">
-						Platform earnings include service fees collected from both renter's payment and lender's earnings
-					</p>
 				</div>
 			</CardContent>
 		</Card>
