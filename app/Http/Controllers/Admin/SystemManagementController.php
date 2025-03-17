@@ -59,7 +59,7 @@ class SystemManagementController extends Controller
                 'uploads_dir' => is_writable(storage_path('app/public')),
                 'logs_dir' => is_writable(storage_path('logs')),
             ],
-            'maintenance_mode' => app()->isDownForMaintenance(),
+            'maintenance_mode' => cache('maintenance_mode', false),
         ];
 
         // Add categories data
@@ -91,22 +91,14 @@ class SystemManagementController extends Controller
         }
     }
 
-    public function toggleMaintenance(Request $request)
+    public function toggleMaintenance()
     {
-        try {
-            if (app()->isDownForMaintenance()) {
-                Artisan::call('up');
-                $message = 'Application is now live';
-            } else {
-                Artisan::call('down', [
-                    '--secret' => 'admin-' . time(),
-                ]);
-                $message = 'Application is now in maintenance mode';
-            }
-            return back()->with('success', $message);
-        } catch (\Exception $e) {
-            return back()->with('error', 'Failed to toggle maintenance mode: ' . $e->getMessage());
-        }
+        $maintenanceMode = cache('maintenance_mode', false);
+        cache(['maintenance_mode' => !$maintenanceMode], 60*24*30); // Store for 30 days
+        
+        return back()->with('success', 
+            !$maintenanceMode ? 'Maintenance mode enabled' : 'Maintenance mode disabled'
+        );
     }
 
     public function optimizeSystem()

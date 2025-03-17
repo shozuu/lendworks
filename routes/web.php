@@ -29,6 +29,7 @@ use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\Admin\CompletionPaymentController;  // Add this import at the top
 use App\Http\Controllers\Admin\DisputeController;
 use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\CheckMaintenanceMode;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
@@ -191,8 +192,12 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     Route::delete('/system/categories/{category}', [SystemManagementController::class, 'deleteCategory'])->name('system.categories.delete');
 });
 
-Route::get('/', [ListingController::class, 'index'])->name('home');
-Route::get('listing/{listing}', [ListingController::class, 'show'])->name('listing.show');
-Route::get('/explore', [ExploreController::class, 'index'])->name('explore');
+Route::middleware(['web', CheckMaintenanceMode::class])->group(function() {
+    Route::get('/', [ListingController::class, 'index'])->name('home');
+    Route::get('listing/{listing}', [ListingController::class, 'show'])->name('listing.show');
+    Route::get('/explore', [ExploreController::class, 'index'])->name('explore');
+    
+    // Move other public routes here
+});
 
 require __DIR__ . '/auth.php';
