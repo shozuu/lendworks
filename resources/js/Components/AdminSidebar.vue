@@ -9,6 +9,7 @@ import {
     ClipboardList,
     Receipt,
     AlertTriangle,
+    Settings,
 } from "lucide-vue-next";
 
 const theme = ref(document.body.getAttribute("data-theme"));
@@ -54,7 +55,8 @@ const navigation = [
     { 
         name: "System", 
         href: route("admin.system"), 
-        icon: "gear" 
+        component: "Admin/System",
+        icon: Settings 
     }
 ];
 </script>
