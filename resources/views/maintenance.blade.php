@@ -25,12 +25,12 @@
         
         <!-- Content -->
         <div class="relative z-10 max-w-lg w-full text-center space-y-8">
-            <!-- Logo or Icon -->
+            <!-- Logo or Icon
             <div class="mb-8 animate-pulse-slow">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                 </svg>
-            </div>
+            </div>-->
 
             <div class="space-y-4">
                 <h1 class="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-blue-700">
