@@ -241,10 +241,11 @@ const formatTime = (timeStr) => {
 };
 
 // Add this computed property
-const showReturnScheduleButton = computed(() => 
-  props.rental.status === 'pending_return' && 
-  props.userRole === 'renter' && 
-  !props.rental.return_schedules?.some(s => s.is_selected)
+const showReturnScheduleButton = computed(
+	() =>
+		props.rental.status === "pending_return" &&
+		props.userRole === "renter" &&
+		!props.rental.return_schedules?.some((s) => s.is_selected)
 );
 </script>
 
@@ -276,11 +277,11 @@ const showReturnScheduleButton = computed(() =>
 
 		<RentalDurationTracker :rental="rental" />
 
-		<Card class="shadow-sm">
+		<Card class="shadow-sm overflow-hidden">
 			<CardHeader class="bg-card border-b">
 				<CardTitle>Timeline</CardTitle>
 			</CardHeader>
-			<CardContent class="p-6">
+			<CardContent class="p-3 sm:p-6">
 				<RentalTimeline
 					:events="rental.timeline_events"
 					:userRole="userRole"
@@ -290,7 +291,7 @@ const showReturnScheduleButton = computed(() =>
 		</Card>
 
 		<!-- Main Content -->
-		<div class="md:grid-cols-[2fr_1fr] grid gap-8">
+		<div class="grid gap-6 md:gap-8 md:grid-cols-[2fr_1fr]">
 			<!-- Left Column -->
 			<div class="space-y-8">
 				<!-- Listing Details -->
@@ -498,7 +499,7 @@ const showReturnScheduleButton = computed(() =>
 
 							<Separator />
 
-							 <!-- Enhanced Fee Breakdown -->
+							<!-- Enhanced Fee Breakdown -->
 							<div class="space-y-4">
 								<h4 class="font-medium">Fee Breakdown</h4>
 								<div class="space-y-4">
@@ -507,10 +508,16 @@ const showReturnScheduleButton = computed(() =>
 										<div class="space-y-1">
 											<span class="text-muted-foreground">Daily Rate</span>
 											<p class="text-xs text-muted-foreground">
-												{{ rental.quantity_approved || rental.quantity_requested }} unit(s) × {{ formatNumber(rental.listing.price) }}/day
+												{{ rental.quantity_approved || rental.quantity_requested }}
+												unit(s) × {{ formatNumber(rental.listing.price) }}/day
 											</p>
 										</div>
-										<span>{{ formatNumber(rental.listing.price * (rental.quantity_approved || rental.quantity_requested)) }}</span>
+										<span>{{
+											formatNumber(
+												rental.listing.price *
+													(rental.quantity_approved || rental.quantity_requested)
+											)
+										}}</span>
 									</div>
 
 									<!-- Overdue Days -->
@@ -529,7 +536,9 @@ const showReturnScheduleButton = computed(() =>
 												Fee per day × Days overdue
 											</p>
 										</div>
-										<span class="text-destructive">{{ formatNumber(rental.overdue_fee) }}</span>
+										<span class="text-destructive">{{
+											formatNumber(rental.overdue_fee)
+										}}</span>
 									</div>
 								</div>
 							</div>
@@ -554,12 +563,17 @@ const showReturnScheduleButton = computed(() =>
 							</div>
 
 							<!-- Warning for unpaid overdue -->
-							 <div v-else-if="!rental.overdue_payment" class="bg-destructive/10 p-4 mt-4 rounded-lg">
+							<div
+								v-else-if="!rental.overdue_payment"
+								class="bg-destructive/10 p-4 mt-4 rounded-lg"
+							>
 								<p class="text-destructive text-sm">
-								⚠️ Overdue payment must be settled before proceeding with the return process
+									⚠️ Overdue payment must be settled before proceeding with the return
+									process
 								</p>
 								<p class="text-muted-foreground mt-2 text-xs">
-								The total overdue fee is calculated based on your daily rental rate multiplied by the number of overdue days.
+									The total overdue fee is calculated based on your daily rental rate
+									multiplied by the number of overdue days.
 								</p>
 							</div>
 						</div>
@@ -703,7 +717,7 @@ const showReturnScheduleButton = computed(() =>
 							<template v-else-if="rental.status === 'disputed'">
 								<div class="space-y-4">
 									<p class="text-destructive text-sm font-medium">
-										 ⚠️ The lender has raised a dispute regarding the returned item
+										⚠️ The lender has raised a dispute regarding the returned item
 									</p>
 									<div class="bg-muted p-4 space-y-2 rounded-lg">
 										<p class="text-sm font-medium">Dispute Reason:</p>
@@ -850,7 +864,7 @@ const showReturnScheduleButton = computed(() =>
 								Choose Pickup Schedule
 							</Button>
 
-							 <!-- Replace the existing return schedule button with this -->
+							<!-- Replace the existing return schedule button with this -->
 							<Button
 								v-if="showReturnScheduleButton"
 								variant="default"
@@ -1054,7 +1068,7 @@ const showReturnScheduleButton = computed(() =>
 								<!-- Lender specific message -->
 								<template v-if="userRole === 'lender'">
 									<p class="text-destructive text-sm font-medium">
-										 ⚠️ Your dispute claim has been rejected by the admin
+										⚠️ Your dispute claim has been rejected by the admin
 									</p>
 									<div class="mt-3 space-y-2">
 										<p class="text-sm font-medium">Reason for Rejection:</p>
@@ -1095,7 +1109,7 @@ const showReturnScheduleButton = computed(() =>
 									>
 										<div class="space-y-3">
 											<p class="text-primary text-sm font-medium">
-												 ✓ This dispute has been resolved with deposit deduction
+												✓ This dispute has been resolved with deposit deduction
 											</p>
 
 											<!-- Show amount details -->
@@ -1297,5 +1311,4 @@ const showReturnScheduleButton = computed(() =>
 		:userRole="userRole"
 		:lenderSchedules="lenderSchedules"
 	/>
-
 </template>
