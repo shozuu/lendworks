@@ -50,7 +50,10 @@ import {
 defineOptions({ layout: AdminLayout });
 
 defineProps({
-    stats: Object
+    stats: {
+        type: Object,
+        required: true,
+    }
 });
 </script>
 
@@ -59,6 +62,116 @@ defineProps({
     
     <div class="space-y-8">
         <h2 class="text-2xl font-semibold tracking-tight">Dashboard Overview</h2>
+
+        <!-- Transaction Analytics (Moved to top) -->
+        <div>
+            <h3 class="text-lg font-medium mb-4">Transaction Analytics</h3>
+            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle class="text-sm font-medium">
+                            Completed Transactions
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="text-2xl font-bold">{{ stats?.transactionStats?.completed || 0 }}</div>
+                        <p class="text-xs text-muted-foreground">
+                            Last 30 days
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle class="text-sm font-medium">
+                            Active Rentals
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="text-2xl font-bold">{{ stats?.transactionStats?.active || 0 }}</div>
+                        <p class="text-xs text-muted-foreground">
+                            Currently ongoing
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle class="text-sm font-medium">
+                            Monthly Revenue
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="text-2xl font-bold">₱{{ (stats?.revenueStats?.monthly || 0).toLocaleString() }}</div>
+                        <p class="text-xs text-muted-foreground">
+                            Platform fees collected
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle class="text-sm font-medium">
+                            Success Rate
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="text-2xl font-bold">{{ stats?.performanceStats?.successRate || 0 }}%</div>
+                        <p class="text-xs text-muted-foreground">
+                            Completed vs Total
+                        </p>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+
+        <!-- Performance Metrics (Moved to top) -->
+        <div>
+            <h3 class="text-lg font-medium mb-4">Performance Metrics</h3>
+            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <Card>
+                    <CardHeader>
+                        <CardTitle class="text-sm font-medium">
+                            Average Response Time
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="text-2xl font-bold">{{ stats?.performanceStats?.avgResponseTime || 0 }}h</div>
+                        <p class="text-xs text-muted-foreground">
+                            For rental requests
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle class="text-sm font-medium">
+                            Dispute Rate
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="text-2xl font-bold">{{ stats?.performanceStats?.disputeRate || 0 }}%</div>
+                        <p class="text-xs text-muted-foreground">
+                            Of total transactions
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle class="text-sm font-medium">
+                            On-time Returns
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="text-2xl font-bold">{{ stats?.performanceStats?.onTimeReturnRate || 0 }}%</div>
+                        <p class="text-xs text-muted-foreground">
+                            Return compliance rate
+                        </p>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
 
         <!-- User Statistics -->
         <div>

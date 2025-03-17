@@ -60,6 +60,15 @@ class AdminController extends Controller
         $totalRejectedListings = Listing::where('status', 'rejected')->count();
         $totalTakenDownListings = Listing::where('status', 'taken_down')->count();
 
+        // Update the revenueStats calculation
+        $monthlyRevenue = RentalRequest::where(function($query) {
+            $query->where('status', 'completed')
+                  ->orWhere('status', 'completed_with_payments')
+                  ->orWhere('status', 'completed_pending_payments');
+        })
+        ->where('created_at', '>=', now()->startOfMonth())
+        ->sum(DB::raw('service_fee * 2')); // Multiply by 2 since we collect from both parties
+
         $stats = [
             'totalUsers' => User::count(),
             'totalListings' => Listing::count(),
@@ -157,11 +166,71 @@ class AdminController extends Controller
                 'last3Months' => User::whereBetween('created_at', 
                     [now()->subMonths(3), now()])->count(),
             ],
+
+            'transactionStats' => [
+                'completed' => RentalRequest::where('status', 'completed')
+                    ->where('created_at', '>=', now()->subDays(30))
+                    ->count(),
+                'active' => RentalRequest::where('status', 'active')->count(),
+            ],
+
+            'revenueStats' => [
+                'monthly' => $monthlyRevenue,
+            ],
+
+            'performanceStats' => [
+                'successRate' => $this->calculateSuccessRate(),
+                'avgResponseTime' => $this->calculateAverageResponseTime(),
+                'disputeRate' => $this->calculateDisputeRate(),
+                'onTimeReturnRate' => $this->calculateOnTimeReturnRate(),
+            ],
         ];
 
         return Inertia::render('Admin/Dashboard', [
             'stats' => $stats
         ]);
+    }
+
+    private function calculateSuccessRate()
+    {
+        $total = RentalRequest::whereNotIn('status', ['pending', 'active'])->count();
+        $completed = RentalRequest::where('status', 'completed')->count();
+        
+        return $total > 0 ? round(($completed / $total) * 100) : 0;
+    }
+
+    private function calculateAverageResponseTime()
+    {
+        // Get the average time between creation and first approval/rejection from timeline events
+        return round(DB::table('rental_requests as r')
+            ->join('rental_timeline_events as e', 'r.id', '=', 'e.rental_request_id')
+            ->where('e.event_type', 'approved')
+            ->orWhere('e.event_type', 'rejected')
+            ->whereNotNull('r.created_at')
+            ->whereNotNull('e.created_at')
+            ->average(DB::raw('TIMESTAMPDIFF(HOUR, r.created_at, e.created_at)')) ?? 0);
+    }
+
+    private function calculateDisputeRate()
+    {
+        $totalTransactions = RentalRequest::count();
+        $disputedTransactions = RentalRequest::whereHas('dispute')->count();
+        
+        return $totalTransactions > 0 
+            ? round(($disputedTransactions / $totalTransactions) * 100, 1) 
+            : 0;
+    }
+
+    private function calculateOnTimeReturnRate()
+    {
+        $completedRentals = RentalRequest::where('status', 'completed')->count();
+        $onTimeReturns = RentalRequest::where('status', 'completed')
+            ->whereRaw('return_at <= end_date')
+            ->count();
+        
+        return $completedRentals > 0 
+            ? round(($onTimeReturns / $completedRentals) * 100) 
+            : 0;
     }
 
     public function users(Request $request)
