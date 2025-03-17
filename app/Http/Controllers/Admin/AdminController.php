@@ -168,14 +168,24 @@ class AdminController extends Controller
             ],
 
             'transactionStats' => [
-                'completed' => RentalRequest::where('status', 'completed')
-                    ->where('created_at', '>=', now()->subDays(30))
+                'completed' => RentalRequest::where('created_at', '>=', now()->subDays(30))
+                    ->whereIn('status', [
+                        'completed',
+                        'completed_with_payments',
+                        'completed_pending_payments'
+                    ])
                     ->count(),
                 'active' => RentalRequest::where('status', 'active')->count(),
             ],
 
             'revenueStats' => [
                 'monthly' => $monthlyRevenue,
+                'total' => RentalRequest::whereIn('status', [
+                    'completed',
+                    'completed_with_payments',
+                    'completed_pending_payments'
+                ])
+                ->sum(DB::raw('service_fee * 2')), // Total all-time revenue
             ],
 
             'performanceStats' => [
@@ -194,7 +204,11 @@ class AdminController extends Controller
     private function calculateSuccessRate()
     {
         $total = RentalRequest::whereNotIn('status', ['pending', 'active'])->count();
-        $completed = RentalRequest::where('status', 'completed')->count();
+        $completed = RentalRequest::whereIn('status', [
+            'completed',
+            'completed_with_payments',
+            'completed_pending_payments'
+        ])->count();
         
         return $total > 0 ? round(($completed / $total) * 100) : 0;
     }

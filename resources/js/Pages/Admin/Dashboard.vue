@@ -104,7 +104,21 @@ defineProps({
                     <CardContent>
                         <div class="text-2xl font-bold">₱{{ (stats?.revenueStats?.monthly || 0).toLocaleString() }}</div>
                         <p class="text-xs text-muted-foreground">
-                            Platform fees collected
+                            Platform fees this month
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle class="text-sm font-medium">
+                            Total Revenue
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="text-2xl font-bold">₱{{ (stats?.revenueStats?.total || 0).toLocaleString() }}</div>
+                        <p class="text-xs text-muted-foreground">
+                            All-time platform earnings
                         </p>
                     </CardContent>
                 </Card>
