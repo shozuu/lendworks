@@ -18,11 +18,6 @@ const props = defineProps({
 });
 
 const initiateForm = useForm({});
-const scheduleForm = useForm({
-  return_datetime: '',
-  start_time: '',
-  end_time: ''
-});
 const confirmForm = useForm({});
 
 // Dialog state
@@ -105,35 +100,6 @@ const formatScheduleTime = (schedule) => {
   return `${formatTimeString(schedule.start_time)} to ${formatTimeString(schedule.end_time)}`;
 };
 
-// Handle schedule selection
-const handleScheduleSubmit = (schedule) => {
-  const datetime = format(schedule.scheduleDate, 'yyyy-MM-dd');
-  
-  console.log('Submitting schedule:', {
-    return_datetime: datetime,
-    start_time: schedule.start_time,
-    end_time: schedule.end_time
-  });
-
-  // Reset form data before submitting
-  scheduleForm.clearErrors();
-  scheduleForm.return_datetime = datetime;
-  scheduleForm.start_time = schedule.start_time;
-  scheduleForm.end_time = schedule.end_time;
-
-  scheduleForm.post(route('return-schedules.store', props.rental.id), {
-    preserveScroll: true,
-    onError: (errors) => {
-      console.error('Submit failed:', errors);
-    },
-    onSuccess: () => {
-      console.log('Submit successful');
-      // Reset form after successful submission
-      scheduleForm.reset();
-    }
-  });
-};
-
 // Handle schedule confirmation by lender
 const handleConfirmSchedule = () => {
   if (!selectedSchedule.value) return;
@@ -203,10 +169,10 @@ const returnProofType = ref('submit');
 const selectedScheduleDetails = computed(() => {
   if (!selectedSchedule.value) return null;
 
-  const date = new Date(selectedSchedule.value.return_datetime);
+  const scheduleDate = new Date(selectedSchedule.value.return_datetime);
   return {
-    dayOfWeek: format(date, 'EEEE'),
-    date: format(date, 'MMMM d, yyyy'),
+    dayOfWeek: format(scheduleDate, 'EEEE'),
+    date: format(scheduleDate, 'MMMM d, yyyy'),
     timeFrame: `${formatTimeString(selectedSchedule.value.start_time)} to ${formatTimeString(selectedSchedule.value.end_time)}`
   };
 });
@@ -437,83 +403,96 @@ const scheduleConfirmationMessage = computed(() => {
             </Button>
           </div>
 
-          <!-- Return Schedule Selection - Only visible to renter -->
-          <div v-if="showSchedulePicker" class="space-y-4">
-            <div 
-              v-for="schedule in availableSchedules" 
-              :key="schedule.id"
-              class="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-            >
-              <div class="flex items-center justify-between">
-                <div class="space-y-1">
-                  <div class="flex items-baseline gap-2">
-                    <p class="text-sm font-medium">{{ schedule.day_of_week }}</p>
-                    <p class="text-xs text-muted-foreground">
-                      {{ format(schedule.scheduleDate, 'MMM d, yyyy') }}
-                    </p>
+          <!-- Add Return Schedule Section similar to Pickup Schedule -->
+          <Card v-if="selectedSchedule" class="shadow-sm">
+            <CardHeader class="bg-card border-b">
+              <CardTitle class="text-lg">Return Details</CardTitle>
+            </CardHeader>
+            <CardContent class="p-6">
+              <div class="space-y-6">
+                <!-- Meetup Location -->
+                <div class="space-y-2">
+                  <h4 class="font-medium">Meetup Location</h4>
+                  <div class="p-4 border rounded-lg bg-muted/30">
+                    <div class="space-y-2">
+                      <p class="font-medium">{{ rental.listing.location.address }}</p>
+                      <p class="text-muted-foreground text-sm">
+                        {{ rental.listing.location.city }},
+                        {{ rental.listing.location.province }}
+                        {{ rental.listing.location.postal_code }}
+                      </p>
+                    </div>
                   </div>
-                  <p class="text-sm text-muted-foreground">
-                    {{ schedule.formattedTime }}
-                  </p>
                 </div>
-                <Button
-                  size="sm"
-                  @click="handleScheduleSubmit(schedule)"
-                  :disabled="scheduleForm.processing"
-                >
-                  Select
-                </Button>
+
+                <!-- Schedule Information -->
+                <div class="space-y-2">
+                  <h4 class="font-medium">Scheduled Time</h4>
+                  <div class="p-4 border rounded-lg bg-muted/30">
+                    <div class="space-y-3">
+                      <div class="flex items-baseline justify-between">
+                        <span class="font-medium">{{ format(new Date(selectedSchedule.return_datetime), 'EEEE') }}</span>
+                        <span class="text-sm text-muted-foreground">
+                          {{ format(new Date(selectedSchedule.return_datetime), 'MMMM d, yyyy') }}
+                        </span>
+                      </div>
+                      <div class="flex items-center justify-between">
+                        <span class="text-sm text-muted-foreground">Time Frame</span>
+                        <span class="font-medium">
+                          {{ formatTimeString(selectedSchedule.start_time) }} - {{ formatTimeString(selectedSchedule.end_time) }}
+                        </span>
+                      </div>
+                      <!-- Add Status Message -->
+                      <div class="mt-2 pt-2 border-t">
+                        <p class="text-sm" :class="selectedSchedule.is_confirmed ? 'text-primary' : 'text-muted-foreground'">
+                          <template v-if="selectedSchedule.is_confirmed">
+                            {{ userRole === 'renter' ? 'Schedule confirmed by lender' : 'You have confirmed this schedule' }}
+                          </template>
+                          <template v-else>
+                            {{ userRole === 'renter' ? 'Awaiting lender confirmation' : 'Schedule needs your confirmation' }}
+                          </template>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Important Notes -->
+                <div class="space-y-2">
+                  <h4 class="font-medium">Important Notes</h4>
+                  <ul class="space-y-2 text-sm text-muted-foreground">
+                    <li class="flex items-center gap-2">
+                      <span class="text-primary">•</span>
+                      <span>Please arrive at the meetup location on time</span>
+                    </li>
+                    <li class="flex items-center gap-2">
+                      <span class="text-primary">•</span>
+                      <span>Take photos of the item during handover for proof</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <!-- Lender Confirmation Button -->
+                <div v-if="userRole === 'lender' && !selectedSchedule.is_confirmed">
+                  <Button 
+                    class="w-full" 
+                    @click="handleConfirmSchedule"
+                    :disabled="confirmForm.processing"
+                  >
+                    Confirm Return Schedule
+                  </Button>
+                </div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            <p 
-              v-if="!availableSchedules.length" 
-              class="text-muted-foreground py-8 text-center text-sm"
-            >
-              No available schedules after the rental end date.
-            </p>
-          </div>
-
+          <!-- Rest of the existing template code -->
           <!-- Waiting message - Only visible to lender -->
           <div 
             v-if="showWaitingMessage" 
             class="p-4 text-center text-muted-foreground bg-muted/30 rounded-lg"
           >
             Waiting for renter to select a return schedule...
-          </div>
-
-          <!-- Selected Schedule Display -->
-          <div v-if="selectedSchedule && !selectedSchedule.is_confirmed" 
-              class="p-4 border rounded-lg"
-          >
-            <div class="space-y-3">
-              <div class="space-y-1">
-                <h3 class="font-medium">Proposed Return Schedule</h3>
-                <div class="flex items-baseline justify-between">
-                  <span class="text-sm">{{ selectedScheduleDetails.dayOfWeek }}</span>
-                  <span class="text-sm text-muted-foreground">
-                    {{ selectedScheduleDetails.date }}
-                  </span>
-                </div>
-                <p class="text-sm text-muted-foreground">
-                  {{ selectedScheduleDetails.timeFrame }}
-                </p>
-              </div>
-
-              <div v-if="userRole === 'lender'" class="pt-2 border-t">
-                <Button 
-                  class="w-full"
-                  @click="handleConfirmSchedule(selectedSchedule)"
-                  :disabled="confirmForm.processing"
-                >
-                  Confirm Return Schedule
-                </Button>
-              </div>
-
-              <div v-else class="pt-2 border-t text-center text-sm text-muted-foreground">
-                Waiting for lender to confirm schedule...
-              </div>
-            </div>
           </div>
 
           <!-- Confirmed Schedule Display -->

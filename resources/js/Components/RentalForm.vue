@@ -5,7 +5,7 @@ import Button from "@/Components/ui/button/Button.vue";
 import RentalDatesPicker from "./RentalDatesPicker.vue";
 import { calculateRentalPrice } from "@/lib/rentalCalculator";
 import { formatNumber, formatDate } from "@/lib/formatters";
-import { ref, reactive, watch, onMounted } from "vue";
+import { ref, reactive, watch, onMounted, computed } from "vue";
 import { useForm as useInertiaForm } from "@inertiajs/vue3";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { XCircle, Clock } from "lucide-vue-next";
@@ -60,6 +60,9 @@ const selectedDates = ref({
 
 const errors = ref({});
 const isSubmitting = ref(false);
+
+// Add computed property for available quantity
+const availableQuantity = computed(() => props.listing.available_quantity);
 
 function updateRentalPrice() {
 	const result = calculateRentalPrice(
@@ -125,7 +128,10 @@ watch(
 );
 
 // Add watch for quantity changes
-watch(quantity, () => {
+watch(quantity, (newVal) => {
+	if (newVal > availableQuantity.value) {
+		quantity.value = availableQuantity.value;
+	}
 	updateRentalPrice();
 });
 
@@ -236,32 +242,32 @@ onMounted(() => {
 					</p>
 				</div>
 				<template v-else>
-					<!-- Add this before the rental dates section -->
-					<div class="space-y-2">
-						<div class="font-semibold">Quantity</div>
-						<div class="flex items-center gap-2">
-							<Button
-								variant="outline"
-								size="sm"
-								:disabled="quantity === 1"
-								@click="quantity--"
-							>
-								-
-							</Button>
-							<span class="w-12 text-center">{{ quantity }}</span>
-							<Button
-								variant="outline"
-								size="sm"
-								:disabled="quantity >= listing.available_quantity"
-								@click="quantity++"
-							>
-								+
-							</Button>
+						<!-- Update quantity section -->
+						<div class="space-y-2">
+							<div class="font-semibold">Quantity</div>
+							<div class="flex items-center gap-2">
+								<Button
+									variant="outline"
+									size="sm"
+									:disabled="quantity === 1"
+									@click="quantity--"
+								>
+									-
+								</Button>
+								<span class="w-12 text-center">{{ quantity }}</span>
+								<Button
+									variant="outline"
+									size="sm"
+									:disabled="quantity >= availableQuantity"
+									@click="quantity++"
+								>
+									+
+								</Button>
+							</div>
+							<p class="text-muted-foreground text-xs">
+								{{ availableQuantity }} unit{{ availableQuantity !== 1 ? 's' : '' }} available for rent
+							</p>
 						</div>
-						<p class="text-muted-foreground text-xs">
-							{{ listing.available_quantity }} units available for rent
-						</p>
-					</div>
 
 					<div class="space-y-2">
 						<div class="font-semibold">Rental Dates</div>

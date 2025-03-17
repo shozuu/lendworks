@@ -24,7 +24,9 @@ class RentalTimelineEvent extends Model
         'return_schedule_selected',
         'return_schedule_confirmed',
         'return_submitted',
-        'return_confirmed'
+        'return_confirmed',
+        'lender_payment_processed',
+        'deposit_refund_processed'
     ];
 
     protected static $metadataStructure = [

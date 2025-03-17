@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import RentalTimeline from "@/Components/RentalTimeline.vue";
 import { Link } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
-import { Package, AlertCircle, CheckCircle2, Clock, Wallet } from "lucide-vue-next";
+import { Package, AlertCircle, CheckCircle2, Clock, Wallet, Shield } from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
 import CompletionPaymentDialog from "@/Components/Admin/CompletionPaymentDialog.vue";
 import PaymentProofDialog from "@/Components/PaymentProofDialog.vue"; // Add this import
@@ -79,19 +79,13 @@ const depositRefund = computed(() =>
 	props.rental.completion_payments?.find((p) => p.type === "deposit_refund")
 );
 
-// Update completion status check to show success state
+// Update showSuccessStatus computed
 const showSuccessStatus = computed(() => {
-	console.log("Checking Success Status:", {
-		status: props.rental.status,
-		hasLenderPayment: props.rental.available_actions.hasLenderPayment,
-		hasDepositRefund: props.rental.available_actions.hasDepositRefund,
-	});
-
-	return (
-		props.rental.status === "completed_with_payments" &&
-		props.rental.available_actions.hasLenderPayment &&
-		props.rental.available_actions.hasDepositRefund
-	);
+    return (
+        props.rental.status === 'completed_with_payments' ||
+        (props.rental.available_actions.hasLenderPayment && 
+         props.rental.available_actions.hasDepositRefund)
+    );
 });
 
 // Update/Add these computed properties
@@ -826,7 +820,59 @@ const showOverdueSection = computed(() => {
 					</CardContent>
 				</Card>
 
-				<!-- Replace the existing lender earnings card with this simpler version -->
+				<!-- Replace the Security Deposit Status card content -->
+				<Card class="shadow-sm">
+					<CardHeader class="bg-card border-b">
+						<CardTitle class="flex items-center gap-2">
+							<Shield class="w-4 h-4 text-blue-500" />
+							Security Deposit Status
+						</CardTitle>
+					</CardHeader>
+					<CardContent class="p-4">
+						<div class="space-y-4">
+							<!-- Original Amount with Per Unit Breakdown -->
+							<div class="space-y-2">
+								<div class="flex justify-between items-center">
+									<span class="text-sm text-muted-foreground">Original Deposit:</span>
+									<span>{{ formatNumber(rental.deposit_status?.original_amount || 0) }}</span>
+								</div>
+								<div class="text-xs text-muted-foreground flex justify-between">
+									<span>Per unit ({{ rental.deposit_status?.quantity }} unit(s)):</span>
+									<span>{{ formatNumber(rental.deposit_status?.per_unit_amount || 0) }}</span>
+								</div>
+							</div>
+
+							<!-- Show Deductions if any -->
+							<template v-if="rental.deposit_status?.has_deductions">
+								<div class="flex justify-between items-center text-destructive">
+									<span class="text-sm">Deduction:</span>
+									<span>- {{ formatNumber(rental.deposit_status?.deducted_amount || 0) }}</span>
+								</div>
+								<div class="text-sm bg-muted p-3 rounded-lg">
+									<p class="text-muted-foreground">Deduction Reason:</p>
+									<p class="mt-1">{{ rental.deposit_status?.deduction_reason || 'No reason provided' }}</p>
+								</div>
+							</template>
+
+							<Separator />
+
+							<!-- Remaining Amount -->
+							<div class="flex justify-between items-center font-medium">
+								<span>Remaining Deposit:</span>
+								<span class="text-primary">{{ formatNumber(rental.deposit_status?.remaining_amount || 0) }}</span>
+							</div>
+
+							<!-- Refund Status -->
+							<div v-if="rental.deposit_status?.is_refunded" 
+								class="flex items-center gap-2 text-sm text-emerald-500">
+								<CheckCircle2 class="w-4 h-4" />
+								<span>Deposit has been refunded</span>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
+
+				<!-- Replace the lender earnings card content -->
 				<Card class="shadow-sm">
 					<CardHeader class="bg-card border-b">
 						<CardTitle> Total Lender Earnings </CardTitle>
@@ -848,6 +894,14 @@ const showOverdueSection = computed(() => {
 								<span class="font-medium">Overdue Fee:</span>
 								<span>+ {{ formatNumber(rental.overdue_fee) }}</span>
 							</div>
+							<!-- Add deposit deduction section -->
+							<div
+								v-if="rental.dispute?.resolution_type === 'deposit_deducted'"
+								class="text-emerald-500 flex items-center justify-between"
+							>
+								<span class="font-medium">Deposit Deduction:</span>
+								<span>+ {{ formatNumber(rental.dispute.deposit_deduction) }}</span>
+							</div>
 							<Separator />
 							<div class="flex items-center justify-between">
 								<span class="font-medium">Total Earnings:</span>
@@ -855,17 +909,18 @@ const showOverdueSection = computed(() => {
 									{{
 										formatNumber(
 											rental.base_price -
-												rental.discount -
-												rental.service_fee +
-												(showOverdueSection ? rental.overdue_fee : 0)
+											rental.discount -
+											rental.service_fee +
+											(showOverdueSection ? rental.overdue_fee : 0) +
+											(rental.dispute?.resolution_type === 'deposit_deducted' ? rental.dispute.deposit_deduction : 0)
 										)
 									}}
 								</span>
 							</div>
 							<p class="text-muted-foreground text-xs">
 								{{
-									showOverdueSection
-										? "Total earnings including overdue fees"
+									showOverdueSection || rental.dispute?.resolution_type === 'deposit_deducted'
+										? "Total earnings including additional fees and deductions"
 										: "Total earnings after discounts and fees"
 								}}
 							</p>

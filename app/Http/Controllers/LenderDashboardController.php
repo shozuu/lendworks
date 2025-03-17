@@ -29,12 +29,11 @@ class LenderDashboardController extends Controller
         // Group rentals by status
         $groupedListings = $rentals->groupBy(function ($rental) {
             // Move completed transactions to completed tab
-            if ($rental->status === 'completed' || 
-                $rental->status === 'completed_pending_payments' || 
-                $rental->status === 'completed_with_payments') {
+            if (in_array($rental->status, ['completed', 'completed_pending_payments', 'completed_with_payments'])) {
                 return 'completed';
             }
 
+            // Handle other statuses
             if ($rental->status === 'active' && $rental->end_date < now()) {
                 // Check if there's a verified overdue payment
                 $hasVerifiedOverduePayment = $rental->payment_request()

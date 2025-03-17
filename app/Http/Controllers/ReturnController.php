@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use App\Models\LenderPickupSchedule; // Add this import at the top
 
 class ReturnController extends Controller
 {
@@ -295,5 +296,46 @@ class ReturnController extends Controller
             report($e);
             return back()->with('error', 'Failed to raise dispute. Please try again.');
         }
+    }
+
+    public function selectSchedule(Request $request, RentalRequest $rental, LenderPickupSchedule $lender_schedule)
+    {
+        if ($rental->renter_id !== Auth::id()) {
+            abort(403);
+        }
+
+        // Add validation for the schedule data
+        $validated = $request->validate([
+            'return_datetime' => 'required|date',
+            'start_time' => 'required|string',
+            'end_time' => 'required|string'
+        ]);
+
+        DB::transaction(function () use ($rental, $lender_schedule, $validated) {
+            // Reset existing selections
+            $rental->return_schedules()->update(['is_selected' => false]);
+
+            // Create new schedule with all required fields
+            $schedule = ReturnSchedule::create([
+                'rental_request_id' => $rental->id,
+                'lender_pickup_schedule_id' => $lender_schedule->id,
+                'return_datetime' => $validated['return_datetime'],
+                'start_time' => $validated['start_time'],
+                'end_time' => $validated['end_time'],
+                'is_selected' => true
+            ]);
+
+            // Log the created schedule for debugging
+            \Log::info('Return schedule created:', $schedule->toArray());
+
+            $rental->recordTimelineEvent('return_schedule_selected', Auth::id(), [
+                'datetime' => $schedule->return_datetime,
+                'start_time' => $schedule->start_time,
+                'end_time' => $schedule->end_time,
+                'day_of_week' => Carbon::parse($schedule->return_datetime)->format('l')
+            ]);
+        });
+
+        return back()->with('success', 'Return schedule selected successfully.');
     }
 }

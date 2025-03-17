@@ -204,8 +204,8 @@ const handleQuantityInput = (event) => {
 				<!-- Enhanced quantity input -->
 				<div v-if="showQuantity" class="space-y-3 mb-4">
 					<div class="flex items-center justify-between">
-						<label class="text-sm font-medium">Quantity to Approve</label>
-						<span class="text-xs text-muted-foreground">
+						<label class="text-foreground text-sm font-medium">Quantity to Approve</label>
+						<span class="text-muted-foreground text-xs">
 							Maximum: {{ maxQuantity }} unit(s)
 						</span>
 					</div>
@@ -215,7 +215,7 @@ const handleQuantityInput = (event) => {
 							type="button"
 							variant="outline"
 							size="icon"
-							class="h-8 w-8"
+							class="h-9 w-9 shrink-0"
 							:disabled="quantityValue <= 1"
 							@click="decrementQuantity"
 						>
@@ -229,7 +229,7 @@ const handleQuantityInput = (event) => {
 								@input="handleQuantityInput"
 								min="1"
 								:max="maxQuantity"
-								class="w-full h-8 px-3 text-center border rounded-md"
+								class="w-full h-9 px-3 text-center rounded-md border border-input bg-background text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 							/>
 						</div>
 
@@ -237,7 +237,7 @@ const handleQuantityInput = (event) => {
 							type="button"
 							variant="outline"
 							size="icon"
-							class="h-8 w-8"
+							class="h-9 w-9 shrink-0"
 							:disabled="quantityValue >= maxQuantity"
 							@click="incrementQuantity"
 						>
@@ -394,6 +394,27 @@ textarea::-webkit-scrollbar-thumb {
 textarea {
 	min-height: 120px;
 	max-height: 300px;
+}
+
+/* Update input number styles */
+input[type="number"] {
+    @apply text-base font-medium;
+    -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Ensure proper input color contrast */
+input[type="number"]::placeholder {
+    @apply text-muted-foreground/60;
+}
+
+input[type="number"]:focus {
+    @apply border-ring;
 }
 
 input[type="number"] {

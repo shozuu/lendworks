@@ -47,7 +47,8 @@ class RentalRequest extends Model
         'overdue_days',
         'is_overdue',
         'overdue_fee',
-        'total_lender_earnings'  
+        'total_lender_earnings',
+        'deposit_status'  // Add this line
     ];
 
     // Define core rental status constants
@@ -369,10 +370,12 @@ class RentalRequest extends Model
             return 0;
         }
         
+        // Get daily rate per unit and multiply by quantity
         $dailyRate = abs((float) $this->listing->price);
+        $quantity = $this->quantity_approved ?: $this->quantity_requested;
         $overdueDays = abs($this->overdue_days);
         
-        return $dailyRate * $overdueDays;
+        return $dailyRate * $overdueDays * $quantity;
     }
 
     // Add these new methods
@@ -445,30 +448,46 @@ class RentalRequest extends Model
     // Add this new method
     public function getTotalLenderEarningsAttribute()
     {
-        // Get base earnings
         $baseEarnings = $this->base_price - $this->discount - $this->service_fee;
-        
-        // Add overdue fees if any
         $overdueFee = $this->overdue_payment ? $this->overdue_payment->amount : 0;
-        
-        // Add deposit deductions
-        $depositDeductions = $this->depositDeductions()->sum('amount');
-        
+        $depositDeduction = $this->dispute && $this->dispute->resolution_type === 'deposit_deducted'
+            ? $this->dispute->deposit_deduction
+            : 0;
 
-
-        return $baseEarnings + $overdueFee + $depositDeductions;
+        return $baseEarnings + $overdueFee + $depositDeduction;
     }
 
     public function getRemainingDepositAttribute()
     {
-        // Use DB facade for direct query to ensure accurate calculation
-        $totalDeductions = DB::table('deposit_deductions')
-            ->where('rental_request_id', $this->id)
-            ->sum('amount') ?? 0;
+        $depositFee = $this->deposit_fee;
+        $deduction = $this->dispute && $this->dispute->resolution_type === 'deposit_deducted' 
+            ? $this->dispute->deposit_deduction 
+            : 0;
+            
+        return max(0, $depositFee - $deduction);
+    }
 
-        $remainingDeposit = $this->deposit_fee - $totalDeductions;
+    public function getDepositStatusAttribute()
+    {
+        $originalAmount = $this->deposit_fee;
+        $deductionAmount = $this->dispute && $this->dispute->resolution_type === 'deposit_deducted' 
+            ? $this->dispute->deposit_deduction 
+            : 0;
+            
+        $perUnitDeposit = $this->quantity_approved 
+            ? ($this->deposit_fee / $this->quantity_approved)
+            : ($this->deposit_fee / $this->quantity_requested);
 
-        return max(0, $remainingDeposit);
+        return [
+            'original_amount' => $originalAmount,
+            'per_unit_amount' => $perUnitDeposit,
+            'deducted_amount' => $deductionAmount,
+            'remaining_amount' => max(0, $originalAmount - $deductionAmount),
+            'has_deductions' => $this->dispute && $this->dispute->resolution_type === 'deposit_deducted',
+            'deduction_reason' => $this->dispute?->deposit_deduction_reason,
+            'is_refunded' => $this->completion_payments()->where('type', 'deposit_refund')->exists(),
+            'quantity' => $this->quantity_approved ?: $this->quantity_requested
+        ];
     }
 
     // Scopes
@@ -645,5 +664,27 @@ class RentalRequest extends Model
         $this->total_price = ($this->base_price - $this->discount + $this->service_fee + $this->deposit_fee);
         
         return $this;
+    }
+
+    /**
+     * Check and update completion payment status
+     */
+    public function checkCompletionPaymentStatus()
+    {
+        if ($this->status !== 'completed_pending_payments') {
+            return;
+        }
+
+        $hasLenderPayment = $this->completion_payments()
+            ->where('type', 'lender_payment')
+            ->exists();
+            
+        $hasDepositRefund = $this->completion_payments()
+            ->where('type', 'deposit_refund')
+            ->exists();
+
+        if ($hasLenderPayment && $hasDepositRefund) {
+            $this->update(['status' => 'completed_with_payments']);
+        }
     }
 }

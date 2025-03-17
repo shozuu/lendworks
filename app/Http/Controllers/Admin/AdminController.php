@@ -23,18 +23,228 @@ use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
 {
+    /**
+     * Change Log - AdminController.php
+     * 
+     * Changes Made:
+     * 1. Enhanced dashboard() method with additional statistics:
+     *    - Added recentActivity metrics for today's activities
+     *    - Added categoryBreakdown for listing categories distribution
+     *    - Added listingPriceDistribution for price range analysis
+     *    - Added topLocations to show most active cities
+     *    - Added mostActiveUsers to track top contributors
+     *    - Added userGrowth metrics for different time periods
+     * 
+     * 2. Improved error handling:
+     *    - Added null checks with fallback values
+     *    - Added error handling for potentially missing relationships
+     *    - Added proper data formatting for frontend consumption
+     * 
+     * 3. Optimized database queries:
+     *    - Used proper aggregates and grouping
+     *    - Implemented eager loading for relationships
+     *    - Added efficient filtering for approved listings
+     * 
+     * 4. Added getCategoryFilters method to get categories with counts
+     * 5. Modified listings method to include category filter
+     * 6. Added category filter to query builder
+     */
+
     public function dashboard()
     {
+        // Base stats calculation
+        $activeListingsCount = Listing::where('status', 'approved')
+                                     ->where('is_available', true)
+                                     ->count();
+        
+        $totalRejectedListings = Listing::where('status', 'rejected')->count();
+        $totalTakenDownListings = Listing::where('status', 'taken_down')->count();
+
+        // Update the revenueStats calculation
+        $monthlyRevenue = RentalRequest::where(function($query) {
+            $query->where('status', 'completed')
+                  ->orWhere('status', 'completed_with_payments')
+                  ->orWhere('status', 'completed_pending_payments');
+        })
+        ->where('created_at', '>=', now()->startOfMonth())
+        ->sum(DB::raw('service_fee * 2')); // Multiply by 2 since we collect from both parties
+
         $stats = [
             'totalUsers' => User::count(),
             'totalListings' => Listing::count(),
             'pendingApprovals' => Listing::where('status', 'pending')->count(),
             'activeUsers' => User::where('status', 'active')->count(),
+            'verifiedUsers' => User::where('email_verified_at', '!=' , null)->count(),
+            'newUsersThisMonth' => User::whereMonth('created_at', now()->month)->count(),
+            'activeListings' => Listing::where('status', 'approved')
+                                     ->where('is_available', true)
+                                     ->count(),
+            'suspendedUsers' => User::where('status', 'suspended')->count(),
+            'listingStats' => [
+                'approved' => $activeListingsCount,
+                'rejected' => $totalRejectedListings,
+                'takenDown' => $totalTakenDownListings,
+            ],
+            'averageListingPrice' => Listing::where('status', 'approved')
+                                          ->average('price') ?? 0,
+            'highestListingPrice' => Listing::where('status', 'approved')
+                                          ->max('price') ?? 0,
+            'lowestListingPrice' => Listing::where('status', 'approved')
+                                         ->where('price', '>', 0)
+                                         ->min('price') ?? 0,
+            'unverifiedUsers' => User::whereNull('email_verified_at')->count(),
+
+            // Add recent activity stats
+            'recentActivity' => [
+                'newUsersToday' => User::whereDate('created_at', today())->count(),
+                'newListingsToday' => Listing::whereDate('created_at', today())->count(),
+                'pendingApprovalsToday' => Listing::where('status', 'pending')
+                                                ->whereDate('created_at', today())
+                                                ->count(),
+            ],
+
+            // Update category breakdown to include average price
+            'categoryBreakdown' => Listing::where('status', 'approved')
+                ->select(
+                    'category_id',
+                    DB::raw('count(*) as count'),
+                    DB::raw('ROUND(AVG(price), 2) as average_price')
+                )
+                ->groupBy('category_id')
+                ->with('category:id,name')
+                ->get()
+                ->map(fn($item) => [
+                    'name' => $item->category->name ?? 'Uncategorized',
+                    'count' => $item->count,
+                    'average_price' => $item->average_price ?? 0,
+                ]),
+
+            // Add price distribution
+            'listingPriceDistribution' => [
+                'under100' => Listing::where('status', 'approved')
+                                    ->where('price', '<', 100)->count(),
+                'under500' => Listing::where('status', 'approved')
+                                    ->whereBetween('price', [100, 499])->count(),
+                'under1000' => Listing::where('status', 'approved')
+                                     ->whereBetween('price', [500, 999])->count(),
+                'over1000' => Listing::where('status', 'approved')
+                                    ->where('price', '>=', 1000)->count(),
+            ],
+
+            // Add top locations
+            'topLocations' => Listing::where('status', 'approved')
+                ->select('location_id', DB::raw('count(*) as count'))
+                ->groupBy('location_id')
+                ->with('location:id,city')
+                ->orderByDesc('count')
+                ->limit(5)
+                ->get()
+                ->map(fn($item) => [
+                    'city' => $item->location->city ?? 'Unknown',
+                    'count' => $item->count,
+                ]),
+
+            // Add most active users
+            'mostActiveUsers' => User::withCount(['listings' => function($query) {
+                    $query->where('status', 'approved');
+                }])
+                ->orderByDesc('listings_count')
+                ->limit(5)
+                ->get(['id', 'name', 'email'])
+                ->map(fn($user) => [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'listings_count' => $user->listings_count,
+                ]),
+
+            // Growth stats
+            'userGrowth' => [
+                'lastWeek' => User::whereBetween('created_at', 
+                    [now()->subWeek(), now()])->count(),
+                'lastMonth' => User::whereBetween('created_at', 
+                    [now()->subMonth(), now()])->count(),
+                'last3Months' => User::whereBetween('created_at', 
+                    [now()->subMonths(3), now()])->count(),
+            ],
+
+            'transactionStats' => [
+                'completed' => RentalRequest::where('created_at', '>=', now()->subDays(30))
+                    ->whereIn('status', [
+                        'completed',
+                        'completed_with_payments',
+                        'completed_pending_payments'
+                    ])
+                    ->count(),
+                'active' => RentalRequest::where('status', 'active')->count(),
+            ],
+
+            'revenueStats' => [
+                'monthly' => $monthlyRevenue,
+                'total' => RentalRequest::whereIn('status', [
+                    'completed',
+                    'completed_with_payments',
+                    'completed_pending_payments'
+                ])
+                ->sum(DB::raw('service_fee * 2')), // Total all-time revenue
+            ],
+
+            'performanceStats' => [
+                'successRate' => $this->calculateSuccessRate(),
+                'avgResponseTime' => $this->calculateAverageResponseTime(),
+                'disputeRate' => $this->calculateDisputeRate(),
+                'onTimeReturnRate' => $this->calculateOnTimeReturnRate(),
+            ],
         ];
 
         return Inertia::render('Admin/Dashboard', [
             'stats' => $stats
         ]);
+    }
+
+    private function calculateSuccessRate()
+    {
+        $total = RentalRequest::whereNotIn('status', ['pending', 'active'])->count();
+        $completed = RentalRequest::whereIn('status', [
+            'completed',
+            'completed_with_payments',
+            'completed_pending_payments'
+        ])->count();
+        
+        return $total > 0 ? round(($completed / $total) * 100) : 0;
+    }
+
+    private function calculateAverageResponseTime()
+    {
+        // Get the average time between creation and first approval/rejection from timeline events
+        return round(DB::table('rental_requests as r')
+            ->join('rental_timeline_events as e', 'r.id', '=', 'e.rental_request_id')
+            ->where('e.event_type', 'approved')
+            ->orWhere('e.event_type', 'rejected')
+            ->whereNotNull('r.created_at')
+            ->whereNotNull('e.created_at')
+            ->average(DB::raw('TIMESTAMPDIFF(HOUR, r.created_at, e.created_at)')) ?? 0);
+    }
+
+    private function calculateDisputeRate()
+    {
+        $totalTransactions = RentalRequest::count();
+        $disputedTransactions = RentalRequest::whereHas('dispute')->count();
+        
+        return $totalTransactions > 0 
+            ? round(($disputedTransactions / $totalTransactions) * 100, 1) 
+            : 0;
+    }
+
+    private function calculateOnTimeReturnRate()
+    {
+        $completedRentals = RentalRequest::where('status', 'completed')->count();
+        $onTimeReturns = RentalRequest::where('status', 'completed')
+            ->whereRaw('return_at <= end_date')
+            ->count();
+        
+        return $completedRentals > 0 
+            ? round(($onTimeReturns / $completedRentals) * 100) 
+            : 0;
     }
 
     public function users(Request $request)
@@ -48,6 +258,15 @@ class AdminController extends Controller
 
         $query = User::withCount('listings');
 
+        // Get user counts for filters
+        $userCounts = [
+            'total' => User::count(),
+            'active' => User::where('status', 'active')->count(),
+            'suspended' => User::where('status', 'suspended')->count(),
+            'verified' => User::whereNotNull('email_verified_at')->count(),
+            'unverified' => User::whereNull('email_verified_at')->count(),
+        ];
+
         // Search
         if ($search = $request->input('search')) {
             $query->where(function($q) use ($search) {
@@ -60,6 +279,15 @@ class AdminController extends Controller
         if ($status = $request->input('status')) {
             if ($status !== 'all') {
                 $query->where('status', $status);
+            }
+        }
+
+        // Verification filter
+        if ($verified = $request->input('verified')) {
+            if ($verified === 'verified') {
+                $query->whereNotNull('email_verified_at');
+            } elseif ($verified === 'unverified') {
+                $query->whereNull('email_verified_at');
             }
         }
 
@@ -82,8 +310,8 @@ class AdminController extends Controller
 
         return Inertia::render('Admin/Users', [
             'users' => $users,
-            'filters' => $request->only(['search', 'status', 'sortBy']),
-            'userCounts' => $userCounts
+            'filters' => $request->only(['search', 'status', 'sortBy', 'verified']),
+            'userCounts' => $userCounts // Add this line
         ]);
     }
 
@@ -102,10 +330,22 @@ class AdminController extends Controller
             'taken_down' => $user->listings->where('status', 'taken_down')->count(),
         ];
 
+        // Get categories with counts for this user's listings
+        $categories = DB::table('categories')
+            ->leftJoin('listings', function($join) use ($user) {
+                $join->on('categories.id', '=', 'listings.category_id')
+                     ->where('listings.user_id', '=', $user->id);
+            })
+            ->select('categories.id', 'categories.name', DB::raw('COUNT(listings.id) as count'))
+            ->groupBy('categories.id', 'categories.name')
+            ->orderBy('categories.name')
+            ->get();
+
         return Inertia::render('Admin/UserDetails', [
             'user' => $user,
             'rejectionReasons' => $this->getFormattedRejectionReasons(),
-            'listingCounts' => $listingCounts 
+            'listingCounts' => $listingCounts,
+            'categories' => $categories // Add this line
         ]);
     }
 
@@ -171,6 +411,14 @@ class AdminController extends Controller
             'taken_down' => Listing::where('status', 'taken_down')->count(), 
         ];
 
+        // Get categories with their listing counts
+        $categories = DB::table('categories')
+            ->leftJoin('listings', 'categories.id', '=', 'listings.category_id')
+            ->select('categories.id', 'categories.name', DB::raw('COUNT(listings.id) as count'))
+            ->groupBy('categories.id', 'categories.name')
+            ->orderBy('categories.name')
+            ->get();
+
         // Apply search filter
         if ($search = $request->input('search')) {
             $query->where(function($q) use ($search) {
@@ -186,6 +434,13 @@ class AdminController extends Controller
         if ($status = $request->input('status')) {
             if ($status !== 'all') {
                 $query->where('status', $status);
+            }
+        }
+
+        // Add category filter
+        if ($category = $request->input('category')) {
+            if ($category !== 'all') {
+                $query->where('category_id', $category);
             }
         }
 
@@ -215,8 +470,9 @@ class AdminController extends Controller
         return Inertia::render('Admin/Listings', [
             'listings' => $listings,
             'rejectionReasons' => $hasPendingListings ? $this->getFormattedRejectionReasons() : [],
-            'filters' => $request->only(['search', 'status', 'sortBy']),
-            'listingCounts' => $listingCounts 
+            'filters' => $request->only(['search', 'status', 'sortBy', 'category']), // Added category
+            'listingCounts' => $listingCounts,
+            'categories' => $categories, // Add categories with counts
         ]);
     }
 
