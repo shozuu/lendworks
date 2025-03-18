@@ -118,37 +118,59 @@ watch(category, (newVal) => {
 	updateFilters({ category: newVal });
 });
 
-const exportToCSV = () => {
-    const headers = [
-        'Title',
-        'Category',
-        'Price',
-        'Status',
-        'Lender',
-        'Location',
-        'Created At'
-    ].join(',');
+const exportToCSV = async () => {
+    try {
+        // Fetch all listings data from the export endpoint
+        const response = await fetch(route('admin.listings.export'), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
 
-    const rows = props.listings.data.map(listing => [
-        `"${listing.title}"`,
-        `"${listing.category?.name || 'Uncategorized'}"`,
-        listing.price,
-        listing.status,
-        `"${listing.user.name}"`,
-        `"${listing.location?.city || 'Unknown'}"`,
-        formatDate(listing.created_at)
-    ].join(','));
+        if (!response.ok) throw new Error('Failed to fetch data');
+        const allListings = await response.json();
 
-    const csv = [headers, ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `listings-${formatDate(new Date())}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+        // Define headers
+        const headers = [
+            'Title',
+            'Category',
+            'Price',
+            'Status',
+            'Lender',
+            'Location',
+            'Created At',
+            'Available',
+            'Description'
+        ].join(',');
+
+        // Transform all listings data into CSV rows
+        const rows = allListings.map(listing => [
+            `"${listing.title.replace(/"/g, '""')}"`,
+            `"${listing.category || 'Uncategorized'}"`,
+            listing.price,
+            listing.status,
+            `"${listing.lender}"`,
+            `"${listing.location || 'Unknown'}"`,
+            listing.created_at,
+            listing.is_available ? 'Yes' : 'No',
+            `"${(listing.description || '').replace(/"/g, '""')}"`
+        ].join(','));
+
+        // Create and download CSV
+        const csv = [headers, ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `listings-${formatDate(new Date())}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+        console.error('Export failed:', error);
+    }
 };
 </script>
 

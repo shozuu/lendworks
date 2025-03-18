@@ -1010,4 +1010,37 @@ class AdminController extends Controller
             return response()->json(['error' => 'Export failed'], 500);
         }
     }
+
+    public function exportListings()
+    {
+        try {
+            // Get all listings with related data
+            $listings = Listing::with(['category', 'user', 'location'])
+                ->select([
+                    'id', 'title', 'price', 'desc', 'status',
+                    'category_id', 'user_id', 'location_id',
+                    'is_available', 'created_at'
+                ])
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function($listing) {
+                    return [
+                        'title' => $listing->title,
+                        'category' => $listing->category?->name,
+                        'price' => $listing->price,
+                        'status' => $listing->status,
+                        'lender' => $listing->user?->name,
+                        'location' => $listing->location?->city,
+                        'created_at' => $listing->created_at ? date('m/d/Y', strtotime($listing->created_at)) : 'N/A',
+                        'is_available' => $listing->is_available,
+                        'description' => $listing->desc
+                    ];
+                });
+
+            return response()->json($listings);
+        } catch (\Exception $e) {
+            report($e);
+            return response()->json(['error' => 'Export failed'], 500);
+        }
+    }
 }

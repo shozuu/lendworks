@@ -145,6 +145,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     
     // Listing management routes
     Route::get('/listings', [AdminController::class, 'listings'])->name('listings');
+    Route::get('/listings/export', [AdminController::class, 'exportListings'])->name('listings.export'); // Add this line
     Route::get('/listings/{listing}', [AdminController::class, 'showListing'])->name('listings.show');
     Route::patch('/listings/{listing}/approve', [AdminController::class, 'approveListing'])->name('listings.approve');
     Route::patch('/listings/{listing}/reject', [AdminController::class, 'rejectListing'])->name('listings.reject');
