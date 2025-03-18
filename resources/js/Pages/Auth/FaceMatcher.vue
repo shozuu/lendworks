@@ -22,6 +22,7 @@ const secondIdCard = ref(null);
 const secondIdPreview = ref(null);
 const secondSelectedIdType = ref("");
 const secondIdValidationResult = ref(null);
+const duplicateIdError = ref(null);
 
 // Liveness detection states
 const isLivenessActive = ref(false);
@@ -359,6 +360,33 @@ onUnmounted(() => {
 	<div class="max-w-md mx-auto rounded-lg shadow-md p-6">
 		<div class="flex items-center justify-center mb-6">
 			<h2 class="text-2xl font-bold text-center text-primary">Verify your ID</h2>
+		</div>
+
+		<!-- Add verification notice -->
+		<div class="bg-accent border-l-4 border-primary p-4 mb-6 rounded-md">
+			<div class="flex">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-6 w-6 text-primary mr-2"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+					/>
+				</svg>
+				<div>
+					<p class="font-medium text-primary">Verification Required</p>
+					<p class="text-sm text-muted-foreground mt-1">
+						You need to verify your identity to access rental and listing features. This
+						helps build trust in our community and keeps everyone safe.
+					</p>
+				</div>
+			</div>
 		</div>
 
 		<form @submit.prevent="handleSubmit" class="space-y-6">

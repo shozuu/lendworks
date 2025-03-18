@@ -19,6 +19,14 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'role',
         'status',
+        'selfie_image_path',
+        'liveness_image_path',
+        'primary_id_image_path',
+        'primary_id_type',
+        'secondary_id_image_path',
+        'secondary_id_type',
+        'liveness_verified_at',
+        'id_verified_at'
     ];
 
       protected $casts = [
@@ -44,9 +52,26 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     public function hasVerifiedId()
-{
-    return !is_null($this->id_verified_at);
-}
+    {
+        return !is_null($this->id_verified_at);
+    }
+
+    public function getVerificationWarning(): ?string
+    {
+        if (!$this->hasVerifiedEmail()) {
+            return "Your email address is not verified. Some features are limited.";
+        }
+        
+        if (!$this->hasVerifiedId()) {
+            return "Your ID is not verified. You cannot rent or list items.";
+        }
+        
+        if (!$this->hasProfile()) {
+            return "Please complete your profile to use all features.";
+        }
+        
+        return null;
+    }
 
     public function isFullyVerified()
     {

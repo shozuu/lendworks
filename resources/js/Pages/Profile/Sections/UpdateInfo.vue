@@ -52,6 +52,9 @@ const capitalize = (str) => {
 	if (!str) return "";
 	return str.charAt(0).toUpperCase() + str.slice(1);
 };
+const startIdVerification = () => {
+	router.visit(route("verify-id.show"));
+};
 </script>
 
 <template>
@@ -63,7 +66,7 @@ const capitalize = (str) => {
 			>
 		</CardHeader>
 
-		<CardContent class="flex-1 lg:w-3/5 lg:self-end">
+		<CardContent class="flex-1 lg:w-3/5">
 			<p v-if="status" class="mb-2 text-sm text-primary">{{ status }}</p>
 
 			<Alert v-if="form.recentlySuccessful === true" class="mb-5" variant="success">
@@ -85,6 +88,25 @@ const capitalize = (str) => {
 						<Button @click="verifyEmail" class="p-0 text-inherit" variant="link"
 							>Verify Now</Button
 						>
+					</AlertDescription>
+				</div>
+			</Alert>
+
+			<!-- Add ID verification alert -->
+			<Alert
+				v-if="user.email_verified_at && !user.id_verified_at"
+				variant="warning"
+				class="mb-5"
+			>
+				<div>
+					<AlertTitle>ID Verification Required</AlertTitle>
+					<AlertDescription>
+						<p>
+							Your account is not fully verified. Verify your ID to unlock all features.
+						</p>
+						<Button @click="startIdVerification" class="p-0 text-inherit" variant="link">
+							Verify Now
+						</Button>
 					</AlertDescription>
 				</div>
 			</Alert>

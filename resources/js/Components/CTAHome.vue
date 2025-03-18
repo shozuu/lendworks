@@ -38,7 +38,9 @@ defineProps({
 				<Link :href="route('listing.create')">
 					<Button variant="secondary" class="w-full">List Tools</Button>
 				</Link>
-				<Button class="w-full">Rent Tools</Button>
+				<Link :href="route('explore')">
+					<Button class="w-full">Rent Tools</Button>
+				</Link>
 			</div>
 		</div>
 	</div>

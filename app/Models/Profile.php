@@ -26,6 +26,7 @@ class Profile extends Model
         'nationality',
         'primary_id_type',
         'secondary_id_type',
+        
     ];
     
     public function user()

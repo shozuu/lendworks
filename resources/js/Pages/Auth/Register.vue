@@ -4,6 +4,8 @@ import InputField from "../../Components/InputField.vue";
 import { Button } from "@/components/ui/button";
 import { useForm } from "@inertiajs/vue3";
 import AuthLayout from "../../Layouts/AuthLayout.vue";
+import TermsAndConditionsDialog from "../TermsAndConditionsDialog .vue";
+import { ref } from "vue";
 
 defineOptions({ layout: AuthLayout });
 
@@ -13,6 +15,9 @@ const form = useForm({
 	password: "",
 	password_confirmation: "",
 });
+
+const showTerms = ref(false);
+const termsAccepted = ref(false);
 
 const submit = () => {
 	form.post(route("register"), {
@@ -67,15 +72,43 @@ const submit = () => {
 				:error="form.errors.password"
 			/>
 
-			<p class="text-text text-sm">
+			<p class="text-text text-sm flex items-center gap-1">
 				By creating an account, you agree to our
-				<TextLink routeName="home" label="Terms of Service" /> and
-				<TextLink routeName="home" label="Privacy Policy" />.
+				<button
+					type="button"
+					@click="showTerms = true"
+					class="text-primary hover:underline inline-flex"
+				>
+					Terms and Conditions
+				</button>
 			</p>
 
-			<Button :disabled="form.processing" class="w-full rounded-lg" size="lg">
+			<div
+				class="flex items-center gap-2 bg-muted/50 p-3 rounded-lg"
+				:class="{ 'bg-emerald-100/50': termsAccepted }"
+			>
+				<div
+					class="w-2 h-2 rounded-full"
+					:class="termsAccepted ? 'bg-emerald-500' : 'bg-muted-foreground'"
+				></div>
+				<span class="text-sm" :class="termsAccepted ? 'text-emerald-700' : 'bg-muted/50'">
+					{{
+						termsAccepted
+							? "Terms and conditions accepted"
+							: "Please accept the terms and conditions"
+					}}
+				</span>
+			</div>
+
+			<Button
+				:disabled="form.processing || !termsAccepted"
+				class="w-full rounded-lg"
+				size="lg"
+			>
 				Register
 			</Button>
 		</form>
 	</div>
+
+	<TermsAndConditionsDialog v-model:show="showTerms" @accept="termsAccepted = true" />
 </template>

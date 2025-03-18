@@ -198,8 +198,14 @@ Route::middleware(['web', CheckMaintenanceMode::class])->group(function() {
     Route::get('/', [ListingController::class, 'index'])->name('home');
     Route::get('listing/{listing}', [ListingController::class, 'show'])->name('listing.show');
     Route::get('/explore', [ExploreController::class, 'index'])->name('explore');
+    Route::get('/users/{user}', [UserProfileController::class, 'show'])->name('users.profile');
+    Route::get('/api/location/search', [App\Http\Controllers\OpenStreetMapController::class, 'search'])
+    ->name('api.location.search');
+
     
     // Move other public routes here
 });
+
+
 
 require __DIR__ . '/auth.php';

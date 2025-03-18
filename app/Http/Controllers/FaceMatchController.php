@@ -45,6 +45,13 @@ class FaceMatchController extends Controller
         'exp date', 'exp. date', 'date of expiry', 'date of expiration'
     ];
 
+    private function saveVerificationImage($file, $directory, $userId)
+    {
+    $filename = $userId . '_' . time() . '.' . $file->getClientOriginalExtension();
+    $path = $file->storeAs("verification/{$directory}", $filename, 'public');
+    return $path;
+    }
+
 
     public function show()
     {
@@ -296,6 +303,19 @@ class FaceMatchController extends Controller
             // Determine verification status - both must pass the threshold
             $bothVerified = $primaryResult['verified'] && $secondaryResult['verified'];
 
+            // Save the images to storage and update user record
+            $user = $request->user();
+            $selfieImagePath = $this->saveVerificationImage($request->file('selfie'), 'selfies', $user->id);
+            $primaryIdImagePath = $this->saveVerificationImage($request->file('id_card'), 'primary_ids', $user->id);
+            $secondaryIdImagePath = $this->saveVerificationImage($request->file('id_card_secondary'), 'secondary_ids', $user->id);
+
+            // Update user record with image paths and ID types
+            $user->update([
+                'selfie_image_path' => $selfieImagePath,
+                'primary_id_image_path' => $primaryIdImagePath,
+                'secondary_id_image_path' => $secondaryIdImagePath,
+            ]);
+
              // Log results
             Log::info('Face match completed for both IDs', [
                 'primary_score' => $primaryResult['score'],
@@ -377,6 +397,8 @@ class FaceMatchController extends Controller
  */
 private function runOcr($file)
 {
+    // Set PHP script timeout
+     ini_set('max_execution_time', 120);
     // Get MIME type and map it to a file extension
     $mimeType = $file->getMimeType();
     $fileType = match ($mimeType) {
@@ -387,6 +409,7 @@ private function runOcr($file)
 
     // Make OCR request
     $response = Http::withoutVerifying()
+      ->timeout(120) 
         ->attach(
             'file', 
             file_get_contents($file->path()), 
@@ -411,6 +434,7 @@ private function runOcr($file)
         'error' => $response['ErrorMessage'] ?? 'OCR processing failed'
     ];
 }
+
 
   private function extractBirthdate($text)
 {
@@ -934,6 +958,8 @@ private function getFieldKeywordsForIdType($idType)
 private function processIdCard($file, $idType)
 {
     try {
+
+        ini_set('max_execution_time', 120);
         // Get MIME type and map it to a file extension
         $mimeType = $file->getMimeType();
         $fileType = match ($mimeType) {
@@ -951,6 +977,7 @@ private function processIdCard($file, $idType)
 
         // Make OCR request with SSL verification disabled and explicit file type
         $response = Http::withoutVerifying()
+        ->timeout(60) 
             ->attach(
                 'file', 
                 file_get_contents($file->path()), 
