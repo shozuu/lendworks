@@ -28,6 +28,7 @@ use App\Http\Controllers\LenderPickupScheduleController;
 use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\Admin\CompletionPaymentController;  // Add this import at the top
 use App\Http\Controllers\Admin\DisputeController;
+use App\Http\Controllers\HandoverDisputeController; // Add this line
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\CheckMaintenanceMode;
 use Illuminate\Support\Facades\Route;
@@ -74,6 +75,10 @@ Route::middleware(['auth', 'verified'])->group(function() {
     Route::post('/rentals/{rental}/submit-payment', [PaymentController::class, 'store'])->name('rentals.submit-payment');
     Route::post('/rentals/{rental}/submit-overdue-payment', [PaymentController::class, 'storeOverduePayment'])
         ->name('rentals.submit-overdue-payment');
+
+    // handover dispute
+    Route::post('/rentals/{rental}/handover-dispute', [HandoverDisputeController::class, 'store'])
+        ->name('rentals.handover-dispute');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -177,7 +182,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     Route::post('/rentals/{rental}/completion-payments/deposit', [CompletionPaymentController::class, 'storeDepositRefund'])
         ->name('completion-payments.store-deposit-refund');
 
-    // Add dispute routes
+    // Use consolidated dispute routes instead of separate ones
     Route::get('/disputes', [DisputeController::class, 'index'])->name('disputes');
     Route::get('/disputes/{dispute}', [DisputeController::class, 'show'])->name('disputes.show');
     Route::post('/disputes/{dispute}/update-status', [DisputeController::class, 'updateStatus'])->name('disputes.update-status');

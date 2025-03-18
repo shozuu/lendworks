@@ -48,7 +48,8 @@ class RentalRequest extends Model
         'is_overdue',
         'overdue_fee',
         'total_lender_earnings',
-        'deposit_status'  // Add this line
+        'deposit_status',
+        'can_report_no_show'  // Add this
     ];
 
     // Define core rental status constants
@@ -200,6 +201,11 @@ class RentalRequest extends Model
         return $this->hasMany(LenderEarningsAdjustment::class);
     }
 
+    public function handover_dispute()
+    {
+        return $this->hasOne(HandoverDispute::class);
+    }
+
     // Accessors
     public function getHasStartedAttribute(): bool
     {
@@ -303,6 +309,8 @@ class RentalRequest extends Model
                 ->where('is_confirmed', false)
                 ->exists();
                 
+        $actions['canReportNoShow'] = $this->can_report_no_show;
+
         return $actions;
     }
 
@@ -497,6 +505,35 @@ class RentalRequest extends Model
             'is_refunded' => $this->completion_payments()->where('type', 'deposit_refund')->exists(),
             'quantity' => $this->quantity_approved ?: $this->quantity_requested
         ];
+    }
+
+    public function getCanReportNoShowAttribute()
+    {
+        // Remove ! from condition which was causing it to always be false
+        if ($this->status !== 'to_handover') {
+            return false;
+        }
+
+        // Get selected schedule
+        $schedule = $this->pickup_schedules()
+            ->where('is_selected', true)
+            ->where('is_confirmed', true)
+            ->first();
+
+        if (!$schedule) {
+            return false;
+        }
+
+        // TESTING MODE: Uncomment this to bypass time check
+        return true;
+
+        // Regular logic - comment this out during testing
+        // $scheduledTime = Carbon::parse($schedule->pickup_datetime);
+        // $currentTime = Carbon::now();
+        
+        // Can only report 30 minutes after scheduled time
+        // return $currentTime->diffInMinutes($scheduledTime) >= 30 && 
+        //        $currentTime->gt($scheduledTime);
     }
 
     // Scopes

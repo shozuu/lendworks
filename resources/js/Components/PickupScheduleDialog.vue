@@ -74,8 +74,11 @@ const handleConfirmSchedule = () => {
 	<Dialog :open="show" @update:open="closeDialog">
 		<DialogContent class="max-w-2xl">
 			<div class="space-y-4">
-				<!-- Show schedule details if it's a suggested schedule -->
-				<div v-if="isSuggestedSchedule && selectedSchedule" class="p-4">
+					<!-- Only show suggestion details to lender -->
+				<div 
+					v-if="isSuggestedSchedule && selectedSchedule && userRole === 'lender'" 
+					class="p-4"
+				>
 					<div class="bg-muted p-4 rounded-lg space-y-4">
 						<h3 class="font-medium text-base">Renter's Suggested Schedule</h3>
 						<div class="space-y-2">
@@ -99,7 +102,7 @@ const handleConfirmSchedule = () => {
 					</Button>
 				</div>
 
-				<!-- Show original selector if not a suggestion -->
+				<!-- Show original selector for non-suggested schedules or for renter -->
 				<div v-else>
 					<PickupDateSelector
 						:rental="rental"

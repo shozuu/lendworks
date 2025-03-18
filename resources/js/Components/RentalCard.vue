@@ -7,6 +7,7 @@ import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import PaymentDialog from "@/Components/PaymentDialog.vue";
 import HandoverDialog from "@/Components/HandoverDialog.vue";
 import PickupScheduleDialog from "@/Components/PickupScheduleDialog.vue";
+import NoShowDisputeDialog from "@/Components/NoShowDisputeDialog.vue"; // Add this import
 import { useForm } from "@inertiajs/vue3";
 import { format } from "date-fns";
 
@@ -33,6 +34,7 @@ const showCancelDialog = ref(false);
 const showPaymentDialog = ref(false);
 const showHandoverDialog = ref(false);
 const showScheduleDialog = ref(false);
+const showNoShowDialog = ref(false); // Add this ref
 
 // Update the cancelForm to include reason
 const cancelForm = useForm({
@@ -87,6 +89,11 @@ const hasPendingOverduePayment = computed(() => {
 		props.rental.payment_request?.status === "pending"
 	);
 });
+
+// Add selected pickup schedule computed
+const selectedPickupSchedule = computed(() =>
+	props.rental.pickup_schedules?.find((s) => s.is_selected && s.is_confirmed)
+);
 
 // Update the details computed to include quantity and overdue information
 const details = computed(() => {
@@ -237,6 +244,20 @@ const actions = computed(() => props.rental.available_actions);
 				>
 					Choose Pickup Schedule
 				</Button>
+
+				<!-- Add the dispute button in actions section -->
+				<Button
+					v-if="
+						rental.can_report_no_show &&
+						rental.status === 'to_handover' &&
+						selectedPickupSchedule
+					"
+					variant="destructive"
+					size="sm"
+					@click.stop="showNoShowDialog = true"
+				>
+					Report No-Show
+				</Button>
 			</div>
 		</template>
 	</BaseRentalCard>
@@ -287,5 +308,14 @@ const actions = computed(() => props.rental.available_actions);
 		:rental="rental"
 		:userRole="userRole"
 		:lenderSchedules="lenderSchedules"
+	/>
+
+	<!-- Add NoShowDisputeDialog component -->
+	<NoShowDisputeDialog
+		v-if="selectedPickupSchedule"
+		v-model:show="showNoShowDialog"
+		:rental="rental"
+		:type="userRole === 'lender' ? 'renter_no_show' : 'lender_no_show'"
+		:schedule="selectedPickupSchedule"
 	/>
 </template>

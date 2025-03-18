@@ -23,6 +23,10 @@ import DisputeDialog from "@/Components/DisputeDialog.vue";
 import PickupScheduleDialog from "@/Components/PickupScheduleDialog.vue";
 import { format } from "date-fns";
 import ReturnScheduleDialog from "@/Components/ReturnScheduleDialog.vue";
+import NoShowDisputeDialog from "@/Components/NoShowDisputeDialog.vue";
+
+// Add new refs
+const showNoShowDialog = ref(false);
 
 const props = defineProps({
 	rental: Object,
@@ -262,6 +266,11 @@ const hasUnconfirmedSchedule = computed(() => {
 const canShowHandover = computed(() => {
 	return actions.value.canHandover;
 });
+
+// Add computed for pickup schedule
+const selectedPickupSchedule = computed(() =>
+	props.rental.pickup_schedules?.find((s) => s.is_selected && s.is_confirmed)
+);
 </script>
 
 <template>
@@ -782,7 +791,7 @@ const canShowHandover = computed(() => {
 							>
 								<!-- Show waiting message when no schedule -->
 								<Button
-									v-if="hasNoSchedule && userRole == 'lender'"
+									v-if="hasNoSchedule && userRole == 'lender' && canHandover"
 									variant="default"
 									class="w-full"
 									disabled
@@ -917,6 +926,16 @@ const canShowHandover = computed(() => {
 								@click="showCancelDialog = true"
 							>
 								Cancel Request
+							</Button>
+
+							<!-- Add this inside actions card content -->
+							<Button
+								v-if="rental.can_report_no_show && selectedPickupSchedule"
+								variant="destructive"
+								class="w-full"
+								@click="showNoShowDialog = true"
+							>
+								Report No-Show
 							</Button>
 
 							<!-- No Actions Message -->
@@ -1365,5 +1384,14 @@ const canShowHandover = computed(() => {
 		:rental="rental"
 		:userRole="userRole"
 		:lenderSchedules="lenderSchedules"
+	/>
+
+	<!-- Add before end of template -->
+	<NoShowDisputeDialog
+		v-if="selectedPickupSchedule"
+		v-model:show="showNoShowDialog"
+		:rental="rental"
+		:type="userRole === 'lender' ? 'renter_no_show' : 'lender_no_show'"
+		:schedule="selectedPickupSchedule"
 	/>
 </template>

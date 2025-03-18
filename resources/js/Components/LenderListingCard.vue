@@ -8,6 +8,7 @@ import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import HandoverDialog from "@/Components/HandoverDialog.vue";
 import { format } from "date-fns";
 import PickupScheduleDialog from "@/Components/PickupScheduleDialog.vue";
+import NoShowDisputeDialog from "@/Components/NoShowDisputeDialog.vue"; // Add this import
 
 const props = defineProps({
 	data: {
@@ -136,6 +137,7 @@ const showAcceptDialog = ref(false);
 const showCancelDialog = ref(false);
 const showHandoverDialog = ref(false);
 const showPickupDialog = ref(false);
+const showNoShowDialog = ref(false);
 const approveForm = useForm({
 	quantity_approved: 1,
 });
@@ -217,6 +219,10 @@ const hasUnconfirmedSchedule = computed(() => {
 const handleScheduleConfirmed = () => {
 	showPickupDialog.value = false;
 };
+
+const selectedPickupSchedule = computed(() =>
+	props.data.rental_request.pickup_schedules?.find((s) => s.is_selected && s.is_confirmed)
+);
 </script>
 
 <template>
@@ -310,6 +316,19 @@ const handleScheduleConfirmed = () => {
 				>
 					Cancel Request
 				</Button>
+
+				<Button
+					v-if="
+						data.rental_request.can_report_no_show &&
+						data.rental_request.status === 'to_handover' &&
+						selectedPickupSchedule
+					"
+					variant="destructive"
+					size="sm"
+					@click.stop="showNoShowDialog = true"
+				>
+					Report No-Show
+				</Button>
 			</div>
 		</template>
 	</BaseRentalCard>
@@ -396,5 +415,13 @@ const handleScheduleConfirmed = () => {
 		:userRole="'lender'"
 		:lenderSchedules="lenderSchedules"
 		@schedule-confirmed="handleScheduleConfirmed"
+	/>
+
+	<NoShowDisputeDialog
+		v-if="selectedPickupSchedule"
+		v-model:show="showNoShowDialog"
+		:rental="data.rental_request"
+		:type="'renter_no_show'"
+		:schedule="selectedPickupSchedule"
 	/>
 </template>
