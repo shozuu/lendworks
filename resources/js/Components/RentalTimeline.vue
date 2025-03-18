@@ -275,9 +275,13 @@ const formatEventMessage = (event) => {
 				const scheduleText = `${metadata.day_of_week}, ${metadata.date} from ${formatTime(
 					metadata.start_time
 				)} to ${formatTime(metadata.end_time)}`;
+				const sourceText = metadata.from_lender_availability
+					? "from owner's availability"
+					: "as suggested time";
+
 				return performedByViewer
-					? `You selected a pickup schedule for ${scheduleText}`
-					: `${actorLabel} selected a pickup schedule for ${scheduleText}`;
+					? `You selected a pickup schedule ${sourceText} for ${scheduleText}`
+					: `${actorLabel} selected a pickup schedule ${sourceText} for ${scheduleText}`;
 			}
 			return `${actorLabel} selected a pickup schedule`;
 
@@ -388,6 +392,19 @@ const formatEventMessage = (event) => {
 					: `${actorLabel} accepted the pickup schedule for ${scheduleText}`;
 			}
 			return `${actorLabel} accepted the suggested pickup schedule`;
+
+		case "pickup_schedule_confirmed":
+			if (isLatest) {
+				const metadata = event.metadata || {};
+				const scheduleText = `${metadata.day_of_week}, ${metadata.date} from ${formatTime(
+					metadata.start_time
+				)} to ${formatTime(metadata.end_time)}`;
+
+				return performedByViewer
+					? `You confirmed the pickup schedule for ${scheduleText}`
+					: `${actorLabel} confirmed the pickup schedule for ${scheduleText}`;
+			}
+			return `${actorLabel} confirmed the pickup schedule`;
 
 		default:
 			return `Unknown event by ${actorLabel}`;
