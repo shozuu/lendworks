@@ -197,6 +197,8 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     Route::delete('/system/categories/{category}', [SystemManagementController::class, 'deleteCategory'])->name('system.categories.delete');
     Route::post('/system/export-database', [SystemManagementController::class, 'exportDatabase'])
         ->name('system.export-database');
+    Route::get('/system/backup-database', [SystemManagementController::class, 'backupDatabase'])
+        ->name('system.backup-database'); // Add this line
 
     // Add revenue route
     Route::get('/revenue', [AdminController::class, 'revenue'])->name('revenue');
@@ -206,6 +208,10 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     Route::get('/logs', [SystemManagementController::class, 'getLogs'])->name('logs');
     Route::get('/logs/export', [SystemManagementController::class, 'exportLogs'])->name('logs.export');
     Route::get('/admin/logs', [SystemManagementController::class, 'getLogs'])->name('admin.logs');
+
+    Route::get('admin/system/backup-database', [SystemManagementController::class, 'backupDatabase'])
+        ->name('admin.system.backup-database')
+        ->middleware(['auth', 'admin']);
 });
 
 // ...existing code...

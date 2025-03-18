@@ -147,6 +147,10 @@ const exportDatabase = async () => {
         console.error('Export failed:', error);
     }
 };
+
+const backupDatabase = () => {
+    window.location.href = route('admin.system.backup-database');
+};
 </script>
 
 <template>
@@ -179,10 +183,12 @@ const exportDatabase = async () => {
                                         Export a complete SQL dump of the database
                                     </p>
                                 </div>
-                                <Button @click="exportDatabase" class="gap-2">
-                                    <Download class="h-4 w-4" />
-                                    Export Database
-                                </Button>
+                                <div class="space-x-2">
+                                    <Button @click="backupDatabase" class="gap-2">
+                                        <Download class="h-4 w-4" />
+                                        Export SQL Backup
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </CardContent>

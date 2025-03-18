@@ -592,4 +592,85 @@ class SystemManagementController extends Controller
             return back()->with('error', 'Failed to export logs: ' . $e->getMessage());
         }
     }
+
+    public function backupDatabase()
+    {
+        try {
+            $filename = 'lendworks-backup' . date('Y-m-d_H-i-s') . '.sql';
+            $path = storage_path('app/backups/' . $filename);
+
+            // Ensure backup directory exists
+            if (!file_exists(storage_path('app/backups'))) {
+                mkdir(storage_path('app/backups'), 0755, true);
+            }
+
+            // Get database configuration
+            $host = config('database.connections.mysql.host');
+            $database = config('database.connections.mysql.database');
+            $username = config('database.connections.mysql.username');
+            $password = config('database.connections.mysql.password');
+            $port = config('database.connections.mysql.port', '3306');
+
+            // Check if mysqldump is available
+            if ($this->isShellExecEnabled()) {
+                // Try using mysqldump command first
+                $command = sprintf(
+                    'mysqldump --user=%s --password=%s --host=%s --port=%s %s > %s',
+                    escapeshellarg($username),
+                    escapeshellarg($password),
+                    escapeshellarg($host),
+                    escapeshellarg($port),
+                    escapeshellarg($database),
+                    escapeshellarg($path)
+                );
+
+                exec($command, $output, $returnVar);
+
+                if ($returnVar === 0) {
+                    return response()->download($path, $filename)->deleteFileAfterSend();
+                }
+            }
+
+            // Fallback to PHP backup method if mysqldump fails or is not available
+            $tables = DB::select('SHOW TABLES');
+            $output = '';
+
+            // Add header comment
+            $output .= "-- Database Backup\n";
+            $output .= "-- Generated: " . date('Y-m-d H:i:s') . "\n\n";
+
+            foreach ($tables as $table) {
+                $tableName = array_values((array)$table)[0];
+                
+                // Get create table syntax
+                $createTable = DB::select("SHOW CREATE TABLE `$tableName`");
+                $output .= "\n\n" . $createTable[0]->{'Create Table'} . ";\n\n";
+                
+                // Get table data
+                $rows = DB::table($tableName)->get();
+                
+                foreach ($rows as $row) {
+                    $values = array_map(function($value) {
+                        if (is_null($value)) return 'NULL';
+                        return "'" . addslashes($value) . "'";
+                    }, (array)$row);
+                    
+                    $output .= "INSERT INTO `$tableName` VALUES (" . implode(', ', $values) . ");\n";
+                }
+            }
+
+            // Save the SQL file
+            file_put_contents($path, $output);
+
+            return response()->download($path, $filename)->deleteFileAfterSend();
+        } catch (\Exception $e) {
+            report($e);
+            return back()->with('error', 'Backup failed: ' . $e->getMessage());
+        }
+    }
+
+    private function isShellExecEnabled()
+    {
+        return function_exists('exec') && !in_array('exec', array_map('trim', explode(',', ini_get('disable_functions'))));
+    }
 }
