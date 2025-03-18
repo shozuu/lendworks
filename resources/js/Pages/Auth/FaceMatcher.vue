@@ -382,7 +382,7 @@ onUnmounted(() => {
 
 						<!-- Dynamic instruction text -->
 						<div class="absolute bottom-2 inset-x-0 text-center">
-							<span class="text-primary-foreground px-2 py-1 rounded text-sm">
+							<span class="text-primary px-2 py-1 rounded text-sm">
 								<!-- Non active default instruction -->
 								<template v-if="!isLivenessActive">
 									Position your face within the circle
@@ -427,7 +427,7 @@ onUnmounted(() => {
 							v-if="cameras.length > 1"
 							v-model="selectedCamera"
 							@change="switchCamera"
-							class="w-full border rounded-md p-2 text-foreground"
+							class="w-full bg-muted border rounded-md p-2 text-foreground"
 						>
 							<option
 								v-for="camera in cameras"
@@ -445,7 +445,7 @@ onUnmounted(() => {
 					<div class="flex items-center">
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
-							class="text-primary mr-2"
+							class="text-emerald-400 mr-2"
 							width="20"
 							height="20"
 							viewBox="0 0 24 24"
@@ -458,7 +458,7 @@ onUnmounted(() => {
 							<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
 							<polyline points="22 4 12 14.01 9 11.01" />
 						</svg>
-						<p class="text-primary font-medium">Face Verified</p>
+						<p class="text-emerald-400 font-medium">Face Verified</p>
 					</div>
 				</div>
 
@@ -492,7 +492,7 @@ onUnmounted(() => {
 						</label>
 						<select
 							v-model="selectedIdType"
-							class="w-full border rounded-md p-2 text-foreground mb-3 focus:border-primary focus:ring-ring"
+							class="w-full border bg-muted rounded-md p-2 text-foreground mb-3 focus:border-primary focus:ring-ring"
 							@change="validateIdType"
 						>
 							<option value="">Select an ID type</option>
@@ -524,7 +524,7 @@ onUnmounted(() => {
 							<div
 								:class="`p-2 rounded text-sm ${
 									idValidationResult.isValid
-										? 'bg-accent text-primary'
+										? 'bg-accent text-emerald-400'
 										: 'bg-destructive/10 text-destructive'
 								}`"
 							>
@@ -565,7 +565,7 @@ onUnmounted(() => {
 					</label>
 					<select
 						v-model="secondSelectedIdType"
-						class="w-full border rounded-md p-2 text-foreground mb-3 focus:border-primary focus:ring-ring"
+						class="w-full bg-muted border rounded-md p-2 text-foreground mb-3 focus:border-primary focus:ring-ring"
 						@change="validateIdType"
 					>
 						<option value="">Select an ID type</option>

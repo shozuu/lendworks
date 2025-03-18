@@ -104,12 +104,7 @@ const filterListings = (value) => {
 							<p class="text-sm text-muted-foreground">Gender</p>
 							<p class="font-medium text-foreground">{{ capitalize(profile?.gender) }}</p>
 						</div>
-						<div>
-							<p class="text-sm text-muted-foreground">Civil Status</p>
-							<p class="font-medium text-foreground">
-								{{ capitalize(profile?.civil_status) }}
-							</p>
-						</div>
+
 						<div class="grid grid-cols-1 md:grid-cols-1 gap-4">
 							<div>
 								<p class="text-sm text-muted-foreground">Verified Since</p>
@@ -119,12 +114,6 @@ const filterListings = (value) => {
 									}}
 								</p>
 							</div>
-						</div>
-						<div>
-							<p class="text-sm text-muted-foreground">Mobile Number</p>
-							<p class="font-medium text-foreground">
-								{{ displayValue(profile?.mobile_number) }}
-							</p>
 						</div>
 					</div>
 				</div>

@@ -321,7 +321,7 @@ onMounted(() => {
 						<input
 							type="text"
 							v-model="form.firstName"
-							class="w-full text-foreground border rounded-md p-2 focus:ring-ring focus:border-primary"
+							class="w-full text-foreground border bg-muted rounded-md p-2 focus:ring-ring focus:border-primary"
 							required
 						/>
 						<p v-if="form.errors.firstName" class="text-destructive text-xs mt-1">
@@ -337,7 +337,7 @@ onMounted(() => {
 						<input
 							type="text"
 							v-model="form.middleName"
-							class="w-full text-foreground border rounded-md p-2 focus:ring-ring focus:border-primary"
+							class="w-full text-foreground border bg-muted rounded-md p-2 focus:ring-ring focus:border-primary"
 						/>
 					</div>
 
@@ -349,7 +349,7 @@ onMounted(() => {
 						<input
 							type="text"
 							v-model="form.lastName"
-							class="w-full border text-foreground rounded-md p-2 focus:ring-ring focus:border-primary"
+							class="w-full border bg-muted text-foreground rounded-md p-2 focus:ring-ring focus:border-primary"
 							required
 						/>
 						<p v-if="form.errors.lastName" class="text-destructive text-xs mt-1">
@@ -365,7 +365,7 @@ onMounted(() => {
 						<input
 							type="date"
 							v-model="form.birthdate"
-							class="w-full border text-foreground rounded-md p-2 focus:ring-ring focus:border-primary"
+							class="w-full bg-muted border text-foreground rounded-md p-2 focus:ring-ring focus:border-primary"
 							required
 						/>
 						<p v-if="form.errors.birthdate" class="text-destructive text-xs mt-1">
@@ -378,7 +378,7 @@ onMounted(() => {
 						<label class="block text-foreground text-sm font-medium mb-1">Gender*</label>
 						<select
 							v-model="form.gender"
-							class="w-full text-foreground border rounded-md p-2 focus:ring-ring focus:border-primary"
+							class="w-full text-foreground bg-muted border rounded-md p-2 focus:ring-ring focus:border-primary"
 							required
 						>
 							<option value="" disabled>Select gender</option>
@@ -398,7 +398,7 @@ onMounted(() => {
 						>
 						<select
 							v-model="form.civilStatus"
-							class="w-full border text-foreground rounded-md p-2 focus:ring-ring focus:border-primary"
+							class="w-full border bg-muted text-foreground rounded-md p-2 focus:ring-ring focus:border-primary"
 							required
 						>
 							<option value="" disabled>Select status</option>
@@ -421,7 +421,7 @@ onMounted(() => {
 						<input
 							type="text"
 							v-model="form.nationality"
-							class="w-full text-foreground border rounded-md p-2 focus:ring-ring focus:border-primary"
+							class="w-full bg-muted text-foreground border rounded-md p-2 focus:ring-ring focus:border-primary"
 							required
 						/>
 						<p v-if="form.errors.nationality" class="text-destructive text-xs mt-1">
@@ -444,7 +444,7 @@ onMounted(() => {
 						<input
 							type="tel"
 							v-model="form.mobileNumber"
-							class="w-full text-foreground border rounded-md p-2 focus:ring-ring focus:border-primary"
+							class="w-full bg-muted text-foreground border rounded-md p-2 focus:ring-ring focus:border-primary"
 							placeholder="e.g., +639123456789"
 							required
 						/>
@@ -461,7 +461,7 @@ onMounted(() => {
 						<input
 							type="email"
 							v-model="form.email"
-							class="w-full text-foreground border rounded-md p-2 focus:ring-ring focus:border-primary"
+							class="w-full bg-muted text-foreground border rounded-md p-2 focus:ring-ring focus:border-primary"
 							required
 						/>
 						<p v-if="form.errors.email" class="text-destructive text-xs mt-1">
@@ -485,7 +485,7 @@ onMounted(() => {
 							<input
 								type="text"
 								v-model="addressQuery"
-								class="w-full border text-foreground rounded-md p-2 pr-10 focus:ring-ring focus:border-primary"
+								class="w-full bg-muted border text-foreground rounded-md p-2 pr-10 focus:ring-ring focus:border-primary"
 								placeholder="Start typing your address to search..."
 							/>
 							<div class="absolute inset-y-0 right-0 flex items-center pr-3">
@@ -571,7 +571,7 @@ onMounted(() => {
 							<input
 								type="text"
 								v-model="form.streetAddress"
-								class="w-full text-foreground border rounded-md p-2 focus:ring-ring focus:border-primary"
+								class="w-full bg-muted text-foreground border rounded-md p-2 focus:ring-ring focus:border-primary"
 								placeholder="House/Lot/Unit Number, Street Name"
 								required
 							/>
@@ -589,7 +589,7 @@ onMounted(() => {
 								<input
 									type="text"
 									v-model="form.province"
-									class="w-full text-foreground border rounded-md p-2 focus:ring-ring focus:border-primary"
+									class="w-full bg-muted text-foreground border rounded-md p-2 focus:ring-ring focus:border-primary"
 									placeholder="Province"
 									required
 								/>
@@ -606,7 +606,7 @@ onMounted(() => {
 								<input
 									type="text"
 									v-model="form.city"
-									class="w-full text-foreground border rounded-md p-2 focus:ring-ring focus:border-primary"
+									class="w-full bg-muted text-foreground border rounded-md p-2 focus:ring-ring focus:border-primary"
 									placeholder="City or Municipality"
 									required
 								/>
@@ -625,7 +625,7 @@ onMounted(() => {
 								<input
 									type="text"
 									v-model="form.barangay"
-									class="w-full text-foreground border rounded-md p-2 focus:ring-ring focus:border-primary"
+									class="w-full bg-muted text-foreground border rounded-md p-2 focus:ring-ring focus:border-primary"
 									placeholder="Barangay"
 									required
 								/>
@@ -642,7 +642,7 @@ onMounted(() => {
 								<input
 									type="text"
 									v-model="form.postalCode"
-									class="w-full text-foreground border rounded-md p-2 focus:ring-ring focus:border-primary"
+									class="w-full bg-muted text-foreground border rounded-md p-2 focus:ring-ring focus:border-primary"
 									placeholder="e.g., 1200"
 									required
 								/>
