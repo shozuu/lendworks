@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
-use App\Models\Profile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -31,15 +30,10 @@ class ProfileController extends Controller
         'email' => ['required', 'email', 'max:255',
             Rule::unique(User::class)->ignore($request->user()->id)],
         
-        // Profile fields
-        'firstName' => ['nullable', 'string', 'max:100'],
-        'lastName' => ['nullable', 'string', 'max:100'], 
-        'barangay' => ['nullable', 'string', 'max:100'],
-        'city' => ['nullable', 'string', 'max:100'],
     ]);
 
     // Get the user
-    $user = $request->user();
+    $user = User::with('profile')->find(Auth::id());
     
     // Update user fields
     $userFields = [
@@ -57,15 +51,7 @@ class ProfileController extends Controller
     // Save user changes
     $user->save();
     
-    Profile::updateOrCreate(
-        ['user_id' => $user->id],
-        [
-            'first_name' => $fields['firstName'],
-            'last_name' => $fields['lastName'],
-            'barangay' => $fields['barangay'],
-            'city' => $fields['city'],
-        ]
-    );
+   
     
     return redirect()->route('profile.edit')
         ->with('status', 'profile-updated');

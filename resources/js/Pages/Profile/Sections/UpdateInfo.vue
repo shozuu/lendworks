@@ -17,7 +17,6 @@ const props = defineProps({
 	profile: Object,
 	status: String,
 });
-console.log("Profile data received:", props.profile);
 
 const profile = props.profile || {};
 
