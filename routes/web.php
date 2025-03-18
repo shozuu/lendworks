@@ -138,6 +138,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     
     // User management routes
     Route::get('/users', [AdminController::class, 'users'])->name('users');
+    Route::get('/users/export', [AdminController::class, 'exportUsers'])->name('users.export'); // Add this line
     Route::patch('/users/{user}/suspend', [AdminController::class, 'suspendUser'])->name('users.suspend');
     Route::patch('/users/{user}/activate', [AdminController::class, 'activateUser'])->name('users.activate');
     Route::get('/users/{user}', [AdminController::class, 'showUser'])->name('users.show');

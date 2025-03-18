@@ -109,35 +109,55 @@ const handleAction = () => {
 	);
 };
 
-const exportToCSV = () => {
-    const headers = [
-        'Name',
-        'Email',
-        'Status',
-        'Verification',
-        'Listings Count',
-        'Join Date'
-    ].join(',');
+const exportToCSV = async () => {
+    try {
+        // Fetch all users data from the export endpoint
+        const response = await fetch(route('admin.users.export'), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
 
-    const rows = props.users.data.map(user => [
-        `"${user.name}"`,
-        `"${user.email}"`,
-        user.status,
-        user.email_verified_at ? 'Verified' : 'Unverified',
-        user.listings_count,
-        formatDate(user.created_at)
-    ].join(','));
+        if (!response.ok) throw new Error('Failed to fetch data');
+        const allUsers = await response.json();
 
-    const csv = [headers, ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `users-${formatDate(new Date())}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+        // Define headers
+        const headers = [
+            'Name',
+            'Email',
+            'Status',
+            'Verification',
+            'Join Date',
+            'Listings',
+            'Actions Required'
+        ].join(',');
+
+        // Transform all users data into CSV rows
+        const rows = allUsers.map(user => [
+            `"${user.name.replace(/"/g, '""')}"`,
+            `"${user.email.replace(/"/g, '""')}"`,
+            user.status,
+            user.verification,
+            user.join_date,
+            user.listings_count,
+            `"${user.actions_required}"`
+        ].join(','));
+
+        // Create and download CSV
+        const csv = [headers, ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `users-export-${formatDate(new Date())}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+        console.error('Export failed:', error);
+    }
 };
 </script>
 

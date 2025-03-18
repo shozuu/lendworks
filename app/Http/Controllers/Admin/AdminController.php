@@ -961,4 +961,53 @@ class AdminController extends Controller
             ]
         ];
     }
+
+    private function getUserActionFlags($user)
+    {
+        $flags = [];
+        
+        if (!$user->email_verified_at) {
+            $flags[] = 'Needs Verification';
+        }
+        
+        if ($user->status === 'suspended') {
+            $flags[] = 'Account Suspended';
+        }
+        
+        if ($user->listings_count === 0) {
+            $flags[] = 'No Listings';
+        }
+        
+        return empty($flags) ? 'None' : implode('; ', $flags);
+    }
+
+    public function exportUsers()
+    {
+        try {
+            // Get all users with related data
+            $users = User::select([
+                'id', 'name', 'email', 'status',
+                'email_verified_at', 'created_at'
+            ])
+            ->withCount('listings')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($user) {
+                return [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'status' => $user->status,
+                    'verification' => $user->email_verified_at ? 'Verified' : 'Unverified',
+                    'join_date' => $user->created_at->format('Y-m-d'),
+                    'listings_count' => $user->listings_count,
+                    'actions_required' => $this->getUserActionFlags($user)
+                ];
+            });
+
+            return response()->json($users);
+        } catch (\Exception $e) {
+            report($e);
+            return response()->json(['error' => 'Export failed'], 500);
+        }
+    }
 }
