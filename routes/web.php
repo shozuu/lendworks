@@ -20,6 +20,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MyRentalsController;
 use App\Http\Controllers\MyListingsController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\RentalRequestController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\HandoverController;
@@ -32,17 +33,17 @@ use App\Http\Controllers\Admin\LogController;  // Update this line with correct 
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\CheckMaintenanceMode;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\OpenStreetMapController;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
 
 // 'verified' and password.confirm middleware can be used to protect routes that need full user verification but for now, i'll put it at my rentals to demonstrate functionality
 
-Route::middleware(['auth', 'verified'])->group(function() {
+Route::middleware(['auth', 'fully-verified'])->group(function () {
     // profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'updateInfo'])->name('profile.info');
     Route::put('/profile', [ProfileController::class, 'updatePassword'])->name('profile.password');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // my rentals 
     Route::get('/my-rentals', [MyRentalsController::class, 'index'])->middleware('verified')->name('my-rentals');
@@ -152,6 +153,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     Route::patch('/users/{user}/activate', [AdminController::class, 'activateUser'])->name('users.activate');
     Route::get('/users/{user}', [AdminController::class, 'showUser'])->name('users.show');
     
+    
     // Listing management routes
     Route::get('/listings', [AdminController::class, 'listings'])->name('listings');
     Route::get('/listings/export', [AdminController::class, 'exportListings'])->name('listings.export'); // Add this line
@@ -229,8 +231,14 @@ Route::middleware(['web', CheckMaintenanceMode::class])->group(function() {
     Route::get('/', [ListingController::class, 'index'])->name('home');
     Route::get('listing/{listing}', [ListingController::class, 'show'])->name('listing.show');
     Route::get('/explore', [ExploreController::class, 'index'])->name('explore');
+    Route::get('/users/{user}', [UserProfileController::class, 'show'])->name('users.profile');
+    Route::get('/api/location/search', [App\Http\Controllers\OpenStreetMapController::class, 'search'])
+    ->name('api.location.search');
+
     
     // Move other public routes here
 });
+
+
 
 require __DIR__ . '/auth.php';
