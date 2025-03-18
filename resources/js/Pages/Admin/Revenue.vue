@@ -24,7 +24,7 @@ import { formatDate } from "@/lib/formatters";
 import PaginationLinks from "@/Components/PaginationLinks.vue";
 import { Link } from "@inertiajs/vue3";  // Add Link import if not already present
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-vue-next";
+import { Download, Printer, Image } from "lucide-vue-next"; // Add Printer and Image icons
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import RevenueChart from "@/Components/RevenueChart.vue";
@@ -134,6 +134,19 @@ const exportToCSV = () => {
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
 };
+
+// Add ref for chart component
+const chartRef = ref(null);
+
+// Add chart export methods
+const downloadChart = () => {
+    chartRef.value?.downloadChart('png');
+};
+
+const printChart = () => {
+    chartRef.value?.downloadChart('print');
+};
+
 </script>
 
 <template>
@@ -216,11 +229,21 @@ const exportToCSV = () => {
 
             <!-- Revenue Trend Chart -->
             <Card>
-                <CardHeader>
+                <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle>Revenue Trends</CardTitle>
+                    <div class="flex items-center gap-2">
+                        <Button variant="outline" size="sm" @click="downloadChart" class="gap-2">
+                            <Image class="h-4 w-4" />
+                            Save as PNG
+                        </Button>
+                        <Button variant="outline" size="sm" @click="printChart" class="gap-2">
+                            <Printer class="h-4 w-4" />
+                            Print Chart
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
-                    <RevenueChart :data="trends" />
+                    <RevenueChart ref="chartRef" :data="trends" />
                 </CardContent>
             </Card>
 

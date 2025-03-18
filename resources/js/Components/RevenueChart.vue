@@ -1,6 +1,6 @@
 <script setup>
 import { Line } from 'vue-chartjs'
-import { computed } from 'vue' // Add this import
+import { computed, ref } from 'vue' // Add this import
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -58,7 +58,8 @@ const options = {
         display: false // Hide y-axis line
       },
       grid: {
-        color: '#e2e8f0' // Slate-200 color
+        color: '#e2e8f020', // Reduced opacity for y-axis grid lines
+        drawBorder: false
       },
       ticks: {
         font: {
@@ -126,10 +127,70 @@ const enhancedData = computed(() => ({
     }
   }))
 }));
+
+// Add chart instance ref
+const chartInstance = ref(null);
+
+// Update download method
+const downloadChart = (type = 'png') => {
+  if (!chartInstance.value) return;
+  
+  // Get chart canvas
+  const canvas = chartInstance.value.$el;
+  
+  if (type === 'png') {
+    // For PNG download
+    const link = document.createElement('a');
+    link.download = `revenue-chart-${new Date().toISOString().slice(0,10)}.png`;
+    link.href = canvas.toDataURL('image/png', 1.0);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } else if (type === 'print') {
+    // For printing
+    const printWindow = window.open('');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Revenue Chart</title>
+          <style>
+            @media print {
+              img { 
+                width: 100%;
+                max-width: 800px;
+                margin: 0 auto;
+              }
+              body {
+                display: flex;
+                justify-content: center;
+                padding: 20px;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <img src="${canvas.toDataURL('image/png', 1.0)}" />
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  }
+};
+
+// Expose methods to parent
+defineExpose({
+  downloadChart
+});
 </script>
 
 <template>
   <Line 
+    ref="chartInstance"
     :data="enhancedData" 
     :options="options" 
     class="h-[300px]" 
