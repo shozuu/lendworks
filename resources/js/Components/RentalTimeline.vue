@@ -367,6 +367,28 @@ const formatEventMessage = (event) => {
 				event.metadata?.amount
 			)})`;
 
+		case "pickup_schedule_suggested":
+			if (isLatest) {
+				const metadata = event.metadata || {};
+				const scheduleText = `${formatDateTime(metadata.datetime)}`;
+				return performedByViewer
+					? `You suggested a pickup schedule for ${scheduleText}`
+					: `${actorLabel} suggested a pickup schedule for ${scheduleText}`;
+			}
+			return `${actorLabel} suggested a pickup schedule`;
+
+		case "pickup_schedule_suggestion_accepted":
+			if (isLatest) {
+				const metadata = event.metadata || {};
+				const scheduleText = `${metadata.day_of_week}, ${formatDateTime(
+					metadata.datetime
+				)}`;
+				return performedByViewer
+					? `You accepted the suggested pickup schedule for ${scheduleText}`
+					: `${actorLabel} accepted the pickup schedule for ${scheduleText}`;
+			}
+			return `${actorLabel} accepted the suggested pickup schedule`;
+
 		default:
 			return `Unknown event by ${actorLabel}`;
 	}
