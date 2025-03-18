@@ -762,10 +762,49 @@ class AdminController extends Controller
 
     public function revenue(Request $request)
     {
-        $period = $request->input('period', '30');
+        $dateRange = $request->input('dateRange', 'last30');
         $sort = $request->input('sort', 'latest');
 
-        // Calculate revenue stats
+        // Base query for completed transactions
+        $baseQuery = RentalRequest::whereIn('status', ['completed', 'completed_with_payments']);
+
+        // Apply date range filter
+        switch ($dateRange) {
+            case 'today':
+                $baseQuery->whereDate('created_at', today());
+                break;
+            case 'yesterday':
+                $baseQuery->whereDate('created_at', today()->subDay());
+                break;
+            case 'last7':
+                $baseQuery->where('created_at', '>=', now()->subDays(7));
+                break;
+            case 'last30':
+                $baseQuery->where('created_at', '>=', now()->subDays(30));
+                break;
+            case 'thisMonth':
+                $baseQuery->whereMonth('created_at', now()->month)
+                         ->whereYear('created_at', now()->year);
+                break;
+            case 'lastMonth':
+                $baseQuery->whereMonth('created_at', now()->subMonth()->month)
+                         ->whereYear('created_at', now()->subMonth()->year);
+                break;
+            case 'last90':
+                $baseQuery->where('created_at', '>=', now()->subDays(90));
+                break;
+            case 'thisYear':
+                $baseQuery->whereYear('created_at', now()->year);
+                break;
+            case 'lastYear':
+                $baseQuery->whereYear('created_at', now()->subYear()->year);
+                break;
+            case 'allTime':
+                // No filter needed for all time
+                break;
+        }
+
+        // Rest of the revenue calculation logic remains the same
         $revenue = [
             'total' => RentalRequest::whereIn('status', ['completed', 'completed_with_payments'])
                                    ->sum(DB::raw('service_fee * 2')),
@@ -775,8 +814,7 @@ class AdminController extends Controller
             'today' => RentalRequest::whereIn('status', ['completed', 'completed_with_payments'])
                                    ->whereDate('created_at', today())
                                    ->sum(DB::raw('service_fee * 2')),
-            'average' => RentalRequest::whereIn('status', ['completed', 'completed_with_payments'])
-                                     ->avg(DB::raw('service_fee * 2')) ?? 0,
+            'average' => $baseQuery->clone()->avg(DB::raw('service_fee * 2')) ?? 0,
             'lastWeek' => RentalRequest::whereIn('status', ['completed', 'completed_with_payments'])
                                       ->where('created_at', '>=', now()->subDays(7))
                                       ->sum(DB::raw('service_fee * 2')),
@@ -788,32 +826,29 @@ class AdminController extends Controller
                                          ->sum(DB::raw('service_fee * 2')),
         ];
 
-        // Get transactions query
-        $query = RentalRequest::with(['listing:id,title', 'renter:id,name'])
-            ->whereIn('status', ['completed', 'completed_with_payments'])
-            ->where('created_at', '>=', now()->subDays($period));
-
         // Apply sorting
         switch ($sort) {
             case 'oldest':
-                $query->oldest();
+                $baseQuery->oldest();
                 break;
             case 'highest':
-                $query->orderByDesc('service_fee');
+                $baseQuery->orderByDesc('service_fee');
                 break;
             case 'lowest':
-                $query->orderBy('service_fee');
+                $baseQuery->orderBy('service_fee');
                 break;
             default:
-                $query->latest();
+                $baseQuery->latest();
         }
 
-        $transactions = $query->paginate(10)->appends($request->query());
+        $transactions = $baseQuery->with(['listing:id,title', 'renter:id,name'])
+                                ->paginate(10)
+                                ->appends($request->query());
 
         return Inertia::render('Admin/Revenue', [
             'revenue' => $revenue,
             'transactions' => $transactions,
-            'filters' => $request->only(['period', 'sort'])
+            'filters' => $request->only(['dateRange', 'sort'])
         ]);
     }
 }

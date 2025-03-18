@@ -25,6 +25,8 @@ import PaginationLinks from "@/Components/PaginationLinks.vue";
 import { Link } from "@inertiajs/vue3";  // Add Link import if not already present
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-vue-next";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 defineOptions({ layout: AdminLayout });
 
@@ -34,19 +36,23 @@ const props = defineProps({
     filters: {
         type: Object,
         default: () => ({
-            period: '30',
+            dateRange: 'last30',  // Changed from period
             sort: 'latest'
         })
     }
 });
 
-const period = ref(props.filters.period);
+const dateRange = ref(props.filters.dateRange);
 const sort = ref(props.filters.sort);
 
-watch([period, sort], ([newPeriod, newSort]) => {
+// Update watch handler
+watch([dateRange, sort], ([newDateRange, newSort]) => {
     router.get(
         route('admin.revenue'),
-        { period: newPeriod, sort: newSort },
+        { 
+            dateRange: newDateRange,
+            sort: newSort
+        },
         { preserveState: true }
     );
 });
@@ -115,7 +121,6 @@ const exportToCSV = () => {
                         <div class="text-2xl font-bold">₱{{ revenue.average.toLocaleString() }}</div>
                     </CardContent>
                 </Card>
-
                 <Card>
                     <CardHeader>
                         <CardTitle class="text-sm font-medium">Last 7 Days</CardTitle>
@@ -124,7 +129,6 @@ const exportToCSV = () => {
                         <div class="text-2xl font-bold">₱{{ revenue.lastWeek.toLocaleString() }}</div>
                     </CardContent>
                 </Card>
-
                 <Card>
                     <CardHeader>
                         <CardTitle class="text-sm font-medium">Last 30 Days</CardTitle>
@@ -133,7 +137,6 @@ const exportToCSV = () => {
                         <div class="text-2xl font-bold">₱{{ revenue.lastMonth.toLocaleString() }}</div>
                     </CardContent>
                 </Card>
-
                 <Card>
                     <CardHeader>
                         <CardTitle class="text-sm font-medium">Last 90 Days</CardTitle>
@@ -145,16 +148,22 @@ const exportToCSV = () => {
             </div>
 
             <!-- Filters -->
-            <div class="flex gap-4">
-                <Select v-model="period">
-                    <SelectTrigger class="w-[180px]">
-                        <SelectValue placeholder="Select Period" />
+            <div class="flex flex-wrap gap-4">
+                <Select v-model="dateRange">
+                    <SelectTrigger class="w-[200px]">
+                        <SelectValue placeholder="Select Date Range" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="7">Last 7 days</SelectItem>
-                        <SelectItem value="30">Last 30 days</SelectItem>
-                        <SelectItem value="90">Last 90 days</SelectItem>
-                        <SelectItem value="365">Last 365 days</SelectItem>
+                        <SelectItem value="today">Today</SelectItem>
+                        <SelectItem value="yesterday">Yesterday</SelectItem>
+                        <SelectItem value="last7">Last 7 days</SelectItem>
+                        <SelectItem value="last30">Last 30 days</SelectItem>
+                        <SelectItem value="thisMonth">This Month</SelectItem>
+                        <SelectItem value="lastMonth">Last Month</SelectItem>
+                        <SelectItem value="last90">Last 90 days</SelectItem>
+                        <SelectItem value="thisYear">This Year</SelectItem>
+                        <SelectItem value="lastYear">Last Year</SelectItem>
+                        <SelectItem value="allTime">All Time</SelectItem>
                     </SelectContent>
                 </Select>
 
@@ -170,25 +179,24 @@ const exportToCSV = () => {
                     </SelectContent>
                 </Select>
 
-                <!-- Add export button -->
                 <Button @click="exportToCSV" variant="outline" class="gap-2">
                     <Download class="h-4 w-4" />
                     Export CSV
                 </Button>
             </div>
+
         </div>
 
         <!-- Transactions Table -->
         <Card>
-            <CardHeader>
-                <CardTitle>Revenue Transactions</CardTitle>
-            </CardHeader>
             <CardContent>
+                <CardTitle>Revenue Transactions</CardTitle>
                 <Table>
                     <TableHeader>
                         <TableRow>
                             <TableHead>Date</TableHead>
-                            <TableHead>Transaction</TableHead>
+                            <TableHead>Listing Title</TableHead>
+                            <TableHead>Renter</TableHead>
                             <TableHead>Rental Amount</TableHead>
                             <TableHead>Platform Fee</TableHead>
                             <TableHead>Total Earnings</TableHead>
@@ -203,12 +211,8 @@ const exportToCSV = () => {
                             @click="router.visit(route('admin.rental-transactions.show', transaction.id))"
                         >
                             <TableCell>{{ formatDate(transaction.created_at) }}</TableCell>
-                            <TableCell>
-                                <div class="font-medium">{{ transaction.listing.title }}</div>
-                                <div class="text-sm text-muted-foreground">
-                                    Renter: {{ transaction.renter.name }}
-                                </div>
-                            </TableCell>
+                            <TableCell class="font-medium">{{ transaction.listing.title }}</TableCell>
+                            <TableCell class="text-muted-foreground">{{ transaction.renter.name }}</TableCell>
                             <TableCell>₱{{ transaction.total_price.toLocaleString() }}</TableCell>
                             <TableCell>₱{{ transaction.service_fee.toLocaleString() }}</TableCell>
                             <TableCell class="font-medium">
@@ -222,7 +226,6 @@ const exportToCSV = () => {
                 </Table>
             </CardContent>
         </Card>
-
         <PaginationLinks :paginator="transactions" />
     </div>
 </template>
