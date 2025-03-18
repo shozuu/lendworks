@@ -296,6 +296,13 @@ class RentalRequest extends Model
             ->where('type', 'deposit_refund')
             ->exists();
 
+        $actions['canRespondToSchedule'] = $isLender && 
+            $this->pickup_schedules()
+                ->where('is_suggested', true)
+                ->where('is_selected', true)
+                ->where('is_confirmed', false)
+                ->exists();
+                
         return $actions;
     }
 
@@ -697,5 +704,37 @@ class RentalRequest extends Model
             ->where('is_selected', true)
             ->where('is_confirmed', true)
             ->exists();
+    }
+
+    public function canSuggestSchedule(): bool
+    {
+        // Can suggest if:
+        // 1. Status is to_handover AND
+        // 2. No selected schedule exists AND
+        // 3. Either:
+        //    a. No lender schedules for today OR
+        //    b. All lender schedules for today are past
+        if ($this->status !== 'to_handover') {
+            return false;
+        }
+
+        if ($this->pickup_schedules()->where('is_selected', true)->exists()) {
+            return false;
+        }
+
+        $today = Carbon::now()->format('l');
+        $lenderSchedules = $this->listing->user->pickup_schedules()
+            ->where('day_of_week', $today)
+            ->where('is_active', true)
+            ->get();
+
+        if ($lenderSchedules->isEmpty()) {
+            return true;
+        }
+
+        return $lenderSchedules->every(function ($schedule) {
+            $endTime = Carbon::createFromTimeString($schedule->end_time);
+            return Carbon::now()->greaterThan($endTime);
+        });
     }
 }

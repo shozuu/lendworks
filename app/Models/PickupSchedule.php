@@ -13,12 +13,14 @@ class PickupSchedule extends Model
         'is_selected',
         'is_confirmed',
         'start_time',
-        'end_time'
+        'end_time',
+        'is_suggested',
     ];
 
     protected $casts = [
         'pickup_datetime' => 'datetime',
-        'is_selected' => 'boolean'
+        'is_selected' => 'boolean',
+        'is_suggested' => 'boolean',
     ];
 
     public function rental_request()

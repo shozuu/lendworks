@@ -60,4 +60,9 @@ class User extends Authenticatable implements MustVerifyEmail
             'listing_id'
         );
     }
+
+    public function pickup_schedules()
+    {
+        return $this->hasMany(LenderPickupSchedule::class);
+    }
 }

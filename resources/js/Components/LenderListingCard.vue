@@ -271,7 +271,12 @@ const handleScheduleConfirmed = () => {
 				</template>
 
 				<!-- Waiting Message -->
-				<Button v-if="hasNoSchedule" variant="default" size="sm" disabled>
+				<Button
+					v-if="actions.canHandover && hasNoSchedule"
+					variant="default"
+					size="sm"
+					disabled
+				>
 					Waiting for Schedule
 				</Button>
 

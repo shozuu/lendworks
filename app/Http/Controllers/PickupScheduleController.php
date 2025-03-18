@@ -95,44 +95,95 @@ class PickupScheduleController extends Controller
         return back()->with('success', 'Pickup schedule selected successfully.');
     }
 
+    public function suggest(Request $request, RentalRequest $rental)
+    {
+        if ($rental->renter_id !== Auth::id()) {
+            abort(403);
+        }
+
+        // Fix this section to check lender schedules
+        $lender = $rental->listing->user;
+        $today = Carbon::now()->format('l');
+        $lenderSchedules = $lender->pickup_schedules()
+            ->where('day_of_week', $today)
+            ->where('is_active', true)
+            ->get();
+
+        if (!$rental->canSuggestSchedule()) {
+            return back()->with('error', 'Cannot suggest schedule at this time.');
+        }
+
+        $validated = $request->validate([
+            'start_time' => 'required|string',
+            'end_time' => 'required|string|after:start_time',
+            'pickup_datetime' => 'required|date'
+        ]);
+
+        try {
+            DB::transaction(function () use ($rental, $validated) {
+                // Reset existing selections
+                $rental->pickup_schedules()->update(['is_selected' => false]);
+
+                // Create suggested schedule
+                $schedule = $rental->pickup_schedules()->create([
+                    'pickup_datetime' => $validated['pickup_datetime'],
+                    'start_time' => $validated['start_time'],
+                    'end_time' => $validated['end_time'],
+                    'is_selected' => true,
+                    'is_suggested' => true
+                ]);
+
+                // Add timeline event
+                $rental->recordTimelineEvent('pickup_schedule_suggested', Auth::id(), [
+                    'datetime' => $schedule->pickup_datetime,
+                    'start_time' => $schedule->start_time,
+                    'end_time' => $schedule->end_time,
+                    'suggested_by' => 'renter'
+                ]);
+            });
+
+            return back()->with('success', 'Schedule suggestion sent to lender.');
+        } catch (\Exception $e) {
+            report($e);
+            return back()->with('error', 'Failed to suggest schedule.');
+        }
+    }
+
     public function confirmSchedule(RentalRequest $rental)
     {
-        // Validate that the user is the lender
+        // Add validation to ensure only lender can confirm
         if ($rental->listing->user_id !== Auth::id()) {
-            abort(403, 'Only the lender can confirm schedules');
+            abort(403);
         }
 
         $schedule = $rental->pickup_schedules()
             ->where('is_selected', true)
             ->firstOrFail();
 
-        DB::transaction(function () use ($rental, $schedule) {
-            // Explicitly update the schedule's confirmed status
-            $schedule->update([
-                'is_confirmed' => true
-            ]);
-            
-            $rental->update(['status' => 'to_handover']);
-            
-            $rental->recordTimelineEvent('pickup_schedule_confirmed', Auth::id(), [
-                'datetime' => $schedule->pickup_datetime,
-                'day_of_week' => date('l', strtotime($schedule->pickup_datetime)), 
-                'date' => date('M d, Y', strtotime($schedule->pickup_datetime)),
-                'start_time' => $schedule->start_time,
-                'end_time' => $schedule->end_time,
-                'confirmed_by' => 'lender',
-                'confirmation_datetime' => now()->format('Y-m-d H:i:s'),
-                'location' => [
-                    'address' => $rental->listing->location->address,
-                    'city' => $rental->listing->location->city,
-                    'province' => $rental->listing->location->province
-                ]
-            ]);
+        try {
+            DB::transaction(function () use ($rental, $schedule) {
+                // Update schedule confirmation
+                $schedule->update(['is_confirmed' => true]);
+                
+                // Update rental status to proceed with handover
+                $rental->update(['status' => 'to_handover']);
 
-            // Reload the relationships
-            $rental->load(['pickup_schedules']);
-        });
+                // Record timeline event
+                $rental->recordTimelineEvent(
+                    $schedule->is_suggested ? 'pickup_schedule_suggestion_accepted' : 'pickup_schedule_confirmed',
+                    Auth::id(),
+                    [
+                        'datetime' => $schedule->pickup_datetime,
+                        'start_time' => $schedule->start_time,
+                        'end_time' => $schedule->end_time
+                    ]
+                );
+            });
 
-        return back()->with('success', 'Schedule confirmed successfully');
+            return back()->with('success', 'Schedule confirmed successfully.');
+        } catch (\Exception $e) {
+            report($e);
+            return back()->with('error', 'Failed to confirm schedule.');
+        }
     }
 }
