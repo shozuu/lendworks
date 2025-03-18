@@ -59,6 +59,15 @@ const shouldCloseAfterSelection = computed(() => {
 	return false;
 });
 
+// Update shouldCloseAfterSelection computed to check role and selected schedule
+const shouldShowLenderConfirmation = computed(() => {
+	return (
+		props.userRole === "lender" &&
+		selectedSchedule.value &&
+		!selectedSchedule.value.is_confirmed
+	);
+});
+
 const handleConfirmSchedule = () => {
 	confirmForm.patch(
 		route("pickup-schedules.confirm", {
@@ -83,13 +92,10 @@ const handleConfirmSchedule = () => {
 	<Dialog :open="show" @update:open="closeDialog">
 		<DialogContent class="max-w-2xl">
 			<div class="space-y-4">
-				<!-- Only show suggestion details to lender -->
-				<div
-					v-if="isSuggestedSchedule && selectedSchedule && userRole === 'lender'"
-					class="p-4"
-				>
+				<!-- Show lender confirmation view -->
+				<div v-if="shouldShowLenderConfirmation" class="p-4">
 					<div class="bg-muted p-4 rounded-lg space-y-4">
-						<h3 class="font-medium text-base">Renter's Suggested Schedule</h3>
+						<h3 class="font-medium text-base">Selected Pickup Schedule</h3>
 						<div class="space-y-2">
 							<p class="text-sm">
 								<span class="text-muted-foreground">Date:</span>
@@ -111,7 +117,7 @@ const handleConfirmSchedule = () => {
 					</Button>
 				</div>
 
-				<!-- Show original selector for non-suggested schedules or for renter -->
+				<!-- Show date selector for renters or when no schedule is selected -->
 				<div v-else>
 					<PickupDateSelector
 						:rental="rental"
