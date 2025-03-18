@@ -1,6 +1,6 @@
 <script setup>
 import AuthLayout from "../../Layouts/AuthLayout.vue";
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import axios from "axios";
 
 defineOptions({ layout: AuthLayout });
@@ -35,6 +35,18 @@ const livenessSteps = [
 	{ action: "smile", instruction: "Please smile naturally" },
 	{ action: "blink", instruction: "Please blink your eyes slowly" },
 ];
+
+watch([selectedIdType, secondSelectedIdType], ([newPrimaryType, newSecondaryType]) => {
+	if (newPrimaryType && newSecondaryType && newPrimaryType === newSecondaryType) {
+		duplicateIdError.value = "Primary and secondary ID must be different types";
+		// Reset the second ID if user selects the same as primary
+		secondIdCard.value = null;
+		secondIdPreview.value = null;
+		secondIdValidationResult.value = null;
+	} else {
+		duplicateIdError.value = null;
+	}
+});
 
 // Valid Philippine IDs mapping
 const validPhilippineIds = {
@@ -160,20 +172,6 @@ const startLivenessDetection = async () => {
 	}
 };
 
-const handleSecondIdUpload = async (event) => {
-	const file = event.target.files[0];
-	if (file) {
-		secondIdCard.value = file;
-		secondIdPreview.value = URL.createObjectURL(file);
-
-		if (secondSelectedIdType.value && idCard.value && selectedIdType.value) {
-			await validateIdType();
-		} else if (!secondSelectedIdType.value) {
-			error.value = "Please select a second ID type before uploading";
-		}
-	}
-};
-
 const handleIdUpload = async (event) => {
 	const file = event.target.files[0];
 	if (file) {
@@ -188,18 +186,46 @@ const handleIdUpload = async (event) => {
 	}
 };
 
+const handleSecondIdUpload = async (event) => {
+	const file = event.target.files[0];
+	if (file) {
+		// Check for duplicate ID types before proceeding
+		if (secondSelectedIdType.value === selectedIdType.value) {
+			error.value = "Primary and secondary ID must be different types.";
+			duplicateIdError.value = "Primary and secondary ID must be different types";
+			return;
+		}
+
+		secondIdCard.value = file;
+		secondIdPreview.value = URL.createObjectURL(file);
+
+		if (secondSelectedIdType.value && idCard.value && selectedIdType.value) {
+			await validateIdType();
+		} else if (!secondSelectedIdType.value) {
+			error.value = "Please select a second ID type before uploading";
+		}
+	}
+};
+
 const validateIdType = async () => {
-	if (
-		!idCard.value ||
-		!selectedIdType.value ||
-		!secondIdCard.value ||
-		!secondSelectedIdType.value
-	) {
-		error.value = "Please select both ID types and upload both ID cards.";
+	if (!idCard.value || !selectedIdType.value) {
+		error.value = "Please select the primary ID type and upload ID card.";
+		return;
+	}
+
+	if (!secondIdCard.value || !secondSelectedIdType.value) {
+		error.value = "Please select the secondary ID type and upload ID card.";
+		return;
+	}
+
+	if (selectedIdType.value === secondSelectedIdType.value) {
+		error.value = "Primary and secondary ID must be different types.";
+		duplicateIdError.value = "Primary and secondary ID must be different types";
 		return;
 	}
 
 	error.value = null;
+	duplicateIdError.value = null;
 
 	try {
 		const formData = new FormData();
@@ -593,7 +619,7 @@ onUnmounted(() => {
 						<div
 							:class="`p-2 rounded text-sm ${
 								secondIdValidationResult.isValid
-									? 'bg-accent text-primary'
+									? 'bg-accent text-emerald-400'
 									: 'bg-destructive/10 text-destructive'
 							}`"
 						>

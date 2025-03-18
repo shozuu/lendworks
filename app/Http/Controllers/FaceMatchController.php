@@ -45,10 +45,6 @@ class FaceMatchController extends Controller
         'exp date', 'exp. date', 'date of expiry', 'date of expiration'
     ];
 
-    private $birthdatePhrases = [
-        'date of birth', 'birth date', 'birthday', 'birth', 'dob',
-        'petsa ng kapanganakan', 'birth day', 'birthdate'
-    ];
 
     public function show()
     {
