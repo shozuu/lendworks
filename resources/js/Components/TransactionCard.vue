@@ -1,8 +1,9 @@
 <script setup>
 import { Link } from "@inertiajs/vue3";
-import { Card } from "@/components/ui/card";
+import { formatDate } from "@/lib/formatters";  // Remove formatPrice as it's not being used
 import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/lib/formatters";
+import { Button } from "@/components/ui/button";
+import { ChevronRight } from "lucide-vue-next";
 
 const props = defineProps({
     transaction: {
@@ -14,49 +15,61 @@ const props = defineProps({
         required: true
     }
 });
+
+// Add safe getter method for image
+const getListingImage = () => {
+    if (props.transaction?.listing?.images?.length) {
+        return `/storage/${props.transaction.listing.images[0].image_path}`;
+    }
+    return '/storage/images/listing/default.png'; // Fallback image
+};
+
+// Add safe getter methods for other properties
+const getListingTitle = () => props.transaction?.listing?.title || 'Untitled Listing';
+const getRenterName = () => props.transaction?.renter?.name || 'Unknown Renter';
+const getLenderName = () => props.transaction?.listing?.user?.name || 'Unknown Lender';
 </script>
 
 <template>
-    <Card class="sm:p-6 hover:ring-1 hover:ring-primary/20 group p-4 transition-all cursor-pointer">
-        <Link :href="route('admin.rental-transactions.show', transaction.id)" class="block">
-            <!-- Add relative positioning for badge placement -->
-            <div class="relative">
-                <!-- Status Badge - Positioned top right -->
-                <div class="absolute top-0 right-0 z-10">
-                    <Badge :variant="statusBadge.variant">
-                        {{ statusBadge.label }}
-                    </Badge>
-                </div>
+    <div class="border rounded-lg hover:bg-muted group transition-colors">
+        <Link :href="route('admin.rental-transactions.show', transaction.id)" class="block space-y-4 p-4">
+            <!-- Status Badge -->
+            <div class="flex justify-end mb-2">
+                <Badge :variant="statusBadge.variant">
+                    {{ statusBadge.label }}
+                </Badge>
+            </div>
 
-                <div class="sm:flex-row flex flex-col gap-4">
-                    <!-- Add Image -->
-                    <div class="sm:w-32 sm:h-32 shrink-0 w-24 h-24 overflow-hidden rounded-md">
-                        <img
-                            :src="
-                                transaction.listing.images[0]?.image_path
-                                    ? `/storage/${transaction.listing.images[0].image_path}`
-                                    : '/storage/images/listing/default.png'
-                            "
-                            :alt="transaction.listing.title"
-                            class="object-cover w-full rounded-lg"
-                        />
-                    </div>
-
-                    <!-- Transaction Info -->
-                    <div class="flex-1 min-w-0 space-y-2">
-                        <h3 class="group-hover:text-primary font-semibold truncate transition-colors">
-                            {{ transaction.listing.title }}
-                        </h3>
-                        <div class="sm:text-sm text-muted-foreground space-y-1 text-xs">
-                            <p><span class="font-medium">Lender:</span> {{ transaction.listing.user.name }}</p>
-                            <p><span class="font-medium">Renter:</span> {{ transaction.renter.name }}</p>
-                            <p><span class="font-medium">Created:</span> {{ formatDate(transaction.created_at) }}</p>
-                            <p><span class="font-medium">Total Price:</span> ₱{{ transaction.total_price }}</p>
-                            
+            <div class="sm:flex-row flex flex-col gap-4">
+                <!-- Listing Image & Details -->
+                <div class="flex gap-4 flex-1">
+                    <img 
+                        :src="getListingImage()" 
+                        :alt="getListingTitle()"
+                        class="object-cover w-20 h-20 rounded-md"
+                    />
+                    <div class="space-y-1 flex-1 min-w-0">
+                        <h3 class="font-medium truncate">{{ getListingTitle() }}</h3>
+                        <div class="text-muted-foreground text-sm space-y-1">
+                            <p>Renter: {{ getRenterName() }}</p>
+                            <p>Lender: {{ getLenderName() }}</p>
                         </div>
                     </div>
                 </div>
+
+                <!-- Date -->
+                <div class="text-muted-foreground text-sm">
+                    {{ formatDate(transaction.created_at) }}
+                </div>
+            </div>
+
+            <!-- View Details Button -->
+            <div class="flex justify-end">
+                <Button variant="ghost" size="sm" class="gap-1">
+                    View Details
+                    <ChevronRight class="w-4 h-4" />
+                </Button>
             </div>
         </Link>
-    </Card>
+    </div>
 </template>

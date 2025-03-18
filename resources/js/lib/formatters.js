@@ -32,17 +32,21 @@ export function formatRentalDate(date) {
 
 export function formatDate(date) {
     if (!date) return '';
-    const dateObj = new Date(date);
-    
-    if (isToday(dateObj)) {
-        return `Today at ${format(dateObj, 'h:mm a')}`;
-    }
-    
-    if (isYesterday(dateObj)) {
-        return `Yesterday at ${format(dateObj, 'h:mm a')}`;
-    }
+    return new Date(date).toLocaleDateString('en-PH', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
 
-    return format(dateObj, 'MMM d, yyyy');
+export function formatPrice(amount) {
+    if (!amount && amount !== 0) return '';
+    return new Intl.NumberFormat('en-PH', {
+        style: 'currency',
+        currency: 'PHP'
+    }).format(amount);
 }
 
 export function formatShortDate(date) {
@@ -52,7 +56,13 @@ export function formatShortDate(date) {
 
 export function formatDateTime(date) {
     if (!date) return '';
-    return format(new Date(date), 'MMM d, yyyy h:mm a');
+    return new Date(date).toLocaleDateString('en-PH', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 }
 
 export function timeAgo(date) {

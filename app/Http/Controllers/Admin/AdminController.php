@@ -664,18 +664,21 @@ class AdminController extends Controller
             'total' => RentalRequest::count(),
             'pending' => RentalRequest::where('status', 'pending')->count(),
             'approved' => RentalRequest::where('status', 'approved')->count(),
-            'to_handover' => RentalRequest::where('status', 'to_handover')->count(),
+            'renter_paid' => RentalRequest::where('status', 'to_handover')->count(),
             'active' => RentalRequest::where('status', 'active')->count(),
-            'completed' => RentalRequest::where('status', 'completed')->count(),
+            'pending_return' => RentalRequest::where('status', 'pending_return')->count(),
+            'return_scheduled' => RentalRequest::where('status', 'return_scheduled')->count(),
+            'pending_return_confirmation' => RentalRequest::where('status', 'pending_return_confirmation')->count(),
+            'completed' => RentalRequest::whereIn('status', ['completed', 'completed_with_payments', 'completed_pending_payments'])->count(),
             'rejected' => RentalRequest::where('status', 'rejected')->count(),
             'cancelled' => RentalRequest::where('status', 'cancelled')->count(),
         ];
 
         $query = RentalRequest::with([
-            'listing' => fn($q) => $q->with(['images', 'user']), 
-            'renter',
-            'payment_request',
-            'latestRejection.rejectionReason',
+            'listing:id,title,user_id',
+            'listing.images:id,listing_id,image_path',
+            'listing.user:id,name',
+            'renter:id,name',
             'latestCancellation.cancellationReason'
         ]);
 
@@ -699,9 +702,13 @@ class AdminController extends Controller
             $query->where('created_at', '>=', now()->subDays($request->period));
         }
 
-        // Apply status filter
+        // Update status filter to include all completed states
         if ($request->status && $request->status !== 'all') {
-            $query->where('status', $request->status);
+            if ($request->status === 'completed') {
+                $query->whereIn('status', ['completed', 'completed_with_payments', 'completed_pending_payments']);
+            } else {
+                $query->where('status', $request->status);
+            }
         }
 
         $transactions = $query->latest()->paginate(10)->appends($request->query());
