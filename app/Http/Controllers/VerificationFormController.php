@@ -117,6 +117,8 @@ class VerificationFormController extends Controller
             'province' => 'required|string|max:100',
             'postalCode' => 'required|string|max:10',
             'nationality' => 'required|string|max:100',
+            'primaryIdType' => 'required|string|max:50', 
+            'secondaryIdType' => 'required|string|max:50',
         ]);
         
         // Get current user

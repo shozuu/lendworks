@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, watch } from "vue";
+import { ref, reactive, onMounted, watch, computed } from "vue";
 import { useForm } from "@inertiajs/vue3";
 import AuthLayout from "../../Layouts/AuthLayout.vue";
 import axios from "axios";
@@ -36,6 +36,31 @@ const form = useForm({
 // Loading states
 const isLoading = ref(false);
 const loadingMessage = ref("");
+
+function getReadableIdName(idType) {
+	const idTypes = {
+		philsys: "PhilSys ID (National ID)",
+		drivers: "Driver's License",
+		passport: "Philippine Passport",
+		voters: "Voter's ID",
+		postal: "Postal ID",
+		tin: "TIN ID",
+		umid: "UMID",
+		sss: "SSS ID",
+		prc: "PRC ID",
+		philhealth: "PhilHealth ID",
+	};
+
+	return idTypes[idType] || idType || "Not specified";
+}
+
+const displayPrimaryIdType = computed(() => {
+	return getReadableIdName(form.primaryIdType);
+});
+
+const displaySecondaryIdType = computed(() => {
+	return getReadableIdName(form.secondaryIdType);
+});
 
 // Address search
 const addressQuery = ref("");
@@ -240,6 +265,45 @@ onMounted(() => {
 				</p>
 			</div>
 		</div>
+
+		<div class="border-2 border-blue-700 rounded-lg p-6 bg-white">
+			<h2 class="text-xl font-semibold mb-4 text-blue-700">Verified ID Information</h2>
+
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+				<!-- Primary ID Type -->
+				<div>
+					<label class="block text-black text-sm font-medium mb-1">Primary ID Type</label>
+					<div class="flex items-center">
+						<input
+							type="text"
+							v-model="displayPrimaryIdType"
+							class="w-full text-black border bg-gray-100 rounded-md p-2"
+							readonly
+						/>
+						<input type="hidden" v-model="form.primaryIdType" />
+					</div>
+					<p class="text-sm text-gray-600 mt-1">Used for verification</p>
+				</div>
+
+				<!-- Secondary ID Type -->
+				<div>
+					<label class="block text-black text-sm font-medium mb-1"
+						>Secondary ID Type</label
+					>
+					<div class="flex items-center">
+						<input
+							type="text"
+							v-model="displaySecondaryIdType"
+							class="w-full text-black border bg-gray-100 rounded-md p-2"
+							readonly
+						/>
+						<input type="hidden" v-model="form.secondaryIdType" />
+					</div>
+					<p class="text-sm text-gray-600 mt-1">Used for verification</p>
+				</div>
+			</div>
+		</div>
+		<br />
 
 		<form @submit.prevent="submit" class="space-y-6">
 			<!-- Personal Information Section -->
