@@ -162,17 +162,17 @@ defineProps({
         <!-- Performance Metrics (Moved to top) -->
         <div>
             <h3 class="text-lg font-medium mb-4">Performance Metrics</h3>
-            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div class="grid gap-4 md:grid-cols-2">
                 <Card>
                     <CardHeader>
                         <CardTitle class="text-sm font-medium">
-                            Average Response Time
+                            Success Rate
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div class="text-2xl font-bold">{{ stats?.performanceStats?.avgResponseTime || 0 }}h</div>
+                        <div class="text-2xl font-bold">{{ stats?.performanceStats?.successRate || 0 }}%</div>
                         <p class="text-xs text-muted-foreground">
-                            For rental requests
+                            Completed vs Total
                         </p>
                     </CardContent>
                 </Card>
@@ -195,20 +195,6 @@ defineProps({
                         </CardContent>
                     </Card>
                 </Link>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle class="text-sm font-medium">
-                            On-time Returns
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold">{{ stats?.performanceStats?.onTimeReturnRate || 0 }}%</div>
-                        <p class="text-xs text-muted-foreground">
-                            Return compliance rate
-                        </p>
-                    </CardContent>
-                </Card>
             </div>
         </div>
 
@@ -458,7 +444,7 @@ defineProps({
         </div>
 
         <!-- Price Distribution -->
-        <div class="grid gap-4 md:grid-cols-2">
+        <div>
             <!-- Price Distribution Chart -->
             <Card>
                 <CardHeader>
@@ -481,23 +467,6 @@ defineProps({
                         <div class="flex justify-between">
                             <span>₱1000+</span>
                             <span class="font-bold">{{ stats?.listingPriceDistribution?.over1000 }}</span>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <!-- Top Locations -->
-            <Card>
-                <CardHeader>
-                    <CardTitle>Top Locations</CardTitle>
-                    <CardDescription>Most active cities by listing count</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div class="space-y-2">
-                        <div v-for="location in stats?.topLocations" :key="location.city" 
-                             class="flex justify-between">
-                            <span>{{ location.city }}</span>
-                            <span class="font-bold">{{ location.count }} listings</span>
                         </div>
                     </div>
                 </CardContent>
