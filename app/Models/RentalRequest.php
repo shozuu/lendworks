@@ -689,4 +689,13 @@ class RentalRequest extends Model
             $this->update(['status' => 'completed_with_payments']);
         }
     }
+
+    // Add this helper method 
+    public function hasConfirmedPickupSchedule(): bool
+    {
+        return $this->pickup_schedules()
+            ->where('is_selected', true)
+            ->where('is_confirmed', true)
+            ->exists();
+    }
 }
