@@ -177,19 +177,24 @@ defineProps({
                     </CardContent>
                 </Card>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle class="text-sm font-medium">
-                            Dispute Rate
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold">{{ stats?.performanceStats?.disputeRate || 0 }}%</div>
-                        <p class="text-xs text-muted-foreground">
-                            Of total transactions
-                        </p>
-                    </CardContent>
-                </Card>
+                <Link 
+                    :href="route('admin.disputes')"
+                    class="transition-transform hover:scale-105"
+                >
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-sm font-medium">
+                                Dispute Rate
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="text-2xl font-bold">{{ stats?.performanceStats?.disputeRate || 0 }}%</div>
+                            <p class="text-xs text-muted-foreground">
+                                Of total transactions
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
 
                 <Card>
                     <CardHeader>

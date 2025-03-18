@@ -1,7 +1,7 @@
 <script setup>
 import AdminLayout from "@/Layouts/AdminLayout.vue";
 import { Head } from "@inertiajs/vue3";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Link, router } from "@inertiajs/vue3";
 import { formatDate, formatDateTime } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import debounce from "lodash/debounce";
 import { ref, watch } from "vue";
+import { Separator } from "@/components/ui/separator";
 
 defineOptions({ layout: AdminLayout });
 
@@ -118,6 +119,35 @@ const exportToCSV = () => {
                 Export CSV
             </Button>
         </div>
+
+        <!-- Dispute Overview Card -->
+        <Card class="mb-6">
+            <CardHeader>
+                <CardTitle>Dispute Overview</CardTitle>
+                <CardDescription>
+                    Dispute rate and resolution metrics
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div class="flex items-center gap-4">
+                    <div>
+                        <div class="text-3xl font-bold mb-1">{{ stats.disputeRate }}%</div>
+                        <p class="text-sm text-muted-foreground">
+                            Dispute Rate
+                        </p>
+                    </div>
+                    <Separator orientation="vertical" className="h-12" />
+                    <div>
+                        <div class="text-3xl font-bold mb-1">
+                            {{ stats.totalDisputes }} / {{ stats.totalTransactions }}
+                        </div>
+                        <p class="text-sm text-muted-foreground">
+                            Transactions with Disputes
+                        </p>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
 
         <!-- Stats cards -->
         <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

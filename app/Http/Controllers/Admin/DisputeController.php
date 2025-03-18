@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\RentalDispute;
+use App\Models\RentalRequest;  // Add this import
 use App\Notifications\DisputeStatusUpdated;
 use App\Notifications\DisputeResolved;
 use Illuminate\Http\Request;
@@ -53,9 +54,19 @@ class DisputeController extends Controller
             'resolved' => RentalDispute::where('status', 'resolved')->count(),
         ];
 
+        $totalTransactions = RentalRequest::count();
+        $totalDisputes = RentalDispute::count(); // Changed from Dispute to RentalDispute
+        $disputeRate = $totalTransactions > 0 
+            ? round(($totalDisputes / $totalTransactions) * 100, 1) 
+            : 0;
+
         return Inertia::render('Admin/Disputes', [
             'disputes' => $query->paginate(10)->withQueryString(),
-            'stats' => $stats,
+            'stats' => array_merge($stats, [
+                'totalDisputes' => $totalDisputes,
+                'totalTransactions' => $totalTransactions,
+                'disputeRate' => $disputeRate
+            ]),
             'filters' => $request->only(['search', 'status', 'period'])
         ]);
     }
