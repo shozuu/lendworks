@@ -151,13 +151,13 @@ const showPaymentDialog = ref(false);
 // list of actions available for the rental as defined in the model
 const actions = computed(() => props.rental.available_actions);
 
-// Fix the canShowHandover computed property
-const canShowHandover = computed(() => {
-	if (actions.value.canHandover) {
-		return props.rental.pickup_schedules?.some((schedule) => schedule.is_selected);
-	}
-	return actions.value.canReceive;
-});
+// // Fix the canShowHandover computed property
+// const canShowHandover = computed(() => {
+// 	if (actions.value.canHandover) {
+// 		return props.rental.pickup_schedules?.some((schedule) => schedule.is_selected);
+// 	}
+// 	return actions.value.canReceive;
+// });
 
 const lenderPayment = computed(() =>
 	props.rental.completion_payments?.find((p) => p.type === "lender_payment")
@@ -247,6 +247,20 @@ const showReturnScheduleButton = computed(
 		props.userRole === "renter" &&
 		!props.rental.return_schedules?.some((s) => s.is_selected)
 );
+
+// Add these computed properties
+const hasNoSchedule = computed(() => {
+	return !props.rental.pickup_schedules?.some((s) => s.is_selected);
+});
+
+const hasUnconfirmedSchedule = computed(() => {
+	const selectedSchedule = props.rental.pickup_schedules?.find((s) => s.is_selected);
+	return selectedSchedule && !selectedSchedule.is_confirmed;
+});
+
+const canShowHandover = computed(() => {
+	return actions.value.canHandover;
+});
 </script>
 
 <template>
@@ -759,16 +773,36 @@ const showReturnScheduleButton = computed(
 							</Button>
 
 							<!-- Handover Actions -->
-							<Button
-								v-if="actions.canHandover"
-								variant="default"
-								class="w-full"
-								@click="showHandoverDialog = true"
-								:disabled="!canShowHandover"
+							<template
+								v-if="actions.canHandover || hasUnconfirmedSchedule || hasNoSchedule"
 							>
-								{{ canShowHandover ? "Hand Over Item" : "Waiting for Schedule" }}
-							</Button>
+								<!-- Show waiting message when no schedule -->
+								<Button v-if="hasNoSchedule" variant="default" class="w-full" disabled>
+									Waiting for Schedule
+								</Button>
 
+								<!-- Show confirm button for unconfirmed schedule -->
+								<Button
+									v-else-if="hasUnconfirmedSchedule"
+									variant="default"
+									class="w-full"
+									@click="showPickupDialog = true"
+								>
+									Confirm Schedule
+								</Button>
+
+								<!-- Show handover button only when schedule confirmed -->
+								<Button
+									v-else-if="canShowHandover"
+									variant="default"
+									class="w-full"
+									@click="showHandoverDialog = true"
+								>
+									Hand Over Item
+								</Button>
+							</template>
+
+							<!-- Rest of the actions remain unchanged -->
 							<Button
 								v-if="actions.canReceive"
 								variant="default"
@@ -778,14 +812,14 @@ const showReturnScheduleButton = computed(
 								Confirm Receipt
 							</Button>
 
-							<!-- Cancel Action -->
+							<!-- Add schedule selection button -->
 							<Button
-								v-if="actions.canCancel"
-								variant="destructive"
+								v-if="actions.canChoosePickupSchedule"
+								variant="default"
 								class="w-full"
-								@click="showCancelDialog = true"
+								@click="showScheduleDialog = true"
 							>
-								Cancel Request
+								Choose Pickup Schedule
 							</Button>
 
 							<!-- Lender Actions -->
@@ -855,15 +889,6 @@ const showReturnScheduleButton = computed(
 								Raise Dispute
 							</Button>
 
-							<!-- Add button in the actions section -->
-							<Button
-								v-if="actions.canChoosePickupSchedule"
-								class="w-full"
-								@click="showScheduleDialog = true"
-							>
-								Choose Pickup Schedule
-							</Button>
-
 							<!-- Replace the existing return schedule button with this -->
 							<Button
 								v-if="showReturnScheduleButton"
@@ -874,6 +899,17 @@ const showReturnScheduleButton = computed(
 								Select Return Schedule
 							</Button>
 
+							<!-- Cancel Action -->
+							<Button
+								v-if="actions.canCancel"
+								variant="destructive"
+								class="w-full"
+								:disabled="cancelForm.processing"
+								@click="showCancelDialog = true"
+							>
+								Cancel Request
+							</Button>
+
 							<!-- No Actions Message -->
 							<p
 								v-if="
@@ -881,6 +917,8 @@ const showReturnScheduleButton = computed(
 									!actions.canCancel &&
 									!actions.canApprove &&
 									!actions.canHandover &&
+									!hasUnconfirmedSchedule &&
+									!hasNoSchedule &&
 									!actions.canReceive &&
 									!actions.canSubmitReturn &&
 									!actions.canConfirmReturn &&
