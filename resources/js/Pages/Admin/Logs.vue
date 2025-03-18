@@ -17,6 +17,14 @@ import { ref, watch } from "vue";
 import debounce from "lodash/debounce";
 import { formatDateTime } from "@/lib/formatters";
 import { usePage } from "@inertiajs/vue3";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 
 defineOptions({ layout: AdminLayout });
 
@@ -119,106 +127,161 @@ const exportLogs = async () => {
         <!-- Header -->
         <div class="flex items-center justify-between">
             <h2 class="text-2xl font-semibold tracking-tight">System Logs</h2>
-            <Button @click="exportLogs" variant="outline" class="gap-2">
+            <Button @click="exportLogs" variant="outline" size="sm" class="gap-2">
                 <Download class="h-4 w-4" />
-                Export Logs
+                Export
             </Button>
         </div>
 
-        <!-- Stats -->
+        <!-- Stats Cards -->
         <div class="grid gap-4 md:grid-cols-4">
-            <Card>
-                <CardHeader>
-                    <CardTitle class="text-sm font-medium">System Logs</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div class="text-2xl font-bold">{{ stats.system }}</div>
+            <Card v-for="(count, logType) in stats" :key="logType">
+                <CardContent class="pt-6">
+                    <div class="text-2xl font-bold">{{ count }}</div>
+                    <p class="text-sm text-muted-foreground capitalize">
+                        {{ logType }} Logs
+                    </p>
                 </CardContent>
             </Card>
-            <!-- Add similar cards for user, admin, and error logs -->
         </div>
 
         <!-- Filters -->
-        <div class="flex flex-wrap gap-4">
-            <div class="flex-1">
+        <div class="flex flex-wrap items-center gap-3">
+            <div class="flex-1 max-w-xs">
                 <Input 
                     type="search" 
                     placeholder="Search logs..." 
                     v-model="search"
+                    class="h-9"
                 />
             </div>
 
-            <Select v-model="type">
-                <SelectTrigger class="w-[180px]">
-                    <SelectValue placeholder="Log Type" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem 
-                        v-for="option in typeOptions" 
-                        :key="option.value" 
-                        :value="option.value"
-                    >
-                        {{ option.label }}
-                    </SelectItem>
-                </SelectContent>
-            </Select>
+            <div class="flex gap-2">
+                <Select v-model="type">
+                    <SelectTrigger class="h-9 w-[130px]">
+                        <SelectValue placeholder="Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem 
+                            v-for="option in typeOptions" 
+                            :key="option.value" 
+                            :value="option.value"
+                        >
+                            {{ option.label }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
 
-            <Select v-model="period">
-                <SelectTrigger class="w-[180px]">
-                    <SelectValue placeholder="Time Period" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem 
-                        v-for="option in periodOptions" 
-                        :key="option.value" 
-                        :value="option.value"
-                    >
-                        {{ option.label }}
-                    </SelectItem>
-                </SelectContent>
-            </Select>
+                <Select v-model="period">
+                    <SelectTrigger class="h-9 w-[130px]">
+                        <SelectValue placeholder="Period" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem 
+                            v-for="option in periodOptions" 
+                            :key="option.value" 
+                            :value="option.value"
+                        >
+                            {{ option.label }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
 
-            <Select v-model="level">
-                <SelectTrigger class="w-[180px]">
-                    <SelectValue placeholder="Log Level" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem 
-                        v-for="option in levelOptions" 
-                        :key="option.value" 
-                        :value="option.value"
-                    >
-                        {{ option.label }}
-                    </SelectItem>
-                </SelectContent>
-            </Select>
+                <Select v-model="level">
+                    <SelectTrigger class="h-9 w-[130px]">
+                        <SelectValue placeholder="Level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem 
+                            v-for="option in levelOptions" 
+                            :key="option.value" 
+                            :value="option.value"
+                        >
+                            {{ option.label }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
         </div>
 
         <!-- Logs Table -->
-        <Card>
-            <CardContent class="p-0">
-                <div class="space-y-4">
-                    <div v-for="log in logs.data" :key="log.id" class="p-4 border-b last:border-0">
-                        <div class="flex items-start justify-between gap-4">
-                            <div class="space-y-1">
-                                <div class="flex items-center gap-2">
-                                    <Badge :variant="getLevelBadge(log.level)">
-                                        {{ log.level }}
-                                    </Badge>
-                                    <span class="font-medium">{{ log.log_type }}</span>
-                                </div>
-                                <p class="text-sm">{{ log.description }}</p>
-                                <pre v-if="log.properties" class="text-xs bg-muted p-2 rounded-md mt-2 overflow-x-auto">
-                                    {{ JSON.stringify(log.properties, null, 2) }}
-                                </pre>
-                            </div>
-                            <div class="text-sm text-muted-foreground whitespace-nowrap">
+        <div class="rounded-lg border">
+            <Table>
+                <TableHeader>
+                    <TableRow class="hover:bg-transparent">
+                        <TableHead class="w-[160px]">Time</TableHead>
+                        <TableHead class="w-[100px]">Type</TableHead>
+                        <TableHead class="w-[100px]">Level</TableHead>
+                        <TableHead class="w-[140px]">Actor</TableHead>
+                        <TableHead>Event</TableHead>
+                        <TableHead class="w-[80px]"></TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    <template v-for="log in logs.data" :key="log.id">
+                        <TableRow>
+                            <TableCell class="font-mono text-xs text-muted-foreground">
                                 {{ formatDateTime(log.created_at) }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
+                            </TableCell>
+                            <TableCell>
+                                <Badge 
+                                    variant="outline" 
+                                    :class="{
+                                        'border-blue-500 text-blue-600': log.log_type === 'system',
+                                        'border-green-500 text-green-600': log.log_type === 'user',
+                                        'border-purple-500 text-purple-600': log.log_type === 'admin',
+                                        'border-red-500 text-red-600': log.log_type === 'error'
+                                    }"
+                                >
+                                    {{ log.log_type }}
+                                </Badge>
+                            </TableCell>
+                            <TableCell>
+                                <Badge 
+                                    :variant="getLevelBadge(log.level)"
+                                    class="font-normal"
+                                >
+                                    {{ log.level }}
+                                </Badge>
+                            </TableCell>
+                            <TableCell class="text-sm text-muted-foreground">
+                                {{ log.actor || 'System' }}
+                            </TableCell>
+                            <TableCell class="text-sm">
+                                {{ log.description }}
+                            </TableCell>
+                            <TableCell>
+                                <Button 
+                                    v-if="log.properties"
+                                    variant="ghost" 
+                                    size="sm"
+                                    class="h-8 px-2 text-xs"
+                                    @click="log.showDetails = !log.showDetails"
+                                >
+                                    {{ log.showDetails ? '−' : '+' }}
+                                </Button>
+                            </TableCell>
+                        </TableRow>
+                        <!-- Details Row -->
+                        <TableRow 
+                            v-if="log.showDetails && log.properties"
+                            class="hover:bg-transparent"
+                        >
+                            <TableCell colspan="6" class="p-0 border-t-0">
+                                <div class="p-4 bg-muted/50 text-xs font-mono">
+                                    <pre class="whitespace-pre-wrap">{{ JSON.stringify(log.properties, null, 2) }}</pre>
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    </template>
+                </TableBody>
+            </Table>
+        </div>
     </div>
 </template>
+
+<style scoped>
+:deep(.select-content) {
+    min-width: 140px;
+}
+</style>
