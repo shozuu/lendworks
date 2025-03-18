@@ -101,22 +101,23 @@ class PickupScheduleController extends Controller
             abort(403);
         }
 
-        // Fix this section to check lender schedules
-        $lender = $rental->listing->user;
-        $today = Carbon::now()->format('l');
-        $lenderSchedules = $lender->pickup_schedules()
-            ->where('day_of_week', $today)
-            ->where('is_active', true)
-            ->get();
-
-        if (!$rental->canSuggestSchedule()) {
-            return back()->with('error', 'Cannot suggest schedule at this time.');
-        }
-
+        // Validate pickup datetime matches rental start date
         $validated = $request->validate([
             'start_time' => 'required|string',
             'end_time' => 'required|string|after:start_time',
-            'pickup_datetime' => 'required|date'
+            'pickup_datetime' => [
+                'required',
+                'date',
+                function ($attribute, $value, $fail) use ($rental) {
+                    // Convert both dates to Y-m-d format for comparison
+                    $pickupDate = Carbon::parse($value)->format('Y-m-d');
+                    $rentalStart = Carbon::parse($rental->start_date)->format('Y-m-d');
+                    
+                    if ($pickupDate !== $rentalStart) {
+                        $fail('Pickup date must be on the rental start date.');
+                    }
+                }
+            ]
         ]);
 
         try {
@@ -124,9 +125,12 @@ class PickupScheduleController extends Controller
                 // Reset existing selections
                 $rental->pickup_schedules()->update(['is_selected' => false]);
 
-                // Create suggested schedule
+                // Create suggested schedule ensuring it uses rental start date
+                $pickupDatetime = Carbon::parse($rental->start_date)
+                    ->setTimeFromTimeString($validated['start_time']);
+
                 $schedule = $rental->pickup_schedules()->create([
-                    'pickup_datetime' => $validated['pickup_datetime'],
+                    'pickup_datetime' => $pickupDatetime,
                     'start_time' => $validated['start_time'],
                     'end_time' => $validated['end_time'],
                     'is_selected' => true,
@@ -142,7 +146,7 @@ class PickupScheduleController extends Controller
                 ]);
             });
 
-            return back()->with('success', 'Schedule suggestion sent to lender.');
+            return back()->with('success', 'Schedule suggestion sent successfully. Waiting for lender confirmation.');
         } catch (\Exception $e) {
             report($e);
             return back()->with('error', 'Failed to suggest schedule.');

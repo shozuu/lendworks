@@ -226,11 +226,25 @@ const suggestForm = useForm({
 	pickup_datetime: props.rental.start_date,
 });
 
+// Fix the handleSuggestSchedule to explicitly set the pickup_datetime
 const handleSuggestSchedule = () => {
 	if (!selectedSlot.value) return;
 
+	// Set times from selected slot
 	suggestForm.start_time = selectedSlot.value.start_time;
 	suggestForm.end_time = selectedSlot.value.end_time;
+
+	// Get rental start date at midnight
+	const rentalStartDate = new Date(props.rental.start_date);
+	rentalStartDate.setHours(0, 0, 0, 0);
+
+	// Create pickup datetime by adding the selected time to rental start date
+	const [hours, minutes] = selectedSlot.value.start_time.split(":");
+	const pickupDateTime = new Date(rentalStartDate);
+	pickupDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+	// Set the pickup datetime
+	suggestForm.pickup_datetime = pickupDateTime.toISOString();
 
 	suggestForm.post(
 		route("pickup-schedules.suggest", {
@@ -290,6 +304,7 @@ const handleSelectSlot = (slot) => {
 	selectedSlot.value = slot;
 };
 
+// Add success message after slot selection
 const handleConfirmSelection = () => {
 	if (!selectedSlot.value) return;
 
