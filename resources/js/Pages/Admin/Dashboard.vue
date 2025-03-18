@@ -46,6 +46,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"; // Now importing from the index.js
+import SystemReport from "@/Components/SystemReport.vue";
 
 defineOptions({ layout: AdminLayout });
 
@@ -62,6 +63,9 @@ defineProps({
     
     <div class="space-y-8">
         <h2 class="text-2xl font-semibold tracking-tight">Dashboard Overview</h2>
+
+        <!-- Add System Report Component here -->
+        <SystemReport :stats="stats" />
 
         <!-- Transaction Analytics (Moved to top) -->
         <div>
