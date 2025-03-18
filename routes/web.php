@@ -28,7 +28,7 @@ use App\Http\Controllers\LenderPickupScheduleController;
 use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\Admin\CompletionPaymentController;  // Add this import at the top
 use App\Http\Controllers\Admin\DisputeController;
-use App\Http\Controllers\HandoverDisputeController; // Add this line
+use App\Http\Controllers\Admin\LogController;  // Update this line with correct namespace
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\CheckMaintenanceMode;
 use Illuminate\Support\Facades\Route;
@@ -147,12 +147,14 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     
     // User management routes
     Route::get('/users', [AdminController::class, 'users'])->name('users');
+    Route::get('/users/export', [AdminController::class, 'exportUsers'])->name('users.export'); // Add this line
     Route::patch('/users/{user}/suspend', [AdminController::class, 'suspendUser'])->name('users.suspend');
     Route::patch('/users/{user}/activate', [AdminController::class, 'activateUser'])->name('users.activate');
     Route::get('/users/{user}', [AdminController::class, 'showUser'])->name('users.show');
     
     // Listing management routes
     Route::get('/listings', [AdminController::class, 'listings'])->name('listings');
+    Route::get('/listings/export', [AdminController::class, 'exportListings'])->name('listings.export'); // Add this line
     Route::get('/listings/{listing}', [AdminController::class, 'showListing'])->name('listings.show');
     Route::patch('/listings/{listing}/approve', [AdminController::class, 'approveListing'])->name('listings.approve');
     Route::patch('/listings/{listing}/reject', [AdminController::class, 'rejectListing'])->name('listings.reject');
@@ -160,10 +162,12 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
 
     // Rental transactions routes
     Route::get('/rental-transactions', [AdminController::class, 'rentalTransactions'])->name('rental-transactions');
+    Route::get('/rental-transactions/export', [AdminController::class, 'exportTransactions'])->name('rental-transactions.export'); // Add this line
     Route::get('/rental-transactions/{rental}', [AdminController::class, 'rentalTransactionDetails'])->name('rental-transactions.show');
     
     // Payment routes
     Route::get('/payments', [AdminController::class, 'payments'])->name('payments');
+    Route::get('/payments/export', [AdminController::class, 'exportPayments'])->name('payments.export'); // Add this line
     
     // Separate routes for regular and overdue payments
     Route::post('/payments/{payment}/verify', [PaymentController::class, 'verify'])
@@ -200,7 +204,26 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     Route::post('/system/categories', [SystemManagementController::class, 'storeCategory'])->name('system.categories.store');
     Route::patch('/system/categories/{category}', [SystemManagementController::class, 'updateCategory'])->name('system.categories.update');
     Route::delete('/system/categories/{category}', [SystemManagementController::class, 'deleteCategory'])->name('system.categories.delete');
+    Route::post('/system/export-database', [SystemManagementController::class, 'exportDatabase'])
+        ->name('system.export-database');
+    Route::get('/system/backup-database', [SystemManagementController::class, 'backupDatabase'])
+        ->name('system.backup-database'); // Add this line
+
+    // Add revenue route
+    Route::get('/revenue', [AdminController::class, 'revenue'])->name('revenue');
+    Route::get('/revenue/export', [AdminController::class, 'exportRevenue'])->name('revenue.export'); // Add this line
+
+    // Update the logs routes with the correct controller namespace
+    Route::get('/logs', [SystemManagementController::class, 'getLogs'])->name('logs');
+    Route::get('/logs/export', [SystemManagementController::class, 'exportLogs'])->name('logs.export');
+    Route::get('/admin/logs', [SystemManagementController::class, 'getLogs'])->name('admin.logs');
+
+    Route::get('admin/system/backup-database', [SystemManagementController::class, 'backupDatabase'])
+        ->name('admin.system.backup-database')
+        ->middleware(['auth', 'admin']);
 });
+
+// ...existing code...
 
 Route::middleware(['web', CheckMaintenanceMode::class])->group(function() {
     Route::get('/', [ListingController::class, 'index'])->name('home');

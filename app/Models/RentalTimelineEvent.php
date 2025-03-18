@@ -141,4 +141,64 @@ class RentalTimelineEvent extends Model
             ]
         ]);
     }
+
+    // Add these methods to help with log categorization
+    public static function getSystemEvents()
+    {
+        return [
+            'status_updated',
+            'rental_approved',
+            'rental_rejected',
+            'dispute_raised',
+            'rental_cancelled'
+        ];
+    }
+
+    public static function getUserEvents()
+    {
+        return [
+            'rental_created',
+            'payment_submitted',
+            'handover_completed',
+            'return_initiated',
+            'return_submitted'
+        ];
+    }
+
+    public static function getAdminEvents()
+    {
+        return [
+            'payment_verified',
+            'payment_rejected',
+            'dispute_resolved',
+            'rental_completed',
+            'deposit_refunded',
+            'lender_paid'
+        ];
+    }
+
+    public static function getErrorEvents()
+    {
+        return [
+            'payment_failed',
+            'verification_failed',
+            'system_error'
+        ];
+    }
+
+    public function scopeOfType($query, $type)
+    {
+        switch ($type) {
+            case 'system':
+                return $query->whereIn('event_type', self::getSystemEvents());
+            case 'user':
+                return $query->whereIn('event_type', self::getUserEvents());
+            case 'admin':
+                return $query->whereIn('event_type', self::getAdminEvents());
+            case 'error':
+                return $query->whereIn('event_type', self::getErrorEvents());
+            default:
+                return $query;
+        }
+    }
 }

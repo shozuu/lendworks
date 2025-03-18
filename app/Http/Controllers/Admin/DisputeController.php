@@ -4,96 +4,136 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\RentalDispute;
-use App\Models\HandoverDispute;
+use App\Models\RentalRequest;  // Add this import
 use App\Notifications\DisputeStatusUpdated;
 use App\Notifications\DisputeResolved;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 
 class DisputeController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $stats = [
-            'total' => RentalDispute::count() + HandoverDispute::count(),
-            'pending' => RentalDispute::where('status', 'pending')->count() + 
-                        HandoverDispute::where('status', 'pending')->count(),
-            'reviewed' => RentalDispute::where('status', 'reviewed')->count() +
-                         HandoverDispute::where('status', 'reviewed')->count(),
-            'resolved' => RentalDispute::where('status', 'resolved')->count() +
-                         HandoverDispute::where('status', 'resolved')->count(),
-        ];
+        $query = RentalDispute::query()
+            ->with(['rental.listing', 'rental.renter'])
+            ->latest();
 
-        // Get both types of disputes and merge them
-        $returnDisputes = RentalDispute::with(['rental.listing', 'rental.renter'])
-            ->latest()
-            ->get()
-            ->map(fn($dispute) => array_merge($dispute->toArray(), ['type' => 'return']));
-
-        $handoverDisputes = HandoverDispute::with(['rental.listing', 'rental.renter'])
-            ->latest()
-            ->get()
-            ->map(fn($dispute) => array_merge($dispute->toArray(), ['type' => 'handover']));
-
-        // Combine and paginate
-        $allDisputes = $returnDisputes->concat($handoverDisputes)
-            ->sortByDesc('created_at')
-            ->values();
-
-        return Inertia::render('Admin/Disputes', [
-            'disputes' => [
-                'data' => $allDisputes->slice(0, 10),
-                'total' => $allDisputes->count(),
-                'per_page' => 10,
-                'current_page' => 1,
-            ],
-            'stats' => $stats
-        ]);
-    }
-
-    public function show($id)
-    {
-        // Try to find dispute in either table
-        $dispute = RentalDispute::find($id) ?? HandoverDispute::find($id);
-        
-        if (!$dispute) {
-            abort(404);
+        // Apply search filter
+        if ($search = $request->input('search')) {
+            $query->where(function($q) use ($search) {
+                $q->where('reason', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%")
+                  ->orWhereHas('rental.listing', function($q) use ($search) {
+                      $q->where('title', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('rental.renter', function($q) use ($search) {
+                      $q->where('name', 'like', "%{$search}%");
+                  });
+            });
         }
 
-        $disputeType = $dispute instanceof RentalDispute ? 'return' : 'handover';
-        
-        // Get appropriate resolution options based on type
-        $resolutionOptions = $disputeType === 'return' 
-            ? $this->getReturnResolutionOptions()
-            : $this->getHandoverResolutionOptions();
+        // Apply status filter
+        if ($status = $request->input('status')) {
+            if ($status !== 'all') {
+                $query->where('status', $status);
+            }
+        }
 
-        // Update this line to include listing.user relationship
-        $dispute->load(['rental.listing.user', 'rental.renter', 'resolvedBy']);
-        
-        return Inertia::render('Admin/DisputeDetails', [
-            'dispute' => array_merge($dispute->toArray(), ['dispute_type' => $disputeType]),
-            'resolutionOptions' => $resolutionOptions
+        // Apply time period filter
+        if ($period = $request->input('period')) {
+            if ($period !== 'all') {
+                $query->where('created_at', '>=', now()->subDays($period));
+            }
+        }
+
+        $stats = [
+            'total' => RentalDispute::count(),
+            'pending' => RentalDispute::where('status', 'pending')->count(),
+            'reviewed' => RentalDispute::where('status', 'reviewed')->count(),
+            'resolved' => RentalDispute::where('status', 'resolved')->count(),
+        ];
+
+        $totalTransactions = RentalRequest::count();
+        $totalDisputes = RentalDispute::count(); // Changed from Dispute to RentalDispute
+        $disputeRate = $totalTransactions > 0 
+            ? round(($totalDisputes / $totalTransactions) * 100, 1) 
+            : 0;
+
+        return Inertia::render('Admin/Disputes', [
+            'disputes' => $query->paginate(10)->withQueryString(),
+            'stats' => array_merge($stats, [
+                'totalDisputes' => $totalDisputes,
+                'totalTransactions' => $totalTransactions,
+                'disputeRate' => $disputeRate
+            ]),
+            'filters' => $request->only(['search', 'status', 'period'])
         ]);
     }
 
-    protected function getHandoverResolutionOptions()
+    public function show(RentalDispute $dispute)
     {
-        return [
-            ['value' => 'approved', 'label' => 'Approve Dispute'],
-            ['value' => 'reschedule', 'label' => 'Reschedule Handover'],
-            ['value' => 'rejected', 'label' => 'Reject Dispute'],
-        ];
-    }
+        $dispute->load([
+            'rental.handoverProofs',
+            'rental.returnProofs',
+            'rental.listing.user', // Add lender info
+            'rental.renter',       // Add renter info
+            'rental.depositDeductions',
+            'rental.overdue_payment',
+            'raisedBy',
+            'resolvedBy'  // Ensure resolvedBy relationship is loaded
+        ]);
 
-    protected function getReturnResolutionOptions()
-    {
-        return [
-            ['value' => 'deposit_deducted', 'label' => 'Deposit Deducted'],
-            ['value' => 'rejected', 'label' => 'Reject Dispute'],
+        // Simplify the dispute data structure
+        $disputeData = [
+            'id' => $dispute->id,
+            'status' => $dispute->status,
+            'reason' => $dispute->reason,
+            'description' => $dispute->description,
+            'proof_path' => $dispute->proof_path,
+            'created_at' => $dispute->created_at,
+            'resolution_type' => $dispute->resolution_type,
+            'verdict' => $dispute->verdict,
+            'verdict_notes' => $dispute->verdict_notes,
+            'resolved_at' => $dispute->resolved_at,
+            'deposit_deduction' => $dispute->deposit_deduction,  // Add this line
+            'deposit_deduction_reason' => $dispute->deposit_deduction_reason,  // Add this line
+            'resolved_by' => [
+                'name' => $dispute->resolvedBy?->name
+            ],
+            'raised_by_user' => [
+                'name' => $dispute->raisedBy->name,
+                'id' => $dispute->raisedBy->id
+            ]
         ];
+
+        // Simplify rental data
+        $rentalData = [
+            'id' => $dispute->rental->id,
+            'handover_proofs' => $dispute->rental->handoverProofs,
+            'return_proofs' => $dispute->rental->returnProofs,
+            'lender' => [
+                'name' => $dispute->rental->listing->user->name,
+                'id' => $dispute->rental->listing->user->id
+            ],
+            'renter' => [
+                'name' => $dispute->rental->renter->name,
+                'id' => $dispute->rental->renter->id
+            ],
+            'deposit_fee' => $dispute->rental->deposit_fee,
+            'remaining_deposit' => max(0, $dispute->rental->deposit_fee - ($dispute->rental->depositDeductions->sum('amount') ?? 0)),
+            'has_deductions' => $dispute->rental->depositDeductions->isNotEmpty(),
+            'base_price' => $dispute->rental->base_price,
+            'discount' => $dispute->rental->discount,
+            'service_fee' => $dispute->rental->service_fee,
+            'overdue_fee' => $dispute->rental->overdue_fee,
+        ];
+
+        $disputeData['rental'] = $rentalData;
+
+        return Inertia::render('Admin/DisputeDetails', [
+            'dispute' => $disputeData
+        ]);
     }
 
     public function updateStatus(Request $request, RentalDispute $dispute)
@@ -113,111 +153,7 @@ class DisputeController extends Controller
         return back()->with('success', 'Dispute status updated successfully.');
     }
 
-    public function resolve(Request $request, $id)
-    {
-        // Find dispute in either table
-        $dispute = RentalDispute::find($id) ?? HandoverDispute::find($id);
-        
-        if (!$dispute) {
-            abort(404);
-        }
-
-        // Validate based on dispute type
-        if ($dispute instanceof RentalDispute) {
-            return $this->resolveReturnDispute($request, $dispute);
-        }
-
-        return $this->resolveHandoverDispute($request, $dispute);
-    }
-
-    protected function resolveHandoverDispute(Request $request, HandoverDispute $dispute)
-    {
-        $validated = $request->validate([
-            'resolution_type' => ['required', 'in:approved,reschedule,rejected'],
-            'verdict' => ['required', 'string'],
-            'verdict_notes' => ['required', 'string'],
-        ]);
-
-        DB::transaction(function () use ($dispute, $validated) {
-            // Process based on resolution type
-            switch ($validated['resolution_type']) {
-                case 'approved':
-                    if ($dispute->type === HandoverDispute::TYPE_LENDER_NO_SHOW) {
-                        // Cancel rental with full refund
-                        $dispute->rental->update([
-                            'status' => 'cancelled',
-                            'cancellation_reason' => 'lender_no_show'
-                        ]);
-                        // Create refund record
-                        $dispute->rental->refunds()->create([
-                            'amount' => $dispute->rental->total_price,
-                            'reason' => 'Lender no-show dispute approved',
-                            'status' => 'pending'
-                        ]);
-                    } else {
-                        // Cancel with one day payment retention
-                        $dailyRate = $dispute->rental->base_price / $dispute->rental->rental_duration;
-                        $dispute->rental->update([
-                            'status' => 'cancelled',
-                            'cancellation_reason' => 'renter_no_show'
-                        ]);
-                        // Create partial refund record
-                        $dispute->rental->refunds()->create([
-                            'amount' => $dispute->rental->total_price - $dailyRate,
-                            'reason' => 'Renter no-show dispute approved - 1 day payment retained',
-                            'status' => 'pending'
-                        ]);
-                    }
-                    break;
-
-                case 'reschedule':
-                    if ($dispute->type === HandoverDispute::TYPE_LENDER_NO_SHOW) {
-                        // Extend rental period by 1 day
-                        $newEndDate = Carbon::parse($dispute->rental->end_date)->addDay();
-                        $dispute->rental->update([
-                            'end_date' => $newEndDate,
-                            'status' => 'to_handover'
-                        ]);
-                    } else {
-                        // Keep original duration
-                        $dispute->rental->update(['status' => 'to_handover']);
-                    }
-                    // Reset schedules for both cases
-                    $dispute->rental->pickup_schedules()->update([
-                        'is_selected' => false,
-                        'is_confirmed' => false
-                    ]);
-                    break;
-
-                case 'rejected':
-                    // Just update status back to to_handover
-                    $dispute->rental->update(['status' => 'to_handover']);
-                    break;
-            }
-
-            // Update dispute record
-            $dispute->update([
-                'status' => 'resolved',
-                'resolution_type' => $validated['resolution_type'],
-                'verdict' => $validated['verdict'],
-                'verdict_notes' => $validated['verdict_notes'],
-                'resolved_at' => now(),
-                'resolved_by' => Auth::id()
-            ]);
-
-            // Record timeline event
-            $dispute->rental->recordTimelineEvent('handover_dispute_resolved', Auth::id(), [
-                'resolution_type' => $validated['resolution_type'],
-                'verdict' => $validated['verdict'],
-                'verdict_notes' => $validated['verdict_notes'],
-                'dispute_type' => $dispute->type
-            ]);
-        });
-
-        return back()->with('success', 'Handover dispute resolved successfully.');
-    }
-
-    protected function resolveReturnDispute(Request $request, RentalDispute $dispute)
+    public function resolve(Request $request, RentalDispute $dispute)
     {
         $validated = $request->validate([
             'verdict' => ['required', 'string'],
@@ -235,6 +171,12 @@ class DisputeController extends Controller
             ],
         ]);
 
+        \Log::info('Starting dispute resolution process', [
+            'dispute_id' => $dispute->id,
+            'resolution_type' => $validated['resolution_type'],
+            'validation_data' => $validated
+        ]);
+
         DB::transaction(function () use ($dispute, $validated) {
             // Base dispute resolution data
             $resolutionData = [
@@ -243,7 +185,7 @@ class DisputeController extends Controller
                 'verdict_notes' => $validated['verdict_notes'],
                 'resolution_type' => $validated['resolution_type'],
                 'resolved_at' => now(),
-                'resolved_by' => Auth::id()
+                'resolved_by' => auth()->id()
             ];
 
             // Update dispute record with correct handling for rejection
@@ -270,11 +212,17 @@ class DisputeController extends Controller
                     'amount' => $validated['deposit_deduction'],
                     'reason' => $validated['deposit_deduction_reason'],
                     'dispute_id' => $dispute->id,
-                    'admin_id' => Auth::id()
+                    'admin_id' => auth()->id()
                 ]);
 
                 // Force refresh rental model to recalculate remaining deposit
                 $dispute->rental->refresh();
+
+                \Log::info('Deposit Deduction Created', [
+                    'rental_id' => $dispute->rental->id,
+                    'deduction_amount' => $validated['deposit_deduction'],
+                    'remaining_deposit' => $dispute->rental->remaining_deposit
+                ]);
 
                 // Create lender earnings adjustment
                 $adjustment = $dispute->rental->lenderEarningsAdjustments()->create([
@@ -282,6 +230,11 @@ class DisputeController extends Controller
                     'amount' => $validated['deposit_deduction'],
                     'description' => 'Deposit deduction from dispute resolution',
                     'reference_id' => (string) $dispute->id
+                ]);
+
+                \Log::info('Created lender earnings adjustment', [
+                    'adjustment_id' => $adjustment->id,
+                    'amount' => $validated['deposit_deduction']
                 ]);
 
                 // Update completion payment if it exists
@@ -292,11 +245,22 @@ class DisputeController extends Controller
                 if ($completionPayment) {
                     $newAmount = $completionPayment->amount + $validated['deposit_deduction'];
                     $completionPayment->update(['amount' => $newAmount]);
+
+                    \Log::info('Updated completion payment', [
+                        'payment_id' => $completionPayment->id,
+                        'old_amount' => $completionPayment->amount,
+                        'new_amount' => $newAmount
+                    ]);
                 }
 
                 // Update rental record to reflect new total
                 $dispute->rental->update([
                     'total_lender_earnings' => DB::raw("total_lender_earnings + {$validated['deposit_deduction']}")
+                ]);
+
+                \Log::info('Updated rental total lender earnings', [
+                    'rental_id' => $dispute->rental->id,
+                    'deduction_amount' => $validated['deposit_deduction']
                 ]);
             }
 
@@ -308,7 +272,7 @@ class DisputeController extends Controller
                 'verdict' => $validated['verdict'],
                 'verdict_notes' => $validated['verdict_notes'],
                 'resolution_type' => $validated['resolution_type'],
-                'resolved_by' => Auth::user()->name,
+                'resolved_by' => auth()->user()->name,
                 'resolved_at' => now()->format('Y-m-d H:i:s'),
                 'is_rejected' => $validated['resolution_type'] === 'rejected'
             ];
@@ -319,7 +283,7 @@ class DisputeController extends Controller
                 $timelineData['deposit_deduction_reason'] = $validated['deposit_deduction_reason'];
             }
 
-            $dispute->rental->recordTimelineEvent('dispute_resolved', Auth::id(), $timelineData);
+            $dispute->rental->recordTimelineEvent('dispute_resolved', auth()->id(), $timelineData);
 
             // Send notifications
             $dispute->rental->renter->notify(new DisputeResolved($dispute, false));

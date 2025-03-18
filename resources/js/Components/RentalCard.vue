@@ -7,7 +7,6 @@ import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import PaymentDialog from "@/Components/PaymentDialog.vue";
 import HandoverDialog from "@/Components/HandoverDialog.vue";
 import PickupScheduleDialog from "@/Components/PickupScheduleDialog.vue";
-import NoShowDisputeDialog from "@/Components/NoShowDisputeDialog.vue"; // Add this import
 import { useForm } from "@inertiajs/vue3";
 import { format } from "date-fns";
 
@@ -34,7 +33,6 @@ const showCancelDialog = ref(false);
 const showPaymentDialog = ref(false);
 const showHandoverDialog = ref(false);
 const showScheduleDialog = ref(false);
-const showNoShowDialog = ref(false); // Add this ref
 
 // Update the cancelForm to include reason
 const cancelForm = useForm({
@@ -244,48 +242,9 @@ const actions = computed(() => props.rental.available_actions);
 				>
 					Choose Pickup Schedule
 				</Button>
-
-				<!-- Add the dispute button in actions section -->
-				<Button
-					v-if="
-						rental.can_report_no_show &&
-						rental.status === 'to_handover' &&
-						selectedPickupSchedule
-					"
-					variant="destructive"
-					size="sm"
-					@click.stop="showNoShowDialog = true"
-				>
-					Report No-Show
-				</Button>
 			</div>
 		</template>
 	</BaseRentalCard>
-
-	<!-- Cancel Dialog -->
-	<ConfirmDialog
-		:show="showCancelDialog"
-		title="Cancel Rental Request"
-		description="Please select a reason for cancelling this rental request."
-		confirmLabel="Cancel Request"
-		confirmVariant="destructive"
-		:processing="cancelForm.processing"
-		:disabled="
-			!cancelForm.cancellation_reason_id || (isOtherReason && !cancelForm.custom_feedback)
-		"
-		showSelect
-		:selectOptions="cancellationReasons"
-		:selectValue="cancelForm.cancellation_reason_id"
-		:showTextarea="isOtherReason"
-		:textareaValue="cancelForm.custom_feedback"
-		:textareaRequired="isOtherReason"
-		textareaPlaceholder="Please provide specific details about why you are cancelling this rental request..."
-		@update:show="showCancelDialog = $event"
-		@update:selectValue="cancelForm.cancellation_reason_id = $event"
-		@update:textareaValue="cancelForm.custom_feedback = $event"
-		@confirm="handleCancel"
-		@cancel="showCancelDialog = false"
-	/>
 
 	<!-- Payment Dialog -->
 	<PaymentDialog
@@ -308,14 +267,5 @@ const actions = computed(() => props.rental.available_actions);
 		:rental="rental"
 		:userRole="userRole"
 		:lenderSchedules="lenderSchedules"
-	/>
-
-	<!-- Add NoShowDisputeDialog component -->
-	<NoShowDisputeDialog
-		v-if="selectedPickupSchedule"
-		v-model:show="showNoShowDialog"
-		:rental="rental"
-		:type="userRole === 'lender' ? 'renter_no_show' : 'lender_no_show'"
-		:schedule="selectedPickupSchedule"
 	/>
 </template>

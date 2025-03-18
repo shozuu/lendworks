@@ -19,6 +19,7 @@ import debounce from "lodash/debounce";
 import { ref, watch } from "vue";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import { formatDate } from "@/lib/formatters";
+import { Download } from "lucide-vue-next";
 
 defineOptions({ layout: AdminLayout });
 
@@ -106,6 +107,57 @@ const handleAction = () => {
 			onSuccess: () => (showDialog.value = false),
 		}
 	);
+};
+
+const exportToCSV = async () => {
+    try {
+        // Fetch all users data from the export endpoint
+        const response = await fetch(route('admin.users.export'), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch data');
+        const allUsers = await response.json();
+
+        // Define headers
+        const headers = [
+            'Name',
+            'Email',
+            'Status',
+            'Verification',
+            'Join Date',
+            'Listings',
+            'Actions Required'
+        ].join(',');
+
+        // Transform all users data into CSV rows
+        const rows = allUsers.map(user => [
+            `"${user.name.replace(/"/g, '""')}"`,
+            `"${user.email.replace(/"/g, '""')}"`,
+            user.status,
+            user.verification,
+            user.join_date,
+            user.listings_count,
+            `"${user.actions_required}"`
+        ].join(','));
+
+        // Create and download CSV
+        const csv = [headers, ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `users-export-${formatDate(new Date())}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+        console.error('Export failed:', error);
+    }
 };
 </script>
 
@@ -201,6 +253,11 @@ const handleAction = () => {
 							<SelectItem value="listings">Most Listings</SelectItem>
 						</SelectContent>
 					</Select>
+
+					<Button @click="exportToCSV" variant="outline" class="gap-2">
+						<Download class="h-4 w-4" />
+						Export CSV
+					</Button>
 				</div>
 			</div>
 		</div>
