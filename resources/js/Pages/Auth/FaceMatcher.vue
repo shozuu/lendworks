@@ -679,11 +679,6 @@ onUnmounted(() => {
 		<!-- Results section -->
 		<div v-if="matchScore !== null" class="mt-6 p-4 bg-muted rounded-lg">
 			<h3 class="font-medium mb-2">Verification Results</h3>
-			<div class="flex items-center">
-				<p class="text-lg">
-					Match Score: <span class="font-bold">{{ matchScore }}%</span>
-				</p>
-			</div>
 			<div class="flex items-center mt-2">
 				<p>Status:</p>
 				<span v-if="verified" class="flex items-center text-primary font-bold ml-1">

@@ -881,7 +881,7 @@ private function getFieldKeywordsForIdType($idType)
         }
 
         $matchScore = $response['confidence'];
-        $threshold = 80; // Your confidence threshold
+        $threshold = 75; // Your confidence threshold
         
         return [
             'score' => $matchScore,
