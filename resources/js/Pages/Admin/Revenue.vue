@@ -147,6 +147,29 @@ const printChart = () => {
     chartRef.value?.downloadChart('print');
 };
 
+// Add helper function for date formatting
+const getDateRangeDescription = () => {
+    if (graphStartDate.value && graphEndDate.value) {
+        return `Revenue from ${formatDate(graphStartDate.value)} to ${formatDate(graphEndDate.value)}`;
+    }
+
+    // Default descriptions based on dateRange
+    const descriptions = {
+        today: 'Revenue for Today',
+        yesterday: 'Revenue for Yesterday',
+        last7: 'Revenue for Last 7 Days',
+        last30: 'Revenue for Last 30 Days',
+        thisMonth: 'Revenue for This Month',
+        lastMonth: 'Revenue for Last Month',
+        last90: 'Revenue for Last 90 Days',
+        thisYear: 'Revenue for This Year',
+        lastYear: 'Revenue for Last Year',
+        allTime: 'All Time Revenue'
+    };
+
+    return descriptions[dateRange.value] || 'Revenue Overview';
+};
+
 </script>
 
 <template>
@@ -229,21 +252,31 @@ const printChart = () => {
 
             <!-- Revenue Trend Chart -->
             <Card>
-                <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle>Revenue Trends</CardTitle>
-                    <div class="flex items-center gap-2">
-                        <Button variant="outline" size="sm" @click="downloadChart" class="gap-2">
-                            <Image class="h-4 w-4" />
-                            Save as PNG
-                        </Button>
-                        <Button variant="outline" size="sm" @click="printChart" class="gap-2">
-                            <Printer class="h-4 w-4" />
-                            Print Chart
-                        </Button>
+                <CardHeader class="flex flex-col space-y-2">
+                    <div class="flex flex-row items-center justify-between">
+                        <CardTitle>Revenue Trends</CardTitle>
+                        <div class="flex items-center gap-2">
+                            <Button variant="outline" size="sm" @click="downloadChart" class="gap-2">
+                                <Image class="h-4 w-4" />
+                                Save as PNG
+                            </Button>
+                            <Button variant="outline" size="sm" @click="printChart" class="gap-2">
+                                <Printer class="h-4 w-4" />
+                                Print Chart
+                            </Button>
+                        </div>
                     </div>
+                    <p class="text-sm text-muted-foreground">
+                        {{ getDateRangeDescription() }}
+                    </p>
                 </CardHeader>
                 <CardContent>
-                    <RevenueChart ref="chartRef" :data="trends" />
+                    <RevenueChart 
+                        ref="chartRef" 
+                        :data="trends" 
+                        :overview="getDateRangeDescription()"
+                        :total-revenue="revenue.total"
+                    />
                 </CardContent>
             </Card>
 

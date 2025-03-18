@@ -1,6 +1,7 @@
 <script setup>
 import { Line } from 'vue-chartjs'
 import { computed, ref } from 'vue' // Add this import
+import html2canvas from 'html2canvas'  // Add this import
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -26,6 +27,14 @@ const props = defineProps({
   data: {
     type: Object,
     required: true
+  },
+  overview: {
+    type: String,
+    required: true
+  },
+  totalRevenue: {
+    type: Number,
+    required: true
   }
 });
 
@@ -46,10 +55,13 @@ const options = {
       },
       ticks: {
         font: {
-          size: 11,
+          size: 12,
+          weight: '500',
           family: 'system-ui'
         },
-        color: '#64748b' // Slate-500 color
+        color: '#334155', // Darker color for better contrast
+        maxRotation: 45,
+        minRotation: 45
       }
     },
     y: {
@@ -58,15 +70,18 @@ const options = {
         display: false // Hide y-axis line
       },
       grid: {
-        color: '#e2e8f020', // Reduced opacity for y-axis grid lines
-        drawBorder: false
+        color: '#e2e8f040', // Slightly more visible grid lines
+        drawBorder: false,
+        lineWidth: 1
       },
       ticks: {
         font: {
-          size: 11,
+          size: 12,
+          weight: '500',
           family: 'system-ui'
         },
-        color: '#64748b', // Slate-500 color
+        color: '#334155', // Darker color for better contrast
+        padding: 8,
         callback: value => '₱' + value.toLocaleString(),
         maxTicksLimit: 6 // Limit number of ticks for cleaner look
       }
@@ -77,20 +92,20 @@ const options = {
       display: false // Hide legend since we only have one dataset
     },
     tooltip: {
-      backgroundColor: 'white',
-      titleColor: '#0f172a', // Slate-900 color
+      backgroundColor: '#1e293b', // Darker background for tooltip
+      titleColor: '#ffffff',
       titleFont: {
-        size: 13,
-        family: 'system-ui',
-        weight: '600'
+        size: 14,
+        weight: '600',
+        family: 'system-ui'
       },
-      bodyColor: '#475569', // Slate-600 color
+      bodyColor: '#ffffff',
       bodyFont: {
-        size: 12,
+        size: 13,
         family: 'system-ui'
       },
       padding: 12,
-      borderColor: '#e2e8f0', // Slate-200 color
+      borderColor: '#475569',
       borderWidth: 1,
       displayColors: false,
       callbacks: {
@@ -110,19 +125,23 @@ const enhancedData = computed(() => ({
   ...props.data,
   datasets: props.data.datasets.map(dataset => ({
     ...dataset,
-    borderWidth: 2,
-    pointRadius: 0,
-    pointHoverRadius: 6,
-    pointHoverBorderWidth: 2,
-    pointHoverBorderColor: '#ffffff',
-    pointHoverBackgroundColor: dataset.borderColor,
-    tension: 0.3, // Make the line more smooth
+    borderWidth: 3, // Thicker line
+    pointRadius: 4, // Always show points
+    pointBackgroundColor: '#ffffff',
+    pointBorderColor: '#10B981',
+    pointBorderWidth: 2,
+    pointHoverRadius: 8,
+    pointHoverBorderWidth: 3,
+    pointHoverBackgroundColor: '#ffffff',
+    pointHoverBorderColor: '#10B981',
+    tension: 0.2, // Less smooth for better data visibility
     fill: true,
+    borderColor: '#10B981',
     backgroundColor: (context) => {
       const ctx = context.chart.ctx;
       const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-      gradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)'); // Light green
-      gradient.addColorStop(1, 'rgba(16, 185, 129, 0)'); // Transparent
+      gradient.addColorStop(0, 'rgba(16, 185, 129, 0.3)'); // More opaque green
+      gradient.addColorStop(1, 'rgba(16, 185, 129, 0.05)');
       return gradient;
     }
   }))
@@ -132,22 +151,67 @@ const enhancedData = computed(() => ({
 const chartInstance = ref(null);
 
 // Update download method
-const downloadChart = (type = 'png') => {
+const downloadChart = async (type = 'png') => {
   if (!chartInstance.value) return;
   
   // Get chart canvas
   const canvas = chartInstance.value.$el;
   
   if (type === 'png') {
-    // For PNG download
-    const link = document.createElement('a');
-    link.download = `revenue-chart-${new Date().toISOString().slice(0,10)}.png`;
-    link.href = canvas.toDataURL('image/png', 1.0);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      // Create wrapper div and add it to the document
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = `
+        background-color: white;
+        padding: 20px;
+        width: 1000px;
+        position: fixed;
+        left: -9999px;
+      `;
+      
+      // Add content to wrapper
+      wrapper.innerHTML = `
+        <div style="margin-bottom: 20px; font-family: system-ui;">
+          <h2 style="font-size: 24px; margin-bottom: 10px;">Revenue Overview</h2>
+          <p style="color: #64748b; margin-bottom: 8px;">${props.overview}</p>
+          <p style="font-size: 18px; font-weight: 600;">Total Revenue: ₱${props.totalRevenue.toLocaleString()}</p>
+        </div>
+        <div style="width: 100%;">
+          ${canvas.outerHTML}
+        </div>
+      `;
+      
+      // Add to document, wait for elements to load
+      document.body.appendChild(wrapper);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Capture the image
+      const finalCanvas = await html2canvas(wrapper, {
+        useCORS: true,
+        scale: 3, // Higher scale for better quality
+        logging: false,
+        allowTaint: true,
+        backgroundColor: 'white',
+        onclone: (document) => {
+          const canvas = document.querySelector('canvas');
+          if (canvas) {
+            canvas.style.filter = 'none'; // Remove shadow for cleaner export
+          }
+        }
+      });
+      
+      // Create download link
+      const link = document.createElement('a');
+      link.download = `revenue-chart-${new Date().toISOString().slice(0,10)}.png`;
+      link.href = finalCanvas.toDataURL('image/png', 1.0);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(wrapper);
+    } catch (error) {
+      console.error('Error generating image:', error);
+    }
   } else if (type === 'print') {
-    // For printing
     const printWindow = window.open('');
     printWindow.document.write(`
       <html>
@@ -155,21 +219,46 @@ const downloadChart = (type = 'png') => {
           <title>Revenue Chart</title>
           <style>
             @media print {
-              img { 
-                width: 100%;
+              body {
+                padding: 40px;
+                font-family: system-ui;
+              }
+              .container {
                 max-width: 800px;
                 margin: 0 auto;
               }
-              body {
-                display: flex;
-                justify-content: center;
-                padding: 20px;
+              .header {
+                margin-bottom: 30px;
+              }
+              .header h1 {
+                font-size: 24px;
+                margin-bottom: 10px;
+              }
+              .header p {
+                color: #64748b;
+                margin-bottom: 8px;
+              }
+              .total {
+                font-size: 18px;
+                font-weight: 600;
+                margin-bottom: 20px;
+              }
+              img {
+                width: 100%;
+                margin-top: 20px;
               }
             }
           </style>
         </head>
         <body>
-          <img src="${canvas.toDataURL('image/png', 1.0)}" />
+          <div class="container">
+            <div class="header">
+              <h1>Revenue Overview</h1>
+              <p>${props.overview}</p>
+              <div class="total">Total Revenue: ₱${props.totalRevenue.toLocaleString()}</div>
+            </div>
+            <img src="${canvas.toDataURL('image/png', 1.0)}" />
+          </div>
         </body>
       </html>
     `);
@@ -199,6 +288,6 @@ defineExpose({
 
 <style>
 canvas {
-  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.1));
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.1));
 }
 </style>
