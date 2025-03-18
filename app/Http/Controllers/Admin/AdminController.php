@@ -1125,4 +1125,43 @@ class AdminController extends Controller
             return response()->json(['error' => 'Export failed'], 500);
         }
     }
+
+    public function exportPayments()
+    {
+        try {
+            // Get all payments with related data
+            $payments = PaymentRequest::with([
+                'rentalRequest:id,listing_id,renter_id,total_price', 
+                'rentalRequest.listing:id,title', 
+                'rentalRequest.renter:id,name'
+            ])
+            ->select([
+                'id',
+                'rental_request_id',
+                'reference_number',
+                'status',
+                'payment_proof_path',
+                'verified_at',
+                'created_at'
+            ])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($payment) {
+                return [
+                    'date' => $payment->created_at ? date('m/d/Y H:i', strtotime($payment->created_at)) : 'N/A',
+                    'reference' => $payment->reference_number,
+                    'listing' => $payment->rentalRequest->listing->title ?? 'Unknown Listing',
+                    'renter' => $payment->rentalRequest->renter->name ?? 'Unknown Renter',
+                    'amount' => $payment->rentalRequest->total_price ?? 0,
+                    'status' => $payment->status,
+                    'verified_at' => $payment->verified_at ? date('m/d/Y H:i', strtotime($payment->verified_at)) : 'N/A'
+                ];
+            });
+
+            return response()->json($payments);
+        } catch (\Exception $e) {
+            report($e);
+            return response()->json(['error' => 'Export failed'], 500);
+        }
+    }
 }

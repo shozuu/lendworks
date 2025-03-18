@@ -158,6 +158,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     
     // Payment routes
     Route::get('/payments', [AdminController::class, 'payments'])->name('payments');
+    Route::get('/payments/export', [AdminController::class, 'exportPayments'])->name('payments.export'); // Add this line
     
     // Separate routes for regular and overdue payments
     Route::post('/payments/{payment}/verify', [PaymentController::class, 'verify'])

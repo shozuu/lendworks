@@ -122,37 +122,55 @@ const getRentalPrice = (payment) => {
     return payment?.rental_request?.total_price || 0;
 };
 
-const exportToCSV = () => {
-    const headers = [
-        'Date',
-        'Reference Number',
-        'Listing',
-        'Renter',
-        'Amount',
-        'Service Fee',
-        'Status'
-    ].join(',');
+const exportToCSV = async () => {
+    try {
+        // Fetch all payments data from the export endpoint
+        const response = await fetch(route('admin.payments.export'), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
 
-    const rows = props.payments.data.map(payment => [
-        formatDate(payment.created_at),
-        payment.reference_number,
-        `"${payment.rental_request.listing.title}"`,
-        `"${payment.rental_request.renter.name}"`,
-        payment.rental_request.total_price,
-        payment.rental_request.service_fee,
-        payment.status
-    ].join(','));
+        if (!response.ok) throw new Error('Failed to fetch data');
+        const allPayments = await response.json();
 
-    const csv = [headers, ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `payments-${formatDate(new Date())}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+        // Define headers
+        const headers = [
+            'Date',
+            'Reference Number',
+            'Listing',
+            'Renter',
+            'Amount',
+            'Status',
+            'Verified At'
+        ].join(',');
+
+        // Transform all payments data into CSV rows
+        const rows = allPayments.map(payment => [
+            payment.date,
+            payment.reference,
+            `"${payment.listing.replace(/"/g, '""')}"`,
+            `"${payment.renter.replace(/"/g, '""')}"`,
+            payment.amount,
+            payment.status,
+            payment.verified_at
+        ].join(','));
+
+        // Create and download CSV
+        const csv = [headers, ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `payments-${formatDate(new Date())}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+        console.error('Export failed:', error);
+    }
 };
 </script>
 
