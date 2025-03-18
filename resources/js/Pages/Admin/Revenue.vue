@@ -27,35 +27,75 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-vue-next";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import RevenueChart from "@/Components/RevenueChart.vue";
 
 defineOptions({ layout: AdminLayout });
 
 const props = defineProps({
     revenue: Object,
     transactions: Object,
+    trends: Object,
     filters: {
         type: Object,
         default: () => ({
-            dateRange: 'last30',  // Changed from period
-            sort: 'latest'
+            dateRange: 'last30',
+            sort: 'latest',
+            graphStartDate: '',
+            graphEndDate: ''
         })
     }
 });
 
 const dateRange = ref(props.filters.dateRange);
 const sort = ref(props.filters.sort);
+const graphStartDate = ref(props.filters.graphStartDate || '');
+const graphEndDate = ref(props.filters.graphEndDate || '');
 
-// Update watch handler
-watch([dateRange, sort], ([newDateRange, newSort]) => {
+// Update handlers
+const updateFilters = (newFilters) => {
     router.get(
         route('admin.revenue'),
         { 
-            dateRange: newDateRange,
-            sort: newSort
+            ...props.filters,
+            ...newFilters
         },
         { preserveState: true }
     );
+};
+
+// Watch for table filter changes
+watch([dateRange, sort], ([newDateRange, newSort]) => {
+    updateFilters({ 
+        dateRange: newDateRange, 
+        sort: newSort,
+        // Preserve graph dates
+        graphStartDate: graphStartDate.value,
+        graphEndDate: graphEndDate.value
+    });
 });
+
+// Watch for graph date changes
+watch([graphStartDate, graphEndDate], ([newStart, newEnd]) => {
+    updateFilters({ 
+        graphStartDate: newStart, 
+        graphEndDate: newEnd,
+        // Keep current table filters
+        dateRange: dateRange.value,
+        sort: sort.value
+    });
+});
+
+// Reset graph dates
+const resetGraphDates = () => {
+    graphStartDate.value = '';
+    graphEndDate.value = '';
+    updateFilters({ 
+        graphStartDate: '', 
+        graphEndDate: '',
+        dateRange: dateRange.value,
+        sort: sort.value
+    });
+};
 
 const exportToCSV = () => {
     // Create CSV headers
@@ -146,6 +186,43 @@ const exportToCSV = () => {
                     </CardContent>
                 </Card>
             </div>
+
+            <!-- Graph Date Range Controls -->
+            <div class="flex items-center gap-4">
+                <div class="grid gap-1.5">
+                    <Label class="text-sm">Graph Start Date</Label>
+                    <Input
+                        type="date"
+                        v-model="graphStartDate"
+                        :max="graphEndDate || undefined"
+                    />
+                </div>
+                <div class="grid gap-1.5">
+                    <Label class="text-sm">Graph End Date</Label>
+                    <Input
+                        type="date"
+                        v-model="graphEndDate"
+                        :min="graphStartDate || undefined"
+                    />
+                </div>
+                <Button 
+                    variant="outline" 
+                    class="mt-6"
+                    @click="resetGraphDates"
+                >
+                    Reset Range
+                </Button>
+            </div>
+
+            <!-- Revenue Trend Chart -->
+            <Card>
+                <CardHeader>
+                    <CardTitle>Revenue Trends</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <RevenueChart :data="trends" />
+                </CardContent>
+            </Card>
 
             <!-- Filters -->
             <div class="flex flex-wrap gap-4">

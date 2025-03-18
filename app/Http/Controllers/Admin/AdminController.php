@@ -764,6 +764,8 @@ class AdminController extends Controller
     {
         $dateRange = $request->input('dateRange', 'last30');
         $sort = $request->input('sort', 'latest');
+        $graphStartDate = $request->input('graphStartDate');
+        $graphEndDate = $request->input('graphEndDate');
 
         // Base query for completed transactions
         $baseQuery = RentalRequest::whereIn('status', ['completed', 'completed_with_payments']);
@@ -845,10 +847,118 @@ class AdminController extends Controller
                                 ->paginate(10)
                                 ->appends($request->query());
 
+        // Add revenue trends data
+        $trends = $this->getRevenueTrends($dateRange, $graphStartDate, $graphEndDate);
+
         return Inertia::render('Admin/Revenue', [
             'revenue' => $revenue,
             'transactions' => $transactions,
-            'filters' => $request->only(['dateRange', 'sort'])
+            'filters' => $request->only(['dateRange', 'sort', 'graphStartDate', 'graphEndDate']),
+            'trends' => $trends // Add this line
         ]);
+    }
+
+    private function getRevenueTrends($dateRange, $graphStartDate = null, $graphEndDate = null)
+    {
+        $query = RentalRequest::whereIn('status', ['completed', 'completed_with_payments']);
+        
+        if ($graphStartDate && $graphEndDate) {
+            // Use custom date range if provided
+            $startDate = \Carbon\Carbon::parse($graphStartDate);
+            $endDate = \Carbon\Carbon::parse($graphEndDate);
+            $days = $startDate->diffInDays($endDate);
+            
+            $query->whereBetween('created_at', [
+                $startDate->startOfDay(),
+                $endDate->endOfDay()
+            ]);
+            
+            $grouping = match(true) {
+                $days <= 31 => 'day',
+                $days <= 90 => 'week',
+                default => 'month'
+            };
+        } else {
+            // ...existing date range logic...
+        }
+
+        // Use custom date range if provided
+        if ($graphStartDate && $graphEndDate) {
+            $query->whereBetween('created_at', [
+                $graphStartDate . ' 00:00:00',
+                $graphEndDate . ' 23:59:59'
+            ]);
+            
+            // Calculate difference in days for grouping
+            $days = \Carbon\Carbon::parse($graphStartDate)->diffInDays(\Carbon\Carbon::parse($graphEndDate));
+            
+            if ($days <= 31) {
+                $grouping = 'day';
+            } elseif ($days <= 90) {
+                $grouping = 'week';
+            } else {
+                $grouping = 'month';
+            }
+        } else {
+            // Use existing date range logic
+            switch ($dateRange) {
+                case 'last7':
+                    $days = 7;
+                    $grouping = 'day';
+                    break;
+                case 'thisMonth':
+                case 'lastMonth':
+                case 'last30':
+                    $days = 30;
+                    $grouping = 'day';
+                    break;
+                case 'last90':
+                    $days = 90;
+                    $grouping = 'week';
+                    break;
+                case 'thisYear':
+                case 'lastYear':
+                    $days = 365;
+                    $grouping = 'month';
+                    break;
+                default:
+                    $days = 30;
+                    $grouping = 'day';
+            }
+        }
+
+        $format = match($grouping) {
+            'day' => '%Y-%m-%d',
+            'week' => '%Y-%u',
+            'month' => '%Y-%m'
+        };
+
+        $results = $query->select(
+            DB::raw("DATE_FORMAT(created_at, '$format') as date"),
+            DB::raw('SUM(service_fee * 2) as total')
+        )
+        ->groupBy('date')
+        ->orderBy('date')
+        ->get();
+
+        return [
+            'labels' => $results->pluck('date')->map(fn($date) => 
+                match($grouping) {
+                    'day' => date('M d', strtotime($date)),
+                    'week' => 'Week ' . substr($date, -2),
+                    'month' => date('M Y', strtotime($date . '-01'))
+                }
+            ),
+            'datasets' => [
+                [
+                    'label' => 'Revenue',
+                    'data' => $results->pluck('total'),
+                    'borderColor' => '#10B981',
+                    'backgroundColor' => '#10B98120',
+                    'fill' => true,
+                    'tension' => 0.4
+                ]
+            ]
+        ];
     }
 }
