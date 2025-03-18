@@ -332,17 +332,17 @@ onUnmounted(() => {
 <template>
 	<div class="max-w-md mx-auto rounded-lg shadow-md p-6">
 		<div class="flex items-center justify-center mb-6">
-			<h2 class="text-2xl font-bold text-center text-blue-700">Verify your ID</h2>
+			<h2 class="text-2xl font-bold text-center text-primary">Verify your ID</h2>
 		</div>
 
 		<form @submit.prevent="handleSubmit" class="space-y-6">
 			<div class="space-y-4">
 				<!-- Webcam section -->
-				<div class="border-2 border-blue-700 rounded-lg p-4 bg-white">
+				<div class="border-2 border-primary rounded-lg p-4 bg-card">
 					<div class="flex items-center mb-2">
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
-							class="text-blue-700 font-medium mr-2"
+							class="text-primary font-medium mr-2"
 							width="20"
 							height="20"
 							viewBox="0 0 24 24"
@@ -357,7 +357,7 @@ onUnmounted(() => {
 							/>
 							<circle cx="12" cy="13" r="3" />
 						</svg>
-						<h3 class="text-blue-700 font-medium">Face Scan</h3>
+						<h3 class="text-primary font-medium">Face Scan</h3>
 					</div>
 
 					<!-- relative positioning container for video and overlay -->
@@ -366,7 +366,7 @@ onUnmounted(() => {
 							ref="videoRef"
 							autoplay
 							playsinline
-							class="w-full h-64 object-cover bg-blue-700 rounded-lg scale-x-[-1]"
+							class="w-full h-64 object-cover bg-primary rounded-lg scale-x-[-1]"
 						></video>
 
 						<!-- this shows the circle overlay -->
@@ -382,7 +382,7 @@ onUnmounted(() => {
 
 						<!-- Dynamic instruction text -->
 						<div class="absolute bottom-2 inset-x-0 text-center">
-							<span class="text-blue-500 px-2 py-1 rounded text-sm">
+							<span class="text-primary-foreground px-2 py-1 rounded text-sm">
 								<!-- Non active default instruction -->
 								<template v-if="!isLivenessActive">
 									Position your face within the circle
@@ -402,12 +402,12 @@ onUnmounted(() => {
 
 					<div class="mt-4 space-y-2">
 						<!-- Liveness Instructions -->
-						<div v-if="livenessStep" class="bg-blue-50 p-4 rounded-lg">
-							<p class="text-blue-700 font-medium">{{ livenessInstructions }}</p>
+						<div v-if="livenessStep" class="bg-accent p-4 rounded-lg">
+							<p class="text-primary font-medium">{{ livenessInstructions }}</p>
 							<div class="mt-2">
-								<div class="w-full bg-blue-200 rounded-full h-2">
+								<div class="w-full bg-primary/20 rounded-full h-2">
 									<div
-										class="bg-blue-600 h-2 rounded-full"
+										class="bg-primary h-2 rounded-full"
 										:style="{ width: `${livenessProgress}%` }"
 									></div>
 								</div>
@@ -418,7 +418,7 @@ onUnmounted(() => {
 							type="button"
 							@click="startLivenessDetection"
 							:disabled="isLivenessActive"
-							class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+							class="w-full bg-primary text-primary-foreground py-2 px-4 rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
 						>
 							{{ isLivenessActive ? "Scanning in Progress..." : "Start Face Scan" }}
 						</button>
@@ -427,7 +427,7 @@ onUnmounted(() => {
 							v-if="cameras.length > 1"
 							v-model="selectedCamera"
 							@change="switchCamera"
-							class="w-full border rounded-md p-2 text-blue-700"
+							class="w-full border rounded-md p-2 text-foreground"
 						>
 							<option
 								v-for="camera in cameras"
@@ -441,11 +441,11 @@ onUnmounted(() => {
 				</div>
 
 				<!-- Liveness verification result -->
-				<div v-if="livenessVerified" class="border rounded-lg p-4 bg-green-50">
+				<div v-if="livenessVerified" class="border rounded-lg p-4 bg-accent">
 					<div class="flex items-center">
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
-							class="text-green-500 mr-2"
+							class="text-primary mr-2"
 							width="20"
 							height="20"
 							viewBox="0 0 24 24"
@@ -458,16 +458,16 @@ onUnmounted(() => {
 							<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
 							<polyline points="22 4 12 14.01 9 11.01" />
 						</svg>
-						<p class="text-green-700 font-medium">Face Verified</p>
+						<p class="text-primary font-medium">Face Verified</p>
 					</div>
 				</div>
 
 				<!-- ID upload section -->
-				<div class="border-2 border-blue-700 rounded-lg p-4 bg-white">
+				<div class="border-2 border-primary rounded-lg p-4 bg-card">
 					<div class="flex items-center mb-2">
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
-							class="text-blue-700 mr-2"
+							class="text-primary mr-2"
 							width="20"
 							height="20"
 							viewBox="0 0 24 24"
@@ -482,17 +482,17 @@ onUnmounted(() => {
 							<path d="M15 8h.01" />
 							<path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
 						</svg>
-						<h3 class="font-medium text-blue-700">Upload Valid ID</h3>
+						<h3 class="font-medium text-primary">Upload Valid ID</h3>
 					</div>
 
 					<!-- ID Type Selection -->
 					<div class="mb-4">
-						<label class="block text-sm font-medium text-blue-700 mb-2">
+						<label class="block text-sm font-medium text-foreground mb-2">
 							Select ID Type
 						</label>
 						<select
 							v-model="selectedIdType"
-							class="w-full border rounded-md p-2 text-blue-700 mb-3"
+							class="w-full border rounded-md p-2 text-foreground mb-3 focus:border-primary focus:ring-ring"
 							@change="validateIdType"
 						>
 							<option value="">Select an ID type</option>
@@ -510,7 +510,7 @@ onUnmounted(() => {
 						type="file"
 						@change="handleIdUpload"
 						accept="image/*"
-						class="w-full border rounded-md p-2 text-blue-700"
+						class="w-full border rounded-md p-2 text-foreground focus:border-primary focus:ring-ring"
 					/>
 
 					<div v-if="idPreview" class="mt-4">
@@ -524,8 +524,8 @@ onUnmounted(() => {
 							<div
 								:class="`p-2 rounded text-sm ${
 									idValidationResult.isValid
-										? 'bg-green-50 text-green-800'
-										: 'bg-red-50 text-red-800'
+										? 'bg-accent text-primary'
+										: 'bg-destructive/10 text-destructive'
 								}`"
 							>
 								{{ idValidationResult.message }}
@@ -537,11 +537,11 @@ onUnmounted(() => {
 
 			<!-- ID Type Selection 2 -->
 			<!-- Second ID upload section -->
-			<div class="border-2 border-blue-700 rounded-lg p-4 bg-white">
+			<div class="border-2 border-primary rounded-lg p-4 bg-card">
 				<div class="flex items-center mb-2">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
-						class="text-blue-700 mr-2"
+						class="text-primary mr-2"
 						width="20"
 						height="20"
 						viewBox="0 0 24 24"
@@ -556,16 +556,16 @@ onUnmounted(() => {
 						<path d="M15 8h.01" />
 						<path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
 					</svg>
-					<h3 class="font-medium text-blue-700">Upload Second ID</h3>
+					<h3 class="font-medium text-primary">Upload Second ID</h3>
 				</div>
 
 				<div class="mb-4">
-					<label class="block text-sm font-medium text-blue-700 mb-2">
+					<label class="block text-sm font-medium text-foreground mb-2">
 						Select ID Type
 					</label>
 					<select
 						v-model="secondSelectedIdType"
-						class="w-full border rounded-md p-2 text-blue-700 mb-3"
+						class="w-full border rounded-md p-2 text-foreground mb-3 focus:border-primary focus:ring-ring"
 						@change="validateIdType"
 					>
 						<option value="">Select an ID type</option>
@@ -579,7 +579,7 @@ onUnmounted(() => {
 					type="file"
 					@change="handleSecondIdUpload"
 					accept="image/*"
-					class="w-full border rounded-md p-2 text-blue-700"
+					class="w-full border rounded-md p-2 text-foreground focus:border-primary focus:ring-ring"
 				/>
 
 				<div v-if="secondIdPreview" class="mt-4">
@@ -593,8 +593,8 @@ onUnmounted(() => {
 						<div
 							:class="`p-2 rounded text-sm ${
 								secondIdValidationResult.isValid
-									? 'bg-green-50 text-green-800'
-									: 'bg-red-50 text-red-800'
+									? 'bg-accent text-primary'
+									: 'bg-destructive/10 text-destructive'
 							}`"
 						>
 							{{ secondIdValidationResult.message }}
@@ -616,14 +616,14 @@ onUnmounted(() => {
 					!secondIdValidationResult?.isValid ||
 					isSubmitting
 				"
-				class="w-full bg-blue-700 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+				class="w-full bg-primary text-primary-foreground py-2 px-4 rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 			>
 				{{ isSubmitting ? "Verifying..." : "Complete Verification" }}
 			</button>
 		</form>
 
 		<!-- Results section -->
-		<div v-if="matchScore !== null" class="mt-6 p-4 bg-gray-50 rounded-lg">
+		<div v-if="matchScore !== null" class="mt-6 p-4 bg-muted rounded-lg">
 			<h3 class="font-medium mb-2">Verification Results</h3>
 			<div class="flex items-center">
 				<p class="text-lg">
@@ -632,7 +632,7 @@ onUnmounted(() => {
 			</div>
 			<div class="flex items-center mt-2">
 				<p>Status:</p>
-				<span v-if="verified" class="flex items-center text-green-600 font-bold ml-1">
+				<span v-if="verified" class="flex items-center text-primary font-bold ml-1">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						width="18"
@@ -650,7 +650,7 @@ onUnmounted(() => {
 					</svg>
 					Approved
 				</span>
-				<span v-else class="flex items-center text-red-600 font-bold ml-1">
+				<span v-else class="flex items-center text-destructive font-bold ml-1">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						width="18"
@@ -675,7 +675,7 @@ onUnmounted(() => {
 		<!-- Error message -->
 		<div
 			v-if="error"
-			class="mt-4 p-4 bg-red-100 text-red-700 rounded-lg flex items-start"
+			class="mt-4 p-4 bg-destructive/10 text-destructive rounded-lg flex items-start"
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"

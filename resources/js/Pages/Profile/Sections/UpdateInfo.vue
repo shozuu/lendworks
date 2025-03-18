@@ -64,7 +64,7 @@ const capitalize = (str) => {
 		</CardHeader>
 
 		<CardContent class="flex-1 lg:w-3/5 lg:self-end">
-			<p v-if="status" class="mb-2 text-sm text-green-700">{{ status }}</p>
+			<p v-if="status" class="mb-2 text-sm text-primary">{{ status }}</p>
 
 			<Alert v-if="form.recentlySuccessful === true" class="mb-5" variant="success">
 				<MailCheck class="shrink-0" />
@@ -92,7 +92,7 @@ const capitalize = (str) => {
 			<form @submit.prevent="submit" class="space-y-6">
 				<!-- User account information - Editable -->
 				<div class="space-y-4">
-					<h3 class="text-lg font-medium">Account Information</h3>
+					<h3 class="text-lg font-medium text-foreground">Account Information</h3>
 
 					<InputField
 						label="Username"
@@ -118,41 +118,43 @@ const capitalize = (str) => {
 		<CardContent class="flex-1">
 			<!-- Profile information - Read Only -->
 			<div class="mt-8 pt-6 border-t">
-				<h3 class="text-lg font-medium mb-4">Profile Information (Verified)</h3>
+				<h3 class="text-lg font-medium text-foreground mb-4">
+					Profile Information (Verified)
+				</h3>
 
 				<!-- Personal Information -->
 				<div class="mb-6">
-					<h4 class="text-md font-medium text-gray-700 mb-2">Personal Details</h4>
+					<h4 class="text-md font-medium text-foreground mb-2">Personal Details</h4>
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 						<div>
-							<p class="text-sm text-gray-500">Full Name</p>
+							<p class="text-sm text-muted-foreground">Full Name</p>
 							<p class="font-medium">
 								{{ profile.first_name || "Not provided" }}
 								{{ profile.middle_name || "" }} {{ profile.last_name || "" }}
 							</p>
 						</div>
 						<div>
-							<p class="text-sm text-gray-500">Birthdate</p>
+							<p class="text-sm text-muted-foreground">Birthdate</p>
 							<p class="font-medium">{{ formatDate(profile.birthdate) }}</p>
 						</div>
 						<div>
-							<p class="text-sm text-gray-500">Gender</p>
+							<p class="text-sm text-muted-foreground">Gender</p>
 							<p class="font-medium">
 								{{ capitalize(profile.gender) || "Not provided" }}
 							</p>
 						</div>
 						<div>
-							<p class="text-sm text-gray-500">Civil Status</p>
+							<p class="text-sm text-muted-foreground">Civil Status</p>
 							<p class="font-medium">
 								{{ capitalize(profile.civil_status) || "Not provided" }}
 							</p>
 						</div>
 						<div>
-							<p class="text-sm text-gray-500">Mobile Number</p>
+							<p class="text-sm text-muted-foreground">Mobile Number</p>
 							<p class="font-medium">{{ profile.mobile_number || "Not provided" }}</p>
 						</div>
 						<div>
-							<p class="text-sm text-gray-500">Nationality</p>
+							<p class="text-sm text-muted-foreground">Nationality</p>
 							<p class="font-medium">{{ profile.nationality || "Not provided" }}</p>
 						</div>
 					</div>
@@ -160,26 +162,26 @@ const capitalize = (str) => {
 
 				<!-- Address Information -->
 				<div class="mb-6">
-					<h4 class="text-md font-medium text-gray-700 mb-2">Address Information</h4>
+					<h4 class="text-md font-medium text-foreground mb-2">Address Information</h4>
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 						<div class="md:col-span-2">
-							<p class="text-sm text-gray-500">Street Address</p>
+							<p class="text-sm text-muted-foreground">Street Address</p>
 							<p class="font-medium">{{ profile.street_address || "Not provided" }}</p>
 						</div>
 						<div>
-							<p class="text-sm text-gray-500">Barangay</p>
+							<p class="text-sm text-muted-foreground">Barangay</p>
 							<p class="font-medium">{{ profile.barangay || "Not provided" }}</p>
 						</div>
 						<div>
-							<p class="text-sm text-gray-500">City</p>
+							<p class="text-sm text-muted-foreground">City</p>
 							<p class="font-medium">{{ profile.city || "Not provided" }}</p>
 						</div>
 						<div>
-							<p class="text-sm text-gray-500">Province</p>
+							<p class="text-sm text-muted-foreground">Province</p>
 							<p class="font-medium">{{ profile.province || "Not provided" }}</p>
 						</div>
 						<div>
-							<p class="text-sm text-gray-500">Postal Code</p>
+							<p class="text-sm text-muted-foreground">Postal Code</p>
 							<p class="font-medium">{{ profile.postal_code || "Not provided" }}</p>
 						</div>
 					</div>
@@ -187,14 +189,14 @@ const capitalize = (str) => {
 
 				<!-- ID Information -->
 				<div>
-					<h4 class="text-md font-medium text-gray-700 mb-2">ID Information</h4>
+					<h4 class="text-md font-medium text-foreground mb-2">ID Information</h4>
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 						<div>
-							<p class="text-sm text-gray-500">Primary ID Type</p>
+							<p class="text-sm text-muted-foreground">Primary ID Type</p>
 							<p class="font-medium">{{ profile.primary_id_type || "Not provided" }}</p>
 						</div>
 						<div>
-							<p class="text-sm text-gray-500">Secondary ID Type</p>
+							<p class="text-sm text-muted-foreground">Secondary ID Type</p>
 							<p class="font-medium">{{ profile.secondary_id_type || "Not provided" }}</p>
 						</div>
 					</div>
