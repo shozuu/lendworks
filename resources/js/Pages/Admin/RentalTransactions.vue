@@ -84,39 +84,61 @@ const handleSearch = (event) => {
     }, 300);
 };
 
-const exportToCSV = () => {
-    const headers = [
-        'Date',
-        'Listing',
-        'Lender',
-        'Renter',
-        'Start Date',
-        'End Date',
-        'Total Price',
-        'Status'
-    ].join(',');
+const exportToCSV = async () => {
+    try {
+        // Fetch all transactions data from the export endpoint
+        const response = await fetch(route('admin.rental-transactions.export'), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
 
-    const rows = props.transactions.data.map(transaction => [
-        formatDate(transaction.created_at),
-        `"${transaction.listing.title}"`,
-        `"${transaction.listing.user.name}"`,
-        `"${transaction.renter.name}"`,
-        formatDate(transaction.start_date),
-        formatDate(transaction.end_date),
-        transaction.total_price,
-        transaction.status
-    ].join(','));
+        if (!response.ok) throw new Error('Failed to fetch data');
+        const allTransactions = await response.json();
 
-    const csv = [headers, ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `transactions-${formatDate(new Date())}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+        // Define headers
+        const headers = [
+            'Date',
+            'Rental ID',
+            'Listing',
+            'Lender',
+            'Renter',
+            'Start Date',
+            'End Date',
+            'Total Price',
+            'Service Fee',
+            'Status'
+        ].join(',');
+
+        // Transform all transactions data into CSV rows
+        const rows = allTransactions.map(transaction => [
+            transaction.created_at,
+            transaction.id,
+            `"${transaction.listing.title.replace(/"/g, '""')}"`,
+            `"${transaction.listing.user.name.replace(/"/g, '""')}"`,
+            `"${transaction.renter.name.replace(/"/g, '""')}"`,
+            transaction.start_date,
+            transaction.end_date,
+            transaction.total_price,
+            transaction.service_fee,
+            transaction.status
+        ].join(','));
+
+        // Create and download CSV
+        const csv = [headers, ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `rental-transactions-${formatDate(new Date())}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+        console.error('Export failed:', error);
+    }
 };
 </script>
 

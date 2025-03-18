@@ -153,6 +153,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
 
     // Rental transactions routes
     Route::get('/rental-transactions', [AdminController::class, 'rentalTransactions'])->name('rental-transactions');
+    Route::get('/rental-transactions/export', [AdminController::class, 'exportTransactions'])->name('rental-transactions.export'); // Add this line
     Route::get('/rental-transactions/{rental}', [AdminController::class, 'rentalTransactionDetails'])->name('rental-transactions.show');
     
     // Payment routes

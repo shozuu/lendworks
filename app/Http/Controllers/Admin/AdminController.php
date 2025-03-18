@@ -1043,4 +1043,50 @@ class AdminController extends Controller
             return response()->json(['error' => 'Export failed'], 500);
         }
     }
+
+    public function exportTransactions()
+    {
+        try {
+            // Get all transactions with related data
+            $transactions = RentalRequest::with(['listing:id,title,user_id', 'listing.user:id,name', 'renter:id,name'])
+                ->select([
+                    'id',
+                    'listing_id',
+                    'renter_id',
+                    'total_price',
+                    'service_fee',
+                    'status',
+                    'start_date',
+                    'end_date',
+                    'created_at'
+                ])
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function($transaction) {
+                    return [
+                        'id' => $transaction->id,
+                        'created_at' => $transaction->created_at ? date('m/d/Y H:i', strtotime($transaction->created_at)) : 'N/A',
+                        'listing' => [
+                            'title' => $transaction->listing->title ?? 'Unknown Listing',
+                            'user' => [
+                                'name' => $transaction->listing->user->name ?? 'Unknown Lender'
+                            ]
+                        ],
+                        'renter' => [
+                            'name' => $transaction->renter->name ?? 'Unknown Renter'
+                        ],
+                        'start_date' => $transaction->start_date ? date('m/d/Y', strtotime($transaction->start_date)) : 'N/A',
+                        'end_date' => $transaction->end_date ? date('m/d/Y', strtotime($transaction->end_date)) : 'N/A',
+                        'total_price' => $transaction->total_price,
+                        'service_fee' => $transaction->service_fee,
+                        'status' => $transaction->status
+                    ];
+                });
+
+            return response()->json($transactions);
+        } catch (\Exception $e) {
+            report($e);
+            return response()->json(['error' => 'Export failed'], 500);
+        }
+    }
 }
