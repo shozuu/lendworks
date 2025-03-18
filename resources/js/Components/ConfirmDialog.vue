@@ -64,6 +64,22 @@ const props = defineProps({
 		default: () => [],
 	},
 	selectValue: String,
+	forceShowTextarea: {
+		type: Boolean,
+		default: false,
+	},
+	showQuantity: {
+		type: Boolean,
+		default: false,
+	},
+	quantityValue: {
+		type: Number,
+		default: 1,
+	},
+	maxQuantity: {
+		type: Number,
+		default: 1,
+	},
 });
 
 const emits = defineEmits([
@@ -73,6 +89,7 @@ const emits = defineEmits([
 	"cancel",
 	"update:selectValue",
 	"keydown",
+	"update:quantityValue",
 ]);
 
 const handleConfirm = async () => {
@@ -134,6 +151,33 @@ const isDisabled = computed(() => {
 
 	return false;
 });
+
+const shouldShowTextarea = computed(() => {
+	if (props.forceShowTextarea) return true;
+	if (!props.showSelect) return props.showTextarea;
+	return isSelectReasonOther.value;
+});
+
+const incrementQuantity = () => {
+	if (props.quantityValue < props.maxQuantity) {
+		emits("update:quantityValue", props.quantityValue + 1);
+	}
+};
+
+const decrementQuantity = () => {
+	if (props.quantityValue > 1) {
+		emits("update:quantityValue", props.quantityValue - 1);
+	}
+};
+
+const handleQuantityInput = (event) => {
+	const value = parseInt(event.target.value);
+	if (isNaN(value)) return;
+
+	// Clamp value between 1 and maxQuantity
+	const clampedValue = Math.min(Math.max(1, value), props.maxQuantity);
+	emits("update:quantityValue", clampedValue);
+};
 </script>
 
 <template>
@@ -148,39 +192,86 @@ const isDisabled = computed(() => {
 			class="w-[calc(100vw-2rem)] sm:max-w-[425px] p-0 flex flex-col max-h-[calc(100vh-2rem)] overflow-hidden rounded-lg"
 		>
 			<!-- Fixed Header -->
-			<DialogHeader class="p-4 sm:p-6">
-				<DialogTitle class="text-lg sm:text-xl">{{ title }}</DialogTitle>
-				<DialogDescription class="mt-2 sm:mt-3">
+			<DialogHeader class="sm:p-6 p-4">
+				<DialogTitle class="sm:text-xl text-lg">{{ title }}</DialogTitle>
+				<DialogDescription class="sm:mt-3 mt-2">
 					{{ description }}
 				</DialogDescription>
 			</DialogHeader>
 
 			<!-- Scrollable Content Area -->
-			<div class="flex-1 px-4 sm:px-6" v-if="showSelect">
+			<div class="sm:px-6 flex-1 px-4">
+				<!-- Enhanced quantity input -->
+				<div v-if="showQuantity" class="space-y-3 mb-4">
+					<div class="flex items-center justify-between">
+						<label class="text-foreground text-sm font-medium">Quantity to Approve</label>
+						<span class="text-muted-foreground text-xs">
+							Maximum: {{ maxQuantity }} unit(s)
+						</span>
+					</div>
+
+					<div class="flex items-center gap-3">
+						<Button
+							type="button"
+							variant="outline"
+							size="icon"
+							class="h-9 w-9 shrink-0"
+							:disabled="quantityValue <= 1"
+							@click="decrementQuantity"
+						>
+							-
+						</Button>
+
+						<div class="relative flex-1">
+							<input
+								type="number"
+								:value="quantityValue"
+								@input="handleQuantityInput"
+								min="1"
+								:max="maxQuantity"
+								class="w-full h-9 px-3 text-center rounded-md border border-input bg-background text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+							/>
+						</div>
+
+						<Button
+							type="button"
+							variant="outline"
+							size="icon"
+							class="h-9 w-9 shrink-0"
+							:disabled="quantityValue >= maxQuantity"
+							@click="incrementQuantity"
+						>
+							+
+						</Button>
+					</div>
+				</div>
 				<!-- Select input -->
-				<div class="space-y-2 mb-4">
-					<Select
-						:model-value="selectValue"
-						@update:model-value="(value) => $emit('update:selectValue', value)"
-					>
-						<SelectTrigger class="w-full">
-							<SelectValue :placeholder="'Select a reason...'" />
-						</SelectTrigger>
-						<SelectContent class="max-h-[200px]">
-							<SelectItem
-								v-for="option in selectOptions"
-								:key="option.value"
-								:value="option.value"
-								class="cursor-pointer"
-							>
-								{{ option.label }}
-							</SelectItem>
-						</SelectContent>
-					</Select>
+				<div v-if="showSelect" class="mb-4 space-y-2">
+					<!-- Select input -->
+					<div class="mb-4 space-y-2">
+						<Select
+							:model-value="selectValue"
+							@update:model-value="(value) => $emit('update:selectValue', value)"
+						>
+							<SelectTrigger class="w-full">
+								<SelectValue :placeholder="'Select a reason...'" />
+							</SelectTrigger>
+							<SelectContent class="max-h-[200px]">
+								<SelectItem
+									v-for="option in selectOptions"
+									:key="option.value"
+									:value="option.value"
+									class="cursor-pointer"
+								>
+									{{ option.label }}
+								</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
 				</div>
 
 				<!-- Textarea sections -->
-				<div v-if="showTextarea || isSelectReasonOther" class="space-y-3">
+				<div v-if="shouldShowTextarea" class="space-y-3">
 					<textarea
 						:value="textareaValue"
 						@input="handleTextareaInput"
@@ -212,7 +303,7 @@ const isDisabled = computed(() => {
 			</div>
 
 			<!-- Fixed Footer -->
-			<DialogFooter class="p-4 sm:p-6">
+			<DialogFooter class="sm:p-6 p-4">
 				<div
 					class="sm:flex-row sm:gap-3 sm:justify-end flex flex-col-reverse w-full gap-2"
 				>
@@ -303,5 +394,36 @@ textarea::-webkit-scrollbar-thumb {
 textarea {
 	min-height: 120px;
 	max-height: 300px;
+}
+
+/* Update input number styles */
+input[type="number"] {
+    @apply text-base font-medium;
+    -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Ensure proper input color contrast */
+input[type="number"]::placeholder {
+    @apply text-muted-foreground/60;
+}
+
+input[type="number"]:focus {
+    @apply border-ring;
+}
+
+input[type="number"] {
+	-moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
 }
 </style>

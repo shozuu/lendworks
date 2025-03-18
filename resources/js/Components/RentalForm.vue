@@ -5,10 +5,10 @@ import Button from "@/Components/ui/button/Button.vue";
 import RentalDatesPicker from "./RentalDatesPicker.vue";
 import { calculateRentalPrice } from "@/lib/rentalCalculator";
 import { formatNumber, formatDate } from "@/lib/formatters";
-import { ref, reactive, watch, onMounted } from "vue";
+import { ref, reactive, watch, onMounted, computed } from "vue";
 import { useForm as useInertiaForm } from "@inertiajs/vue3";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { XCircle } from "lucide-vue-next";
+import { XCircle, Clock } from "lucide-vue-next";
 
 const props = defineProps({
 	listing: {
@@ -23,11 +23,15 @@ const props = defineProps({
 		type: String,
 		default: null,
 	},
+	currentRental: {
+		type: Object,
+		default: null,
+	},
 });
-
 const dailyRate = props.listing.price;
 const itemValue = props.listing.value;
 const rentalDays = ref(7);
+const quantity = ref(1); // Add this line
 
 const rentalPrice = reactive({
 	basePrice: 0,
@@ -46,6 +50,7 @@ const rentalForm = useInertiaForm({
 	service_fee: 0,
 	deposit_fee: props.listing.deposit_fee,
 	total_price: 0,
+	quantity_requested: 1, // Add this line
 });
 
 const selectedDates = ref({
@@ -56,12 +61,16 @@ const selectedDates = ref({
 const errors = ref({});
 const isSubmitting = ref(false);
 
+// Add computed property for available quantity
+const availableQuantity = computed(() => props.listing.available_quantity);
+
 function updateRentalPrice() {
 	const result = calculateRentalPrice(
 		dailyRate,
 		itemValue,
 		rentalDays.value,
-		props.listing.deposit_fee
+		props.listing.deposit_fee,
+		quantity.value
 	);
 	Object.assign(rentalPrice, result);
 
@@ -70,7 +79,8 @@ function updateRentalPrice() {
 	rentalForm.discount = result.discount;
 	rentalForm.service_fee = result.fee;
 	rentalForm.deposit_fee = result.deposit;
-	rentalForm.total_price = result.totalPrice; // rental cost without deposit
+	rentalForm.total_price = result.totalPrice;
+	rentalForm.quantity_requested = quantity.value;
 }
 
 function updateRentalDays(startDate, endDate) {
@@ -117,6 +127,14 @@ watch(
 	{ deep: true }
 );
 
+// Add watch for quantity changes
+watch(quantity, (newVal) => {
+	if (newVal > availableQuantity.value) {
+		quantity.value = availableQuantity.value;
+	}
+	updateRentalPrice();
+});
+
 const handleSubmit = () => {
 	if (!rentalForm.start_date || !rentalForm.end_date) {
 		errors.value = {
@@ -154,6 +172,28 @@ onMounted(() => {
 
 		<CardContent class="md:p-6 md:pt-0 p-4 pt-0">
 			<Separator class="my-4" />
+
+			<!-- Currently Rented Notice -->
+			<div v-if="listing.is_rented && currentRental" class="mb-6">
+				<Alert class="bg-muted">
+					<AlertDescription>
+						<div class="flex gap-2 items-center">
+							<Clock class="h-4 w-4 shrink-0" />
+							<p class="font-medium">Currently Rented</p>
+						</div>
+						<p class="text-muted-foreground text-sm mt-1">
+							This item is being rented until
+							{{ currentRental?.end_date ? formatDate(currentRental.end_date) : "N/A" }}.
+						</p>
+						<p class="text-muted-foreground text-sm mt-2">
+							You can still calculate rental costs below, but rental requests are
+							temporarily disabled.
+							<!-- Future feature hint -->
+							<!-- <button class="text-primary hover:underline">Get notified when available</button> -->
+						</p>
+					</AlertDescription>
+				</Alert>
+			</div>
 
 			<!-- Rental error alert -->
 			<Alert v-if="flashError" variant="destructive" class="flex items-center mb-4">
@@ -201,10 +241,34 @@ onMounted(() => {
 						to rent this item.
 					</p>
 				</div>
-				<div v-else-if="listing.is_rented" class="text-muted-foreground py-4 text-center">
-					<p>This item is currently rented and unavailable.</p>
-				</div>
 				<template v-else>
+						<!-- Update quantity section -->
+						<div class="space-y-2">
+							<div class="font-semibold">Quantity</div>
+							<div class="flex items-center gap-2">
+								<Button
+									variant="outline"
+									size="sm"
+									:disabled="quantity === 1"
+									@click="quantity--"
+								>
+									-
+								</Button>
+								<span class="w-12 text-center">{{ quantity }}</span>
+								<Button
+									variant="outline"
+									size="sm"
+									:disabled="quantity >= availableQuantity"
+									@click="quantity++"
+								>
+									+
+								</Button>
+							</div>
+							<p class="text-muted-foreground text-xs">
+								{{ availableQuantity }} unit{{ availableQuantity !== 1 ? 's' : '' }} available for rent
+							</p>
+						</div>
+
 					<div class="space-y-2">
 						<div class="font-semibold">Rental Dates</div>
 						<RentalDatesPicker v-model="selectedDates" :min-date="new Date()" />
@@ -219,7 +283,8 @@ onMounted(() => {
 						<div class="space-y-2">
 							<div class="flex items-center justify-between">
 								<div class="text-muted-foreground">
-									{{ formatNumber(dailyRate) }} x {{ rentalDays }} rental days
+									{{ formatNumber(dailyRate) }} × {{ rentalDays }} days ×
+									{{ quantity }} unit(s)
 								</div>
 								<div>{{ formatNumber(rentalPrice.basePrice) }}</div>
 							</div>
@@ -228,12 +293,14 @@ onMounted(() => {
 								<div class="text-muted-foreground">
 									Duration Discount ({{ rentalPrice.discountPercentage }}%)
 								</div>
-								<div>- {{ formatNumber(rentalPrice.discount) }}</div>
+								<div class="text-emerald-500 font-medium">
+									- {{ formatNumber(rentalPrice.discount) }}
+								</div>
 							</div>
 
 							<div class="flex items-center justify-between">
 								<div class="text-muted-foreground">LendWorks Fee</div>
-								<div>{{ formatNumber(rentalPrice.fee) }}</div>
+								{{ formatNumber(rentalPrice.fee) }}
 							</div>
 
 							<div class="flex items-center justify-between">
@@ -272,11 +339,19 @@ onMounted(() => {
 
 					<Button
 						class="w-full"
-						:disabled="!selectedDates.start || !selectedDates.end || isSubmitting"
+						:disabled="
+							!selectedDates.start ||
+							!selectedDates.end ||
+							isSubmitting ||
+							listing.is_rented
+						"
 						@click.prevent="handleSubmit"
 					>
 						<template v-if="isSubmitting">
 							<span class="loading-spinner mr-2"></span> Processing...
+						</template>
+						<template v-else-if="listing.is_rented">
+							Available on {{ formatDate(currentRental.end_date) }}
 						</template>
 						<template v-else> Send Rent Request </template>
 					</Button>

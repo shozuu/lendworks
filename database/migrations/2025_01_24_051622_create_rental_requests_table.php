@@ -10,22 +10,35 @@ return new class extends Migration
     {
         Schema::create('rental_requests', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('listing_id')->constrained()->onDelete('cascade');
-            $table->foreignId('renter_id')->constrained('users')->onDelete('cascade');
-            $table->datetime('start_date');  
-            $table->datetime('end_date');  
+            $table->foreignId('listing_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('renter_id')->constrained('users')->cascadeOnDelete();
+            $table->dateTime('start_date');
+            $table->dateTime('end_date');
             $table->integer('base_price');
-            $table->integer('discount');  
-            $table->integer('service_fee'); 
+            $table->integer('discount');
+            $table->integer('service_fee');
             $table->integer('deposit_fee');
-            $table->integer('total_price'); 
+            $table->integer('total_price');
+            $table->integer('quantity_requested')->default(1);
+            $table->integer('quantity_approved')->nullable();
             $table->enum('status', [
-                'pending',    // Initial state when request is made
-                'approved',   // Owner approved, awaiting handover
-                'active',     // Item has been handed over
-                'completed', // Item has been returned and confirmed
-                'rejected',  // Owner rejected the request
-                'cancelled'  // Renter cancelled the request
+                'pending',
+                'approved',
+                'to_handover',
+                'pending_proof',
+                'active',
+                'completed',
+                'rejected',
+                'cancelled',
+                'pending_return',
+                'return_scheduled',
+                'pending_return_confirmation',
+                'pending_final_confirmation',
+                'completed_pending_payments',
+                'completed_with_payments',
+                'overdue',
+                'paid_overdue',
+                'disputed'
             ])->default('pending');
             $table->timestamp('handover_at')->nullable();
             $table->timestamp('return_at')->nullable();

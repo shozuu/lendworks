@@ -9,25 +9,52 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { formatLabel } from "@/lib/formatters";
 
 const props = defineProps({
-	rentals: Object,
-	stats: Object,
+	groupedRentals: Object,
+	rentalStats: Object,
 	cancellationReasons: Array,
 });
-
+console.log(props.groupedRentals);
 const selectedTab = ref("pending");
 
 const tabs = [
 	{ id: "pending", label: "Pending" },
 	{ id: "approved", label: "Approved" },
+	{ id: "payments", label: "Payments" },
+	{ id: "to_receive", label: "To Receive" },
 	{ id: "active", label: "Active" },
 	{ id: "completed", label: "Completed" },
 	{ id: "rejected", label: "Rejected" },
 	{ id: "cancelled", label: "Cancelled" },
 ];
+
+// Computed property to handle payment-related rentals
+const groupedRentals = computed(() => {
+	const result = { ...props.groupedRentals };
+
+	// Create payments group if it doesn't exist
+	if (!result.payments) {
+		result.payments = [];
+		// Get all payment-related rentals
+		["payment_pending", "payment_rejected"].forEach((status) => {
+			if (props.groupedRentals[status]) {
+				result.payments.push(...props.groupedRentals[status]);
+			}
+		});
+	}
+
+	// Handle to_receive group (renamed from to_handover)
+	if (result.to_handover || result.pending_proof) {
+		result.to_receive = [...(result.to_handover || []), ...(result.pending_proof || [])];
+		delete result.to_handover;
+		delete result.pending_proof;
+	}
+
+	return result;
+});
 
 const handleValueChange = (value) => {
 	selectedTab.value = value;
@@ -48,7 +75,7 @@ const handleValueChange = (value) => {
 		<!-- status summary cards -->
 		<div class="md:grid-cols-3 lg:grid-cols-6 grid grid-cols-2 gap-3">
 			<StatCard
-				v-for="(count, status) in stats"
+				v-for="(count, status) in rentalStats"
 				:key="status"
 				:label="formatLabel(status)"
 				:value="count"
@@ -65,9 +92,9 @@ const handleValueChange = (value) => {
 				</TabsList>
 
 				<TabsContent v-for="tab in tabs" :key="tab.id" :value="tab.id">
-					<div v-if="rentals[tab.id]?.length" class="space-y-4">
+					<div v-if="groupedRentals[tab.id]?.length" class="space-y-4">
 						<RentalCard
-							v-for="rental in rentals[tab.id]"
+							v-for="rental in groupedRentals[tab.id]"
 							:key="rental.id"
 							:rental="rental"
 							:cancellationReasons="cancellationReasons"
@@ -95,9 +122,9 @@ const handleValueChange = (value) => {
 
 			<!-- Content for mobile -->
 			<div class="mt-4">
-				<div v-if="rentals[selectedTab]?.length" class="space-y-4">
+				<div v-if="groupedRentals[selectedTab]?.length" class="space-y-4">
 					<RentalCard
-						v-for="rental in rentals[selectedTab]"
+						v-for="rental in groupedRentals[selectedTab]"
 						:key="rental.id"
 						:rental="rental"
 						:cancellationReasons="cancellationReasons"

@@ -18,15 +18,25 @@ class Listing extends Model
         'status',
         'rejection_reason',
         'is_available',
+        'is_rented',
         'category_id',
         'user_id',
         'location_id',
-        'deposit_fee'
+        'deposit_fee',
+        'quantity',           
+        'available_quantity' 
     ];
 
     protected $casts = [
         'is_available' => 'boolean',
-        'status' => 'string'
+        'is_rented' => 'boolean',
+        'status' => 'string',
+        'quantity' => 'integer',          
+        'available_quantity' => 'integer'  
+    ];
+
+    protected $appends = [
+        'availability_details'
     ];
 
     // Relationships
@@ -80,6 +90,19 @@ class Listing extends Model
         return $this->hasMany(RentalRequest::class);
     }
 
+    public function currentRental()
+    {
+        return $this->hasOne(RentalRequest::class)
+            ->where(function ($query) {
+                $query->where('status', 'active')
+                      ->orWhere(function ($q) {
+                          $q->where('status', 'approved')
+                            ->where('start_date', '<=', now())
+                            ->where('end_date', '>=', now());
+                      });
+            });
+    }
+
     public function getRejectionDetailsAttribute()
     {
         if ($this->status !== 'rejected') {
@@ -118,6 +141,25 @@ class Listing extends Model
             'description' => $takedown->takedownReason->description,
             'feedback' => $takedown->custom_feedback,
             'date' => $takedown->created_at
+        ];
+    }
+
+    // calculate the quantity of the listing that is currently rented
+    public function getCurrentlyRentedQuantity()
+    {
+        return $this->rentalRequests()
+            ->whereIn('status', ['active', 'approved'])
+            ->sum('quantity_approved');
+    }
+
+    public function getAvailabilityDetailsAttribute()
+    {
+        $rentedQuantity = $this->getCurrentlyRentedQuantity();
+        
+        return [
+            'total_quantity' => $this->quantity,  // Total owned quantity
+            'rented_quantity' => $rentedQuantity, // Currently rented (approved) quantity
+            'available_quantity' => $this->available_quantity // Available for rent
         ];
     }
 

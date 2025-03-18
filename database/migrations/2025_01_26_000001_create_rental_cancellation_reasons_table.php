@@ -13,6 +13,7 @@ return new class extends Migration
             $table->string('code')->unique();
             $table->string('label');
             $table->text('description');
+            $table->enum('role', ['renter', 'lender', 'both'])->default('both');
             $table->timestamps();
         });
 

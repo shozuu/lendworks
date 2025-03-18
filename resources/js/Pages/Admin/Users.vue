@@ -30,8 +30,13 @@ const props = defineProps({
 			search: "",
 			status: "all",
 			sortBy: "latest",
+			verified: "all",
 		}),
 	},
+	userCounts: {
+		type: Object,
+		required: true
+	}
 });
 
 const getStatusBadge = (status) => {
@@ -45,6 +50,7 @@ const getStatusBadge = (status) => {
 const search = ref(props.filters?.search ?? "");
 const status = ref(props.filters?.status ?? "all");
 const sortBy = ref(props.filters?.sortBy ?? "latest");
+const verified = ref(props.filters?.verified ?? "all");
 const showDialog = ref(false);
 const selectedUser = ref(null);
 const action = ref(null);
@@ -80,6 +86,10 @@ watch(sortBy, (newVal) => {
 	updateFilters({ sortBy: newVal }); // Changed from 'sort' to 'sortBy'
 });
 
+watch(verified, (newVal) => {
+	updateFilters({ verified: newVal });
+});
+
 const confirmAction = (user, actionType) => {
 	selectedUser.value = user;
 	action.value = actionType;
@@ -103,44 +113,95 @@ const handleAction = () => {
 	<Head title="| Admin - Users" />
 
 	<div class="space-y-6">
-		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-			<h2 class="text-2xl font-semibold tracking-tight">Manage Users</h2>
-
-			<div class="flex flex-wrap items-center gap-4">
-				<!-- Search -->
-				<div class="relative w-full sm:w-[200px]">
-					<Input type="search" placeholder="Search users..." v-model="search" />
+		<div class="flex flex-col gap-4">
+			<div class="sm:flex-row sm:items-center sm:justify-between flex flex-col gap-2">
+				<h2 class="text-2xl font-semibold tracking-tight">Manage Users</h2>
+				<div class="flex flex-wrap gap-2">
+					<Badge variant="outline">Total: {{ userCounts.total }}</Badge>
+					<Badge variant="success">Active: {{ userCounts.active }}</Badge>
+					<Badge variant="destructive">Suspended: {{ userCounts.suspended }}</Badge>
 				</div>
+			</div>
 
-				<!-- Status Filter -->
-				<Select v-model="status" defaultValue="all">
-					<SelectTrigger class="w-full sm:w-[140px]">
-						<SelectValue placeholder="Filter by status" />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectLabel class="p-1 text-center">Filter Status</SelectLabel>
-						<Separator class="my-2" />
-						<SelectItem value="all">All Status</SelectItem>
-						<SelectItem value="active">Active</SelectItem>
-						<SelectItem value="suspended">Suspended</SelectItem>
+			<div class="sm:flex-row flex flex-col gap-3">
+				<div class="flex-1">
+					<Input type="search" placeholder="Search users..." v-model="search" class="max-w-xs" />
+				</div>
+				<div class="flex flex-wrap gap-3">
+					<!-- Status Filter -->
+					<Select v-model="status" defaultValue="all">
+						<SelectTrigger class="w-full sm:w-[180px]">
+							<SelectValue placeholder="Filter by status" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectLabel class="p-1 text-center">Filter Status</SelectLabel>
+							<Separator class="my-2" />
+							<SelectItem value="all" class="flex items-center justify-between">
+							<span>All Status</span>
+							<span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+								{{ userCounts.total }}
+							</span>
+						</SelectItem>
+							<SelectItem value="active" class="flex items-center justify-between">
+							<span>Active</span>
+							<span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+								{{ userCounts.active }}
+							</span>
+						</SelectItem>
+							<SelectItem value="suspended" class="flex items-center justify-between">
+							<span>Suspended</span>
+							<span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+								{{ userCounts.suspended }}
+							</span>
+						</SelectItem>
 					</SelectContent>
 				</Select>
 
-				<!-- Sort -->
-				<Select v-model="sortBy" defaultValue="latest">
-					<!-- Added defaultValue -->
-					<SelectTrigger class="w-full sm:w-[140px]">
-						<SelectValue placeholder="Sort by" />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectLabel class="p-1 text-center">Sort Users</SelectLabel>
-						<Separator class="my-2" />
-						<SelectItem value="latest">Latest</SelectItem>
-						<SelectItem value="oldest">Oldest</SelectItem>
-						<SelectItem value="name">Name</SelectItem>
-						<SelectItem value="listings">Most Listings</SelectItem>
-					</SelectContent>
-				</Select>
+				 <!-- Verification Filter -->
+                <Select v-model="verified" defaultValue="all">
+                    <SelectTrigger class="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Verification" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectLabel class="p-1 text-center">Verification Status</SelectLabel>
+                        <Separator class="my-2" />
+                        <SelectItem value="all" class="flex items-center justify-between">
+                            <span>All Users</span>
+                            <span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                                {{ userCounts.total }}
+                            </span>
+                        </SelectItem>
+                        <SelectItem value="verified" class="flex items-center justify-between">
+                            <span>Verified</span>
+                            <span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                                {{ userCounts.verified }}
+                            </span>
+                        </SelectItem>
+                        <SelectItem value="unverified" class="flex items-center justify-between">
+                            <span>Unverified</span>
+                            <span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                                {{ userCounts.unverified }}
+                            </span>
+                        </SelectItem>
+	                    </SelectContent>
+	                </Select>
+
+					<!-- Sort -->
+					<Select v-model="sortBy" defaultValue="latest">
+						<!-- Added defaultValue -->
+						<SelectTrigger class="w-full sm:w-[140px]">
+							<SelectValue placeholder="Sort by" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectLabel class="p-1 text-center">Sort Users</SelectLabel>
+							<Separator class="my-2" />
+							<SelectItem value="latest">Latest</SelectItem>
+							<SelectItem value="oldest">Oldest</SelectItem>
+							<SelectItem value="name">Name</SelectItem>
+							<SelectItem value="listings">Most Listings</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
 			</div>
 		</div>
 
@@ -149,23 +210,26 @@ const handleAction = () => {
 			<Card
 				v-for="user in users.data"
 				:key="user.id"
-				class="p-4 sm:p-6 hover:ring-1 hover:ring-primary/20 transition-all cursor-pointer group"
+				class="sm:p-6 hover:ring-1 hover:ring-primary/20 group p-4 transition-all cursor-pointer"
 			>
 				<Link :href="route('admin.users.show', user.id)" class="block">
-					<div class="flex flex-col sm:flex-row sm:items-center gap-4">
+					<div class="sm:flex-row sm:items-center flex flex-col gap-4">
 						<!-- User Info -->
 						<div class="flex-1 min-w-0 space-y-2">
 							<div class="flex flex-wrap items-center gap-2">
 								<h3
-									class="font-semibold group-hover:text-primary group-hover:underline transition-colors truncate"
+									class="group-hover:text-primary group-hover:underline font-semibold truncate transition-colors"
 								>
 									{{ user.name }}
 								</h3>
 								<Badge :variant="getStatusBadge(user.status).variant">
 									{{ getStatusBadge(user.status).label }}
 								</Badge>
+								<Badge :variant="user.email_verified_at ? 'success' : 'secondary'">
+                                    {{ user.email_verified_at ? 'Verified' : 'Unverified' }}
+                                </Badge>
 							</div>
-							<div class="space-y-1 text-xs sm:text-sm text-muted-foreground">
+							<div class="sm:text-sm text-muted-foreground space-y-1 text-xs">
 								<p class="truncate">{{ user.email }}</p>
 								<p>Member since {{ formatDate(user.created_at) }}</p>
 								<p>Total Listings: {{ user.listings_count }}</p>
@@ -173,7 +237,7 @@ const handleAction = () => {
 						</div>
 
 						<!-- Actions -->
-						<div class="flex flex-wrap gap-2 sm:justify-end">
+						<div class="sm:justify-end flex flex-wrap gap-2">
 							<Button
 								v-if="user.status === 'active'"
 								variant="destructive"
@@ -216,3 +280,14 @@ const handleAction = () => {
 		/>
 	</div>
 </template>
+
+<style scoped>
+/* Add these styles for consistent alignment */
+:deep(.select-content) {
+    min-width: 200px;
+}
+
+:deep(.select-item) {
+    padding-right: 1rem;
+}
+</style>

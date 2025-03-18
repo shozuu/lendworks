@@ -25,12 +25,17 @@ const props = defineProps({
 		type: Array,
 		required: true,
 	},
+	categories: {
+		type: Array,
+		required: true,
+	},
 	filters: {
 		type: Object,
 		default: () => ({
 			search: "",
 			status: "all",
 			sortBy: "latest",
+			category: "all", // Added category filter default
 		}),
 	},
 	listingCounts: {
@@ -58,6 +63,7 @@ const handleUpdateStatus = async ({ listing, status, reason }) => {
 const search = ref(props.filters?.search ?? "");
 const statusFilter = ref(props.filters?.status ?? "all");
 const sortBy = ref(props.filters?.sortBy ?? "latest");
+const category = ref(props.filters?.category ?? "all");
 
 // Update search with debounce
 const updateSearch = debounce((value) => {
@@ -104,6 +110,10 @@ watch(statusFilter, (newVal) => {
 watch(sortBy, (newVal) => {
 	updateFilters({ sortBy: newVal });
 });
+
+watch(category, (newVal) => {
+	updateFilters({ category: newVal });
+});
 </script>
 
 <template>
@@ -131,6 +141,34 @@ watch(sortBy, (newVal) => {
 					<Input v-model="search" placeholder="Search listings..." class="max-w-xs" />
 				</div>
 				<div class="flex flex-wrap gap-3">
+					<!-- Category Filter - New -->
+					<Select v-model="category">
+						<SelectTrigger class="w-[200px]">
+							<SelectValue placeholder="Filter by category" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectLabel class="px-2 py-1.5">Filter Category</SelectLabel>
+							<Separator class="my-2" />
+							<SelectItem value="all" class="flex items-center justify-between">
+								<span>All Categories</span>
+								<span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+									{{ listingCounts.total }}
+								</span>
+							</SelectItem>
+							<SelectItem 
+								v-for="cat in categories" 
+								:key="cat.id" 
+								:value="cat.id.toString()"
+								class="flex items-center justify-between"
+							>
+								<span>{{ cat.name }}</span>
+								<span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+									{{ cat.count }}
+								</span>
+							</SelectItem>
+						</SelectContent>
+					</Select>
+
 					<Select v-model="statusFilter">
 						<SelectTrigger class="w-[140px]">
 							<SelectValue placeholder="Filter status" />
@@ -188,3 +226,14 @@ watch(sortBy, (newVal) => {
 		<PaginationLinks v-if="listings.data.length" :paginator="listings" />
 	</div>
 </template>
+
+<style scoped>
+/* Add these styles for consistent alignment */
+:deep(.select-content) {
+    min-width: 200px;
+}
+
+:deep(.select-item) {
+    padding-right: 1rem;
+}
+</style>

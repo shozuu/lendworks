@@ -21,6 +21,7 @@ const props = defineProps({
 	showPendingMessage: Boolean,
 	justUpdated: Boolean,
 	flashError: String,
+	flashError: String,
 });
 
 const showDeleteDialog = ref(false);
@@ -179,9 +180,6 @@ const handleDelete = () => {
 
 	<div class="lg:grid-cols-2 lg:gap-10 grid grid-cols-1 gap-4">
 		<div class="space-y-6">
-			<Badge v-if="listing.is_rented" variant="warning" class="mb-4">
-				Currently Rented
-			</Badge>
 			<!-- images -->
 			<div class="w-full">
 				<ListingImages
@@ -209,6 +207,37 @@ const handleDelete = () => {
 					<p>
 						Security Deposit (Refundable):
 						<span class="font-medium">{{ formatNumber(listing.deposit_fee) }}</span>
+					</p>
+					<p class="text-xs">
+						* The security deposit will be refunded after the rental period, subject to
+						item condition
+					</p>
+				</div>
+			</div>
+			<!-- pricing information -->
+			<div class="space-y-1">
+				<h2 class="text-lg font-semibold tracking-tight">Pricing Information</h2>
+				<div class="text-muted-foreground space-y-2">
+					<p>
+						Daily Rate: <span class="font-medium">{{ formatNumber(listing.price) }}</span>
+					</p>
+					<p>
+						Security Deposit (Refundable):
+						<span class="font-medium">{{ formatNumber(listing.deposit_fee) }}</span>
+					</p>
+					<!-- Add quantity information -->
+					<p>
+						Total Units: <span class="font-medium">{{ listing.quantity }}</span>
+					</p>
+					<p>
+						Available Units:
+						<span class="font-medium">{{ listing.available_quantity }}</span>
+					</p>
+					<p
+						v-if="listing.quantity !== listing.available_quantity"
+						class="text-xs text-muted-foreground"
+					>
+						({{ listing.quantity - listing.available_quantity }} units currently rented)
 					</p>
 					<p class="text-xs">
 						* The security deposit will be refunded after the rental period, subject to
@@ -244,7 +273,7 @@ const handleDelete = () => {
 
 			<!-- location -->
 			<div class="space-y-1">
-				<h2 class="text-lg font-semibold tracking-tight">Listing Location</h2>
+				<h2 class="text-lg font-semibold tracking-tight">Meetup Location</h2>
 
 				<div class="text-muted-foreground space-y-1">
 					<p class="font-medium">{{ listing.location.name }}</p>
@@ -314,6 +343,7 @@ const handleDelete = () => {
 				:listing="listing"
 				:is-owner="listing.user.id === $page.props.auth.user?.id"
 				:flash-error="flashError"
+				:current-rental="listing.current_rental"
 				class="w-full lg:min-w-[400px]"
 			/>
 		</div>
