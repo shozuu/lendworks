@@ -289,41 +289,45 @@ const printChart = () => {
 
         <!-- Transactions Table -->
         <Card>
-            <CardContent>
+            <CardHeader>
                 <CardTitle>Revenue Transactions</CardTitle>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Listing Title</TableHead>
-                            <TableHead>Renter</TableHead>
-                            <TableHead>Rental Amount</TableHead>
-                            <TableHead>Platform Fee</TableHead>
-                            <TableHead>Total Earnings</TableHead>
-                            <TableHead>Status</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        <TableRow 
-                            v-for="transaction in transactions.data" 
-                            :key="transaction.id"
-                            class="cursor-pointer hover:bg-muted/50 transition-colors"
-                            @click="router.visit(route('admin.rental-transactions.show', transaction.id))"
-                        >
-                            <TableCell>{{ formatDate(transaction.created_at) }}</TableCell>
-                            <TableCell class="font-medium">{{ transaction.listing.title }}</TableCell>
-                            <TableCell class="text-muted-foreground">{{ transaction.renter.name }}</TableCell>
-                            <TableCell>₱{{ transaction.total_price.toLocaleString() }}</TableCell>
-                            <TableCell>₱{{ transaction.service_fee.toLocaleString() }}</TableCell>
-                            <TableCell class="font-medium">
-                                ₱{{ (transaction.service_fee * 2).toLocaleString() }}
-                            </TableCell>
-                            <TableCell>
-                                <Badge>{{ transaction.status }}</Badge>
-                            </TableCell>
-                        </TableRow>
-                    </TableBody>
-                </Table>
+            </CardHeader>
+            <CardContent>
+                <div class="relative w-full overflow-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead class="w-[120px]">Date</TableHead>
+                                <TableHead class="min-w-[200px]">Listing Title</TableHead>
+                                <TableHead class="min-w-[150px]">Renter</TableHead>
+                                <TableHead class="text-right">Rental Amount</TableHead>
+                                <TableHead class="text-right">Platform Fee</TableHead>
+                                <TableHead class="text-right">Total Earnings</TableHead>
+                                <TableHead class="w-[100px]">Status</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            <TableRow 
+                                v-for="transaction in transactions.data" 
+                                :key="transaction.id"
+                                class="cursor-pointer hover:bg-muted/50 transition-colors"
+                                @click="router.visit(route('admin.rental-transactions.show', transaction.id))"
+                            >
+                                <TableCell>{{ formatDate(transaction.created_at) }}</TableCell>
+                                <TableCell class="font-medium">{{ transaction.listing.title }}</TableCell>
+                                <TableCell class="text-muted-foreground">{{ transaction.renter.name }}</TableCell>
+                                <TableCell class="text-right">₱{{ transaction.total_price.toLocaleString() }}</TableCell>
+                                <TableCell class="text-right">₱{{ transaction.service_fee.toLocaleString() }}</TableCell>
+                                <TableCell class="text-right font-medium">
+                                    ₱{{ (transaction.service_fee * 2).toLocaleString() }}
+                                </TableCell>
+                                <TableCell class="text-center">
+                                    <Badge>{{ transaction.status }}</Badge>
+                                </TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </div>
             </CardContent>
         </Card>
         <PaginationLinks :paginator="transactions" />
