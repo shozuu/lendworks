@@ -588,7 +588,7 @@ const selectedPickupSchedule = computed(() =>
 								class="bg-destructive/10 p-4 mt-4 rounded-lg"
 							>
 								<p class="text-destructive text-sm">
-									⚠️ Overdue payment must be settled before proceeding with the return
+									 ⚠️ Overdue payment must be settled before proceeding with the return
 									process
 								</p>
 								<p class="text-muted-foreground mt-2 text-xs">
@@ -740,7 +740,7 @@ const selectedPickupSchedule = computed(() =>
 							<template v-else-if="rental.status === 'disputed'">
 								<div class="space-y-4">
 									<p class="text-destructive text-sm font-medium">
-										⚠️ The lender has raised a dispute regarding the returned item
+										 ⚠️ The lender has raised a dispute regarding the returned item
 									</p>
 									<div class="bg-muted p-4 space-y-2 rounded-lg">
 										<p class="text-sm font-medium">Dispute Reason:</p>
@@ -783,7 +783,12 @@ const selectedPickupSchedule = computed(() =>
 
 							<!-- Handover Actions -->
 							<template
-								v-if="actions.canHandover || hasUnconfirmedSchedule || hasNoSchedule"
+								v-if="(actions.canHandover || hasUnconfirmedSchedule || hasNoSchedule) && 
+									rental.status !== 'active' && 
+									rental.status !== 'pending_final_confirmation' && 
+									rental.status !== 'disputed' &&
+									rental.status !== 'completed_pending_payments' &&
+									rental.status !== 'completed_with_payments'"
 							>
 								<!-- Show waiting message when no schedule -->
 								<Button
@@ -815,6 +820,18 @@ const selectedPickupSchedule = computed(() =>
 									Hand Over Item
 								</Button>
 							</template>
+
+							 <!-- Add Dispute Button -->
+							 <Button
+								v-if="rental.status === 'pending_final_confirmation' && 
+									userRole === 'lender' && 
+									(!rental.dispute || rental.dispute?.resolution_type === 'rejected')"
+								variant="destructive"
+								class="w-full"
+								@click="showDisputeDialog = true"
+							>
+								Raise Dispute
+							</Button>
 
 							<!-- Rest of the actions remain unchanged -->
 							<Button
@@ -1110,7 +1127,7 @@ const selectedPickupSchedule = computed(() =>
 								<!-- Lender specific message -->
 								<template v-if="userRole === 'lender'">
 									<p class="text-destructive text-sm font-medium">
-										⚠️ Your dispute claim has been rejected by the admin
+										 ⚠️ Your dispute claim has been rejected by the admin
 									</p>
 									<div class="mt-3 space-y-2">
 										<p class="text-sm font-medium">Reason for Rejection:</p>
@@ -1151,7 +1168,7 @@ const selectedPickupSchedule = computed(() =>
 									>
 										<div class="space-y-3">
 											<p class="text-primary text-sm font-medium">
-												✓ This dispute has been resolved with deposit deduction
+												 ✓ This dispute has been resolved with deposit deduction
 											</p>
 
 											<!-- Show amount details -->
