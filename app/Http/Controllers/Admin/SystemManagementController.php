@@ -310,31 +310,35 @@ class SystemManagementController extends Controller
     public function getLogs(Request $request)
     {
         try {
-            // Build query using the model
+            // Build base query with period filter
+            $baseQuery = RentalTimelineEvent::query();
+            if ($period = $request->input('period')) {
+                if ($period !== 'all') {
+                    $baseQuery->where('created_at', '>=', now()->subDays((int)$period));
+                }
+            }
+
+            // Calculate stats using scopes
+            $stats = [
+                'system' => (clone $baseQuery)->ofType('system')->count(),
+                'user' => (clone $baseQuery)->ofType('user')->count(),
+                'admin' => (clone $baseQuery)->ofType('admin')->count(),
+                'error' => (clone $baseQuery)->ofType('error')->count()
+            ];
+
+            // Build main query for paginated results
             $query = RentalTimelineEvent::query()
-                ->select('rental_timeline_events.*')
                 ->with(['actor', 'rental_request']);
 
             // Apply type filter
             if ($type = $request->input('type', 'all')) {
                 if ($type !== 'all') {
-                    $query->when($type !== 'all', function($q) use ($type) {
-                        switch ($type) {
-                            case 'user':
-                                return $q->whereIn('event_type', RentalTimelineEvent::getUserEvents());
-                            case 'admin':
-                                return $q->whereIn('event_type', RentalTimelineEvent::getAdminEvents());
-                            case 'error':
-                                return $q->whereIn('event_type', RentalTimelineEvent::getErrorEvents());
-                            case 'system':
-                                return $q->whereIn('event_type', RentalTimelineEvent::getSystemEvents());
-                        }
-                    });
+                    $query->ofType($type);
                 }
             }
 
             // Apply period filter
-            if ($period = $request->input('period')) {
+            if ($period) {
                 if ($period !== 'all') {
                     $query->where('created_at', '>=', now()->subDays((int)$period));
                 }
@@ -350,26 +354,6 @@ class SystemManagementController extends Controller
                       });
                 });
             }
-
-            // Get simple stats count using the model's methods
-            $stats = [
-                'system' => RentalTimelineEvent::whereIn('event_type', RentalTimelineEvent::getSystemEvents())
-                    ->when($period && $period !== 'all', function($q) use ($period) {
-                        $q->where('created_at', '>=', now()->subDays($period));
-                    })->count(),
-                'user' => RentalTimelineEvent::whereIn('event_type', RentalTimelineEvent::getUserEvents())
-                    ->when($period && $period !== 'all', function($q) use ($period) {
-                        $q->where('created_at', '>=', now()->subDays($period));
-                    })->count(),
-                'admin' => RentalTimelineEvent::whereIn('event_type', RentalTimelineEvent::getAdminEvents())
-                    ->when($period && $period !== 'all', function($q) use ($period) {
-                        $q->where('created_at', '>=', now()->subDays($period));
-                    })->count(),
-                'error' => RentalTimelineEvent::whereIn('event_type', RentalTimelineEvent::getErrorEvents())
-                    ->when($period && $period !== 'all', function($q) use ($period) {
-                        $q->where('created_at', '>=', now()->subDays($period));
-                    })->count()
-            ];
 
             // Get paginated logs
             $logs = $query->latest()
