@@ -50,6 +50,15 @@ const isSuggestedSchedule = computed(() => {
 	return selectedSchedule.value.is_suggested;
 });
 
+// Add new computed property
+const shouldCloseAfterSelection = computed(() => {
+	// Close immediately for renters suggesting a schedule
+	if (props.userRole === "renter" && selectedSchedule.value?.is_suggested) {
+		return true;
+	}
+	return false;
+});
+
 const handleConfirmSchedule = () => {
 	confirmForm.patch(
 		route("pickup-schedules.confirm", {
@@ -74,9 +83,9 @@ const handleConfirmSchedule = () => {
 	<Dialog :open="show" @update:open="closeDialog">
 		<DialogContent class="max-w-2xl">
 			<div class="space-y-4">
-					<!-- Only show suggestion details to lender -->
-				<div 
-					v-if="isSuggestedSchedule && selectedSchedule && userRole === 'lender'" 
+				<!-- Only show suggestion details to lender -->
+				<div
+					v-if="isSuggestedSchedule && selectedSchedule && userRole === 'lender'"
 					class="p-4"
 				>
 					<div class="bg-muted p-4 rounded-lg space-y-4">

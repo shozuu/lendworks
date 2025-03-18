@@ -28,7 +28,7 @@ const handleSelectDate = (slot) => {
 	selectForm.patch(
 		route("pickup-schedules.select", {
 			rental: props.rental.id,
-			lender_schedule: slot.id, // This was the issue - slot is a generated timeslot
+			lender_schedule: slot.original.id, // Use the original schedule's ID
 		}),
 		{
 			preserveScroll: true,
@@ -154,30 +154,35 @@ const selectedScheduleDetails = computed(() => {
 
 // Add new helper function for time slot generation
 const generateTimeSlots = (schedule) => {
+	const slots = [];
+
+	// Parse the start and end time
 	const { hours: startHour, minutes: startMin } = parseTime(schedule.start_time);
 	const { hours: endHour, minutes: endMin } = parseTime(schedule.end_time);
 
-	const slots = [];
-	const slotDuration = 60; // Change to 1 hour per slot
+	// Convert to total minutes for easier calculation
+	let currentMinutes = startHour * 60 + startMin;
+	const endMinutes = endHour * 60 + endMin;
 
-	let currentSlotStart = startHour * 60 + startMin;
-	const endTime = endHour * 60 + endMin;
+	// Generate 1-hour slots until we can't fit another full hour
+	while (currentMinutes + 60 <= endMinutes) {
+		const slotStartTime = `${Math.floor(currentMinutes / 60)
+			.toString()
+			.padStart(2, "0")}:${(currentMinutes % 60).toString().padStart(2, "0")}`;
 
-	while (currentSlotStart < endTime) {
-		const slotEnd = Math.min(currentSlotStart + slotDuration, endTime);
+		const slotEndTime = `${Math.floor((currentMinutes + 60) / 60)
+			.toString()
+			.padStart(2, "0")}:${((currentMinutes + 60) % 60).toString().padStart(2, "0")}`;
 
 		slots.push({
-			id: schedule.id, // Make sure we keep the original schedule's ID
+			id: schedule.id,
 			day_of_week: schedule.day_of_week,
-			start_time: `${Math.floor(currentSlotStart / 60)
-				.toString()
-				.padStart(2, "0")}:${(currentSlotStart % 60).toString().padStart(2, "0")}`,
-			end_time: `${Math.floor(slotEnd / 60)
-				.toString()
-				.padStart(2, "0")}:${(slotEnd % 60).toString().padStart(2, "0")}`,
+			start_time: slotStartTime,
+			end_time: slotEndTime,
+			original: schedule,
 		});
 
-		currentSlotStart = slotEnd;
+		currentMinutes += 60;
 	}
 
 	return slots;
@@ -185,32 +190,90 @@ const generateTimeSlots = (schedule) => {
 
 // Update availableTimeSlots computed to use time slots
 const availableTimeSlots = computed(() => {
+	console.log("Rental start date:", props.rental.start_date);
+	console.log("Lender schedules:", props.lenderSchedules);
+
 	const rentalStartDate = new Date(props.rental.start_date);
 	const now = new Date();
 	const dayOfWeek = format(rentalStartDate, "EEEE");
 
-	return props.lenderSchedules
+	const slots = props.lenderSchedules
 		.filter((schedule) => {
+			// Debug logs
+			console.log("Checking schedule:", schedule);
+			console.log("Schedule day:", schedule.day_of_week);
+			console.log("Rental day:", dayOfWeek);
+			console.log("Is active:", schedule.is_active);
+
 			// Must be active and match rental start day
-			if (!schedule.is_active || schedule.day_of_week !== dayOfWeek) {
-				return false;
-			}
-
-			// If it's today, check if time slot hasn't passed
-			if (format(now, "yyyy-MM-dd") === format(rentalStartDate, "yyyy-MM-dd")) {
-				return !isPastTimeSlot(schedule);
-			}
-
-			return true;
+			return schedule.is_active && schedule.day_of_week === dayOfWeek;
 		})
-		.flatMap((schedule) => generateTimeSlots(schedule))
+		.flatMap((schedule) => {
+			// Generate 1-hour slots for each valid schedule
+			const { hours: startHour, minutes: startMin } = parseTime(schedule.start_time);
+			const { hours: endHour, minutes: endMin } = parseTime(schedule.end_time);
+
+			const slots = [];
+			const slotDuration = 60; // 1 hour slots
+
+			let currentSlotStart = startHour * 60 + startMin;
+			const endTime = endHour * 60 + endMin;
+
+			while (currentSlotStart + slotDuration <= endTime) {
+				const slotEndTime = currentSlotStart + slotDuration;
+
+				const slot = {
+					id: schedule.id,
+					day_of_week: schedule.day_of_week,
+					start_time: `${Math.floor(currentSlotStart / 60)
+						.toString()
+						.padStart(2, "0")}:${(currentSlotStart % 60).toString().padStart(2, "0")}`,
+					end_time: `${Math.floor(slotEndTime / 60)
+						.toString()
+						.padStart(2, "0")}:${(slotEndTime % 60).toString().padStart(2, "0")}`,
+					original: schedule,
+				};
+
+				// Only add non-past slots for today
+				if (format(now, "yyyy-MM-dd") === format(rentalStartDate, "yyyy-MM-dd")) {
+					const currentHour = now.getHours();
+					const slotHour = Math.floor(currentSlotStart / 60);
+					if (slotHour > currentHour) {
+						slots.push(slot);
+					}
+				} else {
+					slots.push(slot);
+				}
+
+				currentSlotStart = slotEndTime;
+			}
+
+			return slots;
+		})
 		.map((slot) => ({
 			...slot,
-			scheduleDate: rentalStartDate,
-			formattedTime: formatScheduleTime(slot),
+			formattedTime: `${formatTimeString(slot.start_time)} to ${formatTimeString(
+				slot.end_time
+			)}`,
 		}))
 		.sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+	console.log("Generated time slots:", slots);
+	return slots;
 });
+
+// Update formatTimeString helper for better time display
+const formatTimeString = (timeStr) => {
+	if (!timeStr) return "";
+	const [hours, minutes] = timeStr.split(":");
+	const date = new Date();
+	date.setHours(parseInt(hours), parseInt(minutes));
+	return date.toLocaleTimeString("en-US", {
+		hour: "numeric",
+		minute: "2-digit",
+		hour12: true,
+	});
+};
 
 const showSuggestionForm = computed(() => {
 	return (
@@ -268,7 +331,7 @@ const suggestedTimeSlots = computed(() => {
 	const now = new Date();
 	const slots = [];
 	const currentHour = now.getHours();
-	const endHour = 22; // End at 10 PM
+	const endHour = 24; // Changed from 12 to 24 to include all hours until midnight
 
 	// Change to 1-hour intervals
 	for (let hour = currentHour + 1; hour < endHour; hour += 1) {
@@ -336,25 +399,16 @@ const isSuggestedSchedule = computed(() => {
 	<Card class="shadow-sm">
 		<CardHeader class="bg-card border-b">
 			<CardTitle>
-				{{ userRole === "lender" ? "Confirm Schedule Selection" : "Pickup Schedule" }}
+				{{ userRole === "lender" ? "Schedule Confirmation" : "Pickup Schedule" }}
 			</CardTitle>
+			<!-- Show selected schedule info for lender -->
 			<div
-				v-if="selectedSchedule && isSuggestedSchedule"
-				class="mt-2 p-4 bg-muted rounded-lg"
+				v-if="selectedSchedule && userRole === 'lender'"
+				class="mt-2 p-3 bg-muted rounded-lg"
 			>
-				<p class="text-sm font-medium mb-2">Renter's Suggested Schedule:</p>
-				<div class="space-y-2">
-					<div class="flex justify-between">
-						<span class="text-sm text-muted-foreground">Date:</span>
-						<span class="text-sm">{{
-							format(new Date(selectedSchedule.pickup_datetime), "MMMM d, yyyy")
-						}}</span>
-					</div>
-					<div class="flex justify-between">
-						<span class="text-sm text-muted-foreground">Time:</span>
-						<span class="text-sm">{{ formatScheduleTime(selectedSchedule) }}</span>
-					</div>
-				</div>
+				<p class="text-sm text-muted-foreground">
+					The renter has selected the following time slot:
+				</p>
 			</div>
 		</CardHeader>
 		<CardContent class="p-6">
@@ -365,10 +419,11 @@ const isSuggestedSchedule = computed(() => {
 					<div class="grid sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto px-1">
 						<div
 							v-for="slot in availableTimeSlots"
-							:key="slot.id"
+							:key="`${slot.id}-${slot.start_time}`"
 							:class="[
 								'flex items-center p-3 rounded-lg border transition-colors cursor-pointer',
-								selectedSlot?.id === slot.id
+								selectedSlot?.start_time === slot.start_time &&
+								selectedSlot?.end_time === slot.end_time
 									? 'border-primary bg-primary/5'
 									: 'hover:border-muted-foreground/25',
 							]"
@@ -377,7 +432,13 @@ const isSuggestedSchedule = computed(() => {
 							<div class="flex-1">
 								<p class="font-medium text-sm">{{ slot.formattedTime }}</p>
 							</div>
-							<div v-if="selectedSlot?.id === slot.id" class="text-primary">
+							<div
+								v-if="
+									selectedSlot?.start_time === slot.start_time &&
+									selectedSlot?.end_time === slot.end_time
+								"
+								class="text-primary"
+							>
 								<CheckIcon class="w-5 h-5" />
 							</div>
 						</div>
