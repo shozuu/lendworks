@@ -92,20 +92,24 @@ class PickupScheduleController extends Controller
                     'is_selected' => true
                 ]);
 
-                // Add timeline event
-                $rental->recordTimelineEvent('pickup_schedule_selected', Auth::id(), [
+                // Update timeline event message based on schedule type
+                $eventType = 'pickup_schedule_selected';
+                $metadata = [
+                    'datetime' => $pickupDatetime->format('Y-m-d H:i:s'),
                     'day_of_week' => $pickupDatetime->format('l'),
                     'date' => $pickupDatetime->format('F d, Y'),
                     'start_time' => $validated['start_time'],
                     'end_time' => $validated['end_time'],
-                    'pickup_datetime' => $pickupDatetime->format('Y-m-d H:i:s')
-                ]);
+                    'from_lender_availability' => true // Add this flag
+                ];
+
+                $rental->recordTimelineEvent($eventType, Auth::id(), $metadata);
             });
 
-            return back()->with('success', 'Pickup schedule selected successfully.');
+            return back()->with('success', 'Schedule selected successfully.');
         } catch (\Exception $e) {
             report($e);
-            return back()->with('error', 'Failed to select pickup schedule: ' . $e->getMessage());
+            return back()->with('error', 'Failed to select schedule: ' . $e->getMessage());
         }
     }
 
@@ -191,12 +195,16 @@ class PickupScheduleController extends Controller
                     ? 'pickup_schedule_suggestion_accepted' 
                     : 'pickup_schedule_confirmed';
 
-                $rental->recordTimelineEvent($eventType, Auth::id(), [
+                $metadata = [
                     'datetime' => $schedule->pickup_datetime,
+                    'day_of_week' => Carbon::parse($schedule->pickup_datetime)->format('l'),
+                    'date' => Carbon::parse($schedule->pickup_datetime)->format('F d, Y'),
                     'start_time' => $schedule->start_time,
                     'end_time' => $schedule->end_time,
-                    'day_of_week' => date('l', strtotime($schedule->pickup_datetime))
-                ]);
+                    'from_lender_availability' => !$schedule->is_suggested
+                ];
+
+                $rental->recordTimelineEvent($eventType, Auth::id(), $metadata);
             });
 
             return back()->with('success', 'Schedule confirmed successfully.');

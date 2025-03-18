@@ -328,34 +328,49 @@ const handleSuggestSchedule = () => {
 
 // Generate time slots for suggestion (1-hour blocks from now until end of day)
 const suggestedTimeSlots = computed(() => {
+	const rentalStartDate = new Date(props.rental.start_date);
 	const now = new Date();
 	const slots = [];
-	const currentHour = now.getHours();
-	const endHour = 24; // Changed from 12 to 24 to include all hours until midnight
 
-	// Change to 1-hour intervals
-	for (let hour = currentHour + 1; hour < endHour; hour += 1) {
-		const startDate = new Date();
-		startDate.setHours(hour, 0);
-		const endDate = new Date();
-		endDate.setHours(hour + 1, 0); // Change to +1 hour
+	// Compare dates by normalizing them to YYYY-MM-DD for comparison
+	const isStartDateToday =
+		format(rentalStartDate, "yyyy-MM-dd") === format(now, "yyyy-MM-dd");
 
-		const formattedStart = startDate.toLocaleTimeString("en-US", {
-			hour: "numeric",
-			minute: "2-digit",
-			hour12: true,
-		});
-		const formattedEnd = endDate.toLocaleTimeString("en-US", {
-			hour: "numeric",
-			minute: "2-digit",
-			hour12: true,
-		});
+	// If suggesting for rental start date, determine start hour
+	let startHour;
+	if (isStartDateToday) {
+		// If current hour is between 8 AM and 8 PM, start from next hour
+		const currentHour = now.getHours();
+		if (currentHour >= 8 && currentHour < 20) {
+			startHour = currentHour + 1;
+		} else if (currentHour < 8) {
+			// If before 8 AM, start at 8 AM
+			startHour = 8;
+		} else {
+			// If after 8 PM, no slots available
+			return [];
+		}
+	} else {
+		// For future dates, always start at 8 AM
+		startHour = 8;
+	}
 
-		slots.push({
-			start_time: `${hour}:00`,
-			end_time: `${hour + 1}:00`, // Change to +1 hour
-			formattedTime: `${formattedStart} - ${formattedEnd}`,
-		});
+	const endHour = 20; // End at 8 PM
+
+	// Only generate slots if we have a valid start hour
+	if (startHour < endHour) {
+		for (let hour = startHour; hour < endHour; hour++) {
+			const startDate = new Date(rentalStartDate);
+			startDate.setHours(hour, 0, 0);
+			const endDate = new Date(rentalStartDate);
+			endDate.setHours(hour + 1, 0, 0);
+
+			slots.push({
+				start_time: `${hour.toString().padStart(2, "0")}:00`,
+				end_time: `${(hour + 1).toString().padStart(2, "0")}:00`,
+				formattedTime: `${format(startDate, "h:mm a")} - ${format(endDate, "h:mm a")}`,
+			});
+		}
 	}
 
 	return slots;
