@@ -277,11 +277,6 @@ const generateRecommendations = (stats) => {
                         <Eye class="h-4 w-4" />
                         Preview
                     </Button>
-
-                    <Button @click="downloadTxt()" class="gap-2">
-                        <FileText class="h-4 w-4" />
-                        Download Report
-                    </Button>
                 </div>
             </div>
         </CardContent>
