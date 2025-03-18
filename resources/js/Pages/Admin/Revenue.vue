@@ -97,42 +97,55 @@ const resetGraphDates = () => {
     });
 };
 
-const exportToCSV = () => {
-    // Create CSV headers
-    const headers = [
-        'Date',
-        'Listing Title',
-        'Renter',
-        'Rental Amount',
-        'Platform Fee',
-        'Total Earnings',
-        'Status'
-    ].join(',');
+const exportToCSV = async () => {
+    try {
+        // Fetch all revenue data from the export endpoint
+        const response = await fetch(route('admin.revenue.export'), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
 
-    // Convert transactions to CSV rows - Fix: Use props.transactions instead of transactions
-    const rows = props.transactions.data.map(transaction => [
-        formatDate(transaction.created_at),
-        `"${transaction.listing.title}"`, // Quote titles to handle commas
-        `"${transaction.renter.name}"`,
-        transaction.total_price,
-        transaction.service_fee,
-        transaction.service_fee * 2,
-        transaction.status
-    ].join(','));
+        if (!response.ok) throw new Error('Failed to fetch data');
+        const allTransactions = await response.json();
 
-    // Combine headers and rows
-    const csv = [headers, ...rows].join('\n');
+        // Define headers
+        const headers = [
+            'Date',
+            'Listing',
+            'Renter',
+            'Rental Amount',
+            'Platform Fee',
+            'Total Earnings',
+            'Status'
+        ].join(',');
 
-    // Create download link
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `revenue-transactions-${formatDate(new Date())}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+        // Transform all transactions data into CSV rows
+        const rows = allTransactions.map(transaction => [
+            transaction.date,
+            `"${transaction.listing.replace(/"/g, '""')}"`,
+            `"${transaction.renter.replace(/"/g, '""')}"`,
+            transaction.rental_amount,
+            transaction.platform_fee,
+            transaction.total_earnings,
+            transaction.status
+        ].join(','));
+
+        // Create and download CSV
+        const csv = [headers, ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `revenue-${formatDate(new Date())}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+        console.error('Export failed:', error);
+    }
 };
 
 // Add ref for chart component

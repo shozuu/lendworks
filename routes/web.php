@@ -199,6 +199,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
 
     // Add revenue route
     Route::get('/revenue', [AdminController::class, 'revenue'])->name('revenue');
+    Route::get('/revenue/export', [AdminController::class, 'exportRevenue'])->name('revenue.export'); // Add this line
 
     // Update the logs routes with the correct controller namespace
     Route::get('/logs', [SystemManagementController::class, 'getLogs'])->name('logs');

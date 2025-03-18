@@ -1089,4 +1089,40 @@ class AdminController extends Controller
             return response()->json(['error' => 'Export failed'], 500);
         }
     }
+
+    public function exportRevenue()
+    {
+        try {
+            // Get all completed transactions with related data
+            $transactions = RentalRequest::with(['listing:id,title', 'renter:id,name'])
+                ->whereIn('status', ['completed', 'completed_with_payments'])
+                ->select([
+                    'id', 
+                    'listing_id', 
+                    'renter_id',
+                    'total_price',
+                    'service_fee',
+                    'status',
+                    'created_at'
+                ])
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function($transaction) {
+                    return [
+                        'date' => $transaction->created_at ? date('m/d/Y H:i', strtotime($transaction->created_at)) : 'N/A',
+                        'listing' => $transaction->listing->title ?? 'Unknown Listing',
+                        'renter' => $transaction->renter->name ?? 'Unknown Renter',
+                        'rental_amount' => $transaction->total_price,
+                        'platform_fee' => $transaction->service_fee,
+                        'total_earnings' => $transaction->service_fee * 2,
+                        'status' => $transaction->status
+                    ];
+                });
+
+            return response()->json($transactions);
+        } catch (\Exception $e) {
+            report($e);
+            return response()->json(['error' => 'Export failed'], 500);
+        }
+    }
 }
