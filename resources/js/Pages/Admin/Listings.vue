@@ -16,6 +16,9 @@ import {
 import { Separator } from "@/components/ui/separator";
 import PaginationLinks from "@/Components/PaginationLinks.vue";
 import { debounce } from "lodash";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-vue-next";
+import { formatDate } from "@/lib/formatters";  // Add this import
 
 defineOptions({ layout: AdminLayout });
 
@@ -114,6 +117,61 @@ watch(sortBy, (newVal) => {
 watch(category, (newVal) => {
 	updateFilters({ category: newVal });
 });
+
+const exportToCSV = async () => {
+    try {
+        // Fetch all listings data from the export endpoint
+        const response = await fetch(route('admin.listings.export'), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch data');
+        const allListings = await response.json();
+
+        // Define headers
+        const headers = [
+            'Title',
+            'Category',
+            'Price',
+            'Status',
+            'Lender',
+            'Location',
+            'Created At',
+            'Available',
+            'Description'
+        ].join(',');
+
+        // Transform all listings data into CSV rows
+        const rows = allListings.map(listing => [
+            `"${listing.title.replace(/"/g, '""')}"`,
+            `"${listing.category || 'Uncategorized'}"`,
+            listing.price,
+            listing.status,
+            `"${listing.lender}"`,
+            `"${listing.location || 'Unknown'}"`,
+            listing.created_at,
+            listing.is_available ? 'Yes' : 'No',
+            `"${(listing.description || '').replace(/"/g, '""')}"`
+        ].join(','));
+
+        // Create and download CSV
+        const csv = [headers, ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `listings-${formatDate(new Date())}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+        console.error('Export failed:', error);
+    }
+};
 </script>
 
 <template>
@@ -198,6 +256,11 @@ watch(category, (newVal) => {
 							<SelectItem value="price-low">Price: Low to High</SelectItem>
 						</SelectContent>
 					</Select>
+
+					<Button @click="exportToCSV" variant="outline" class="gap-2">
+						<Download class="h-4 w-4" />
+						Export CSV
+					</Button>
 				</div>
 			</div>
 		</div>

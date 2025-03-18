@@ -2,6 +2,7 @@
 import AdminLayout from "@/Layouts/AdminLayout.vue";
 import { Head, router } from "@inertiajs/vue3";
 import { Badge } from "@/components/ui/badge";
+import { formatDate } from "@/lib/formatters";
 import {
     Select,
     SelectContent,
@@ -13,6 +14,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import PaginationLinks from "@/Components/PaginationLinks.vue";
 import TransactionCard from "@/Components/TransactionCard.vue";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-vue-next";
 
 defineOptions({ layout: AdminLayout });
 
@@ -79,6 +82,63 @@ const handleSearch = (event) => {
     timeout = setTimeout(() => {
         updateFilters({ search: event.target.value });
     }, 300);
+};
+
+const exportToCSV = async () => {
+    try {
+        // Fetch all transactions data from the export endpoint
+        const response = await fetch(route('admin.rental-transactions.export'), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch data');
+        const allTransactions = await response.json();
+
+        // Define headers
+        const headers = [
+            'Date',
+            'Rental ID',
+            'Listing',
+            'Lender',
+            'Renter',
+            'Start Date',
+            'End Date',
+            'Total Price',
+            'Service Fee',
+            'Status'
+        ].join(',');
+
+        // Transform all transactions data into CSV rows
+        const rows = allTransactions.map(transaction => [
+            transaction.created_at,
+            transaction.id,
+            `"${transaction.listing.title.replace(/"/g, '""')}"`,
+            `"${transaction.listing.user.name.replace(/"/g, '""')}"`,
+            `"${transaction.renter.name.replace(/"/g, '""')}"`,
+            transaction.start_date,
+            transaction.end_date,
+            transaction.total_price,
+            transaction.service_fee,
+            transaction.status
+        ].join(','));
+
+        // Create and download CSV
+        const csv = [headers, ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `rental-transactions-${formatDate(new Date())}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+        console.error('Export failed:', error);
+    }
 };
 </script>
 
@@ -153,6 +213,11 @@ const handleSearch = (event) => {
                         </SelectItem>
                     </SelectContent>
                 </Select>
+
+                <Button @click="exportToCSV" variant="outline" class="gap-2">
+                    <Download class="h-4 w-4" />
+                    Export CSV
+                </Button>
             </div>
         </div>
 

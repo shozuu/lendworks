@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import PaginationLinks from "@/Components/PaginationLinks.vue";
 import { ref } from "vue";
-import { ChevronRight } from "lucide-vue-next";
+import { ChevronRight, Download } from "lucide-vue-next";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import PaymentRequestCard from "@/Components/PaymentRequestCard.vue";
 import OverduePaymentDialog from "@/Components/OverduePaymentDialog.vue";
@@ -121,6 +121,57 @@ const getRenterName = (payment) => {
 const getRentalPrice = (payment) => {
     return payment?.rental_request?.total_price || 0;
 };
+
+const exportToCSV = async () => {
+    try {
+        // Fetch all payments data from the export endpoint
+        const response = await fetch(route('admin.payments.export'), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch data');
+        const allPayments = await response.json();
+
+        // Define headers
+        const headers = [
+            'Date',
+            'Reference Number',
+            'Listing',
+            'Renter',
+            'Amount',
+            'Status',
+            'Verified At'
+        ].join(',');
+
+        // Transform all payments data into CSV rows
+        const rows = allPayments.map(payment => [
+            payment.date,
+            payment.reference,
+            `"${payment.listing.replace(/"/g, '""')}"`,
+            `"${payment.renter.replace(/"/g, '""')}"`,
+            payment.amount,
+            payment.status,
+            payment.verified_at
+        ].join(','));
+
+        // Create and download CSV
+        const csv = [headers, ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `payments-${formatDate(new Date())}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+        console.error('Export failed:', error);
+    }
+};
 </script>
 
 <template>
@@ -144,6 +195,12 @@ const getRentalPrice = (payment) => {
 					<Badge variant="success">Verified: {{ stats.verified }}</Badge>
 					<Badge variant="destructive">Rejected: {{ stats.rejected }}</Badge>
 				</div>
+
+				<!-- Export CSV Button -->
+				<Button @click="exportToCSV" variant="outline" class="gap-2">
+					<Download class="h-4 w-4" />
+					Export CSV
+				</Button>
 			</div>
 		</div>
 

@@ -664,18 +664,21 @@ class AdminController extends Controller
             'total' => RentalRequest::count(),
             'pending' => RentalRequest::where('status', 'pending')->count(),
             'approved' => RentalRequest::where('status', 'approved')->count(),
-            'to_handover' => RentalRequest::where('status', 'to_handover')->count(),
+            'renter_paid' => RentalRequest::where('status', 'to_handover')->count(),
             'active' => RentalRequest::where('status', 'active')->count(),
-            'completed' => RentalRequest::where('status', 'completed')->count(),
+            'pending_return' => RentalRequest::where('status', 'pending_return')->count(),
+            'return_scheduled' => RentalRequest::where('status', 'return_scheduled')->count(),
+            'pending_return_confirmation' => RentalRequest::where('status', 'pending_return_confirmation')->count(),
+            'completed' => RentalRequest::whereIn('status', ['completed', 'completed_with_payments', 'completed_pending_payments'])->count(),
             'rejected' => RentalRequest::where('status', 'rejected')->count(),
             'cancelled' => RentalRequest::where('status', 'cancelled')->count(),
         ];
 
         $query = RentalRequest::with([
-            'listing' => fn($q) => $q->with(['images', 'user']), 
-            'renter',
-            'payment_request',
-            'latestRejection.rejectionReason',
+            'listing:id,title,user_id',
+            'listing.images:id,listing_id,image_path',
+            'listing.user:id,name',
+            'renter:id,name',
             'latestCancellation.cancellationReason'
         ]);
 
@@ -699,9 +702,13 @@ class AdminController extends Controller
             $query->where('created_at', '>=', now()->subDays($request->period));
         }
 
-        // Apply status filter
+        // Update status filter to include all completed states
         if ($request->status && $request->status !== 'all') {
-            $query->where('status', $request->status);
+            if ($request->status === 'completed') {
+                $query->whereIn('status', ['completed', 'completed_with_payments', 'completed_pending_payments']);
+            } else {
+                $query->where('status', $request->status);
+            }
         }
 
         $transactions = $query->latest()->paginate(10)->appends($request->query());
@@ -751,5 +758,410 @@ class AdminController extends Controller
             'payments' => $payments,
             'stats' => $stats
         ]);
+    }
+
+    public function revenue(Request $request)
+    {
+        $dateRange = $request->input('dateRange', 'last30');
+        $sort = $request->input('sort', 'latest');
+        $graphStartDate = $request->input('graphStartDate');
+        $graphEndDate = $request->input('graphEndDate');
+
+        // Base query for completed transactions
+        $baseQuery = RentalRequest::whereIn('status', ['completed', 'completed_with_payments']);
+
+        // Apply date range filter
+        switch ($dateRange) {
+            case 'today':
+                $baseQuery->whereDate('created_at', today());
+                break;
+            case 'yesterday':
+                $baseQuery->whereDate('created_at', today()->subDay());
+                break;
+            case 'last7':
+                $baseQuery->where('created_at', '>=', now()->subDays(7));
+                break;
+            case 'last30':
+                $baseQuery->where('created_at', '>=', now()->subDays(30));
+                break;
+            case 'thisMonth':
+                $baseQuery->whereMonth('created_at', now()->month)
+                         ->whereYear('created_at', now()->year);
+                break;
+            case 'lastMonth':
+                $baseQuery->whereMonth('created_at', now()->subMonth()->month)
+                         ->whereYear('created_at', now()->subMonth()->year);
+                break;
+            case 'last90':
+                $baseQuery->where('created_at', '>=', now()->subDays(90));
+                break;
+            case 'thisYear':
+                $baseQuery->whereYear('created_at', now()->year);
+                break;
+            case 'lastYear':
+                $baseQuery->whereYear('created_at', now()->subYear()->year);
+                break;
+            case 'allTime':
+                // No filter needed for all time
+                break;
+        }
+
+        // Rest of the revenue calculation logic remains the same
+        $revenue = [
+            'total' => RentalRequest::whereIn('status', ['completed', 'completed_with_payments'])
+                                   ->sum(DB::raw('service_fee * 2')),
+            'monthly' => RentalRequest::whereIn('status', ['completed', 'completed_with_payments'])
+                                     ->whereMonth('created_at', now()->month)
+                                     ->sum(DB::raw('service_fee * 2')),
+            'today' => RentalRequest::whereIn('status', ['completed', 'completed_with_payments'])
+                                   ->whereDate('created_at', today())
+                                   ->sum(DB::raw('service_fee * 2')),
+            'average' => $baseQuery->clone()->avg(DB::raw('service_fee * 2')) ?? 0,
+            'lastWeek' => RentalRequest::whereIn('status', ['completed', 'completed_with_payments'])
+                                      ->where('created_at', '>=', now()->subDays(7))
+                                      ->sum(DB::raw('service_fee * 2')),
+            'lastMonth' => RentalRequest::whereIn('status', ['completed', 'completed_with_payments'])
+                                       ->where('created_at', '>=', now()->subDays(30))
+                                       ->sum(DB::raw('service_fee * 2')),
+            'lastQuarter' => RentalRequest::whereIn('status', ['completed', 'completed_with_payments'])
+                                         ->where('created_at', '>=', now()->subDays(90))
+                                         ->sum(DB::raw('service_fee * 2')),
+        ];
+
+        // Apply sorting
+        switch ($sort) {
+            case 'oldest':
+                $baseQuery->oldest();
+                break;
+            case 'highest':
+                $baseQuery->orderByDesc('service_fee');
+                break;
+            case 'lowest':
+                $baseQuery->orderBy('service_fee');
+                break;
+            default:
+                $baseQuery->latest();
+        }
+
+        $transactions = $baseQuery->with(['listing:id,title', 'renter:id,name'])
+                                ->paginate(10)
+                                ->appends($request->query());
+
+        // Add revenue trends data
+        $trends = $this->getRevenueTrends($dateRange, $graphStartDate, $graphEndDate);
+
+        return Inertia::render('Admin/Revenue', [
+            'revenue' => $revenue,
+            'transactions' => $transactions,
+            'filters' => $request->only(['dateRange', 'sort', 'graphStartDate', 'graphEndDate']),
+            'trends' => $trends // Add this line
+        ]);
+    }
+
+    private function getRevenueTrends($dateRange, $graphStartDate = null, $graphEndDate = null)
+    {
+        $query = RentalRequest::whereIn('status', ['completed', 'completed_with_payments']);
+        
+        if ($graphStartDate && $graphEndDate) {
+            // Use custom date range if provided
+            $startDate = \Carbon\Carbon::parse($graphStartDate);
+            $endDate = \Carbon\Carbon::parse($graphEndDate);
+            $days = $startDate->diffInDays($endDate);
+            
+            $query->whereBetween('created_at', [
+                $startDate->startOfDay(),
+                $endDate->endOfDay()
+            ]);
+            
+            $grouping = match(true) {
+                $days <= 31 => 'day',
+                $days <= 90 => 'week',
+                default => 'month'
+            };
+        } else {
+            // ...existing date range logic...
+        }
+
+        // Use custom date range if provided
+        if ($graphStartDate && $graphEndDate) {
+            $query->whereBetween('created_at', [
+                $graphStartDate . ' 00:00:00',
+                $graphEndDate . ' 23:59:59'
+            ]);
+            
+            // Calculate difference in days for grouping
+            $days = \Carbon\Carbon::parse($graphStartDate)->diffInDays(\Carbon\Carbon::parse($graphEndDate));
+            
+            if ($days <= 31) {
+                $grouping = 'day';
+            } elseif ($days <= 90) {
+                $grouping = 'week';
+            } else {
+                $grouping = 'month';
+            }
+        } else {
+            // Use existing date range logic
+            switch ($dateRange) {
+                case 'last7':
+                    $days = 7;
+                    $grouping = 'day';
+                    break;
+                case 'thisMonth':
+                case 'lastMonth':
+                case 'last30':
+                    $days = 30;
+                    $grouping = 'day';
+                    break;
+                case 'last90':
+                    $days = 90;
+                    $grouping = 'week';
+                    break;
+                case 'thisYear':
+                case 'lastYear':
+                    $days = 365;
+                    $grouping = 'month';
+                    break;
+                default:
+                    $days = 30;
+                    $grouping = 'day';
+            }
+        }
+
+        $format = match($grouping) {
+            'day' => '%Y-%m-%d',
+            'week' => '%Y-%u',
+            'month' => '%Y-%m'
+        };
+
+        $results = $query->select(
+            DB::raw("DATE_FORMAT(created_at, '$format') as date"),
+            DB::raw('SUM(service_fee * 2) as total')
+        )
+        ->groupBy('date')
+        ->orderBy('date')
+        ->get();
+
+        return [
+            'labels' => $results->pluck('date')->map(fn($date) => 
+                match($grouping) {
+                    'day' => date('M d', strtotime($date)),
+                    'week' => 'Week ' . substr($date, -2),
+                    'month' => date('M Y', strtotime($date . '-01'))
+                }
+            ),
+            'datasets' => [
+                [
+                    'label' => 'Revenue',
+                    'data' => $results->pluck('total'),
+                    'borderColor' => '#10B981',
+                    'backgroundColor' => '#10B98120',
+                    'fill' => true,
+                    'tension' => 0.4
+                ]
+            ]
+        ];
+    }
+
+    private function getUserActionFlags($user)
+    {
+        $flags = [];
+        
+        if (!$user->email_verified_at) {
+            $flags[] = 'Needs Verification';
+        }
+        
+        if ($user->status === 'suspended') {
+            $flags[] = 'Account Suspended';
+        }
+        
+        if ($user->listings_count === 0) {
+            $flags[] = 'No Listings';
+        }
+        
+        return empty($flags) ? 'None' : implode('; ', $flags);
+    }
+
+    public function exportUsers()
+    {
+        try {
+            // Get all users with related data
+            $users = User::select([
+                'id', 'name', 'email', 'status',
+                'email_verified_at', 'created_at'
+            ])
+            ->withCount('listings')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($user) {
+                return [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'status' => $user->status,
+                    'verification' => $user->email_verified_at ? 'Verified' : 'Unverified',
+                    'join_date' => $user->created_at ? date('m/d/Y', strtotime($user->created_at)) : 'N/A',
+                    'listings_count' => $user->listings_count,
+                    'actions_required' => $this->getUserActionFlags($user)
+                ];
+            });
+
+            return response()->json($users);
+        } catch (\Exception $e) {
+            report($e);
+            return response()->json(['error' => 'Export failed'], 500);
+        }
+    }
+
+    public function exportListings()
+    {
+        try {
+            // Get all listings with related data
+            $listings = Listing::with(['category', 'user', 'location'])
+                ->select([
+                    'id', 'title', 'price', 'desc', 'status',
+                    'category_id', 'user_id', 'location_id',
+                    'is_available', 'created_at'
+                ])
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function($listing) {
+                    return [
+                        'title' => $listing->title,
+                        'category' => $listing->category?->name,
+                        'price' => $listing->price,
+                        'status' => $listing->status,
+                        'lender' => $listing->user?->name,
+                        'location' => $listing->location?->city,
+                        'created_at' => $listing->created_at ? date('m/d/Y', strtotime($listing->created_at)) : 'N/A',
+                        'is_available' => $listing->is_available,
+                        'description' => $listing->desc
+                    ];
+                });
+
+            return response()->json($listings);
+        } catch (\Exception $e) {
+            report($e);
+            return response()->json(['error' => 'Export failed'], 500);
+        }
+    }
+
+    public function exportTransactions()
+    {
+        try {
+            // Get all transactions with related data
+            $transactions = RentalRequest::with(['listing:id,title,user_id', 'listing.user:id,name', 'renter:id,name'])
+                ->select([
+                    'id',
+                    'listing_id',
+                    'renter_id',
+                    'total_price',
+                    'service_fee',
+                    'status',
+                    'start_date',
+                    'end_date',
+                    'created_at'
+                ])
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function($transaction) {
+                    return [
+                        'id' => $transaction->id,
+                        'created_at' => $transaction->created_at ? date('m/d/Y H:i', strtotime($transaction->created_at)) : 'N/A',
+                        'listing' => [
+                            'title' => $transaction->listing->title ?? 'Unknown Listing',
+                            'user' => [
+                                'name' => $transaction->listing->user->name ?? 'Unknown Lender'
+                            ]
+                        ],
+                        'renter' => [
+                            'name' => $transaction->renter->name ?? 'Unknown Renter'
+                        ],
+                        'start_date' => $transaction->start_date ? date('m/d/Y', strtotime($transaction->start_date)) : 'N/A',
+                        'end_date' => $transaction->end_date ? date('m/d/Y', strtotime($transaction->end_date)) : 'N/A',
+                        'total_price' => $transaction->total_price,
+                        'service_fee' => $transaction->service_fee,
+                        'status' => $transaction->status
+                    ];
+                });
+
+            return response()->json($transactions);
+        } catch (\Exception $e) {
+            report($e);
+            return response()->json(['error' => 'Export failed'], 500);
+        }
+    }
+
+    public function exportRevenue()
+    {
+        try {
+            // Get all completed transactions with related data
+            $transactions = RentalRequest::with(['listing:id,title', 'renter:id,name'])
+                ->whereIn('status', ['completed', 'completed_with_payments'])
+                ->select([
+                    'id', 
+                    'listing_id', 
+                    'renter_id',
+                    'total_price',
+                    'service_fee',
+                    'status',
+                    'created_at'
+                ])
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function($transaction) {
+                    return [
+                        'date' => $transaction->created_at ? date('m/d/Y H:i', strtotime($transaction->created_at)) : 'N/A',
+                        'listing' => $transaction->listing->title ?? 'Unknown Listing',
+                        'renter' => $transaction->renter->name ?? 'Unknown Renter',
+                        'rental_amount' => $transaction->total_price,
+                        'platform_fee' => $transaction->service_fee,
+                        'total_earnings' => $transaction->service_fee * 2,
+                        'status' => $transaction->status
+                    ];
+                });
+
+            return response()->json($transactions);
+        } catch (\Exception $e) {
+            report($e);
+            return response()->json(['error' => 'Export failed'], 500);
+        }
+    }
+
+    public function exportPayments()
+    {
+        try {
+            // Get all payments with related data
+            $payments = PaymentRequest::with([
+                'rentalRequest:id,listing_id,renter_id,total_price', 
+                'rentalRequest.listing:id,title', 
+                'rentalRequest.renter:id,name'
+            ])
+            ->select([
+                'id',
+                'rental_request_id',
+                'reference_number',
+                'status',
+                'payment_proof_path',
+                'verified_at',
+                'created_at'
+            ])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($payment) {
+                return [
+                    'date' => $payment->created_at ? date('m/d/Y H:i', strtotime($payment->created_at)) : 'N/A',
+                    'reference' => $payment->reference_number,
+                    'listing' => $payment->rentalRequest->listing->title ?? 'Unknown Listing',
+                    'renter' => $payment->rentalRequest->renter->name ?? 'Unknown Renter',
+                    'amount' => $payment->rentalRequest->total_price ?? 0,
+                    'status' => $payment->status,
+                    'verified_at' => $payment->verified_at ? date('m/d/Y H:i', strtotime($payment->verified_at)) : 'N/A'
+                ];
+            });
+
+            return response()->json($payments);
+        } catch (\Exception $e) {
+            report($e);
+            return response()->json(['error' => 'Export failed'], 500);
+        }
     }
 }
