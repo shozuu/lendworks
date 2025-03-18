@@ -11,13 +11,16 @@ class PickupSchedule extends Model
         'lender_pickup_schedule_id',
         'pickup_datetime',
         'is_selected',
-        'start_time',  // Add this
-        'end_time'     // Add this
+        'is_confirmed',
+        'start_time',
+        'end_time',
+        'is_suggested',
     ];
 
     protected $casts = [
         'pickup_datetime' => 'datetime',
-        'is_selected' => 'boolean'
+        'is_selected' => 'boolean',
+        'is_suggested' => 'boolean',
     ];
 
     public function rental_request()

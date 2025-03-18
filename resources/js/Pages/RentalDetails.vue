@@ -23,6 +23,10 @@ import DisputeDialog from "@/Components/DisputeDialog.vue";
 import PickupScheduleDialog from "@/Components/PickupScheduleDialog.vue";
 import { format } from "date-fns";
 import ReturnScheduleDialog from "@/Components/ReturnScheduleDialog.vue";
+import NoShowDisputeDialog from "@/Components/NoShowDisputeDialog.vue";
+
+// Add new refs
+const showNoShowDialog = ref(false);
 
 const props = defineProps({
 	rental: Object,
@@ -74,6 +78,7 @@ const returnDialogType = ref("submit");
 const showDisputeDialog = ref(false);
 const showScheduleDialog = ref(false);
 const showReturnScheduleDialog = ref(false);
+const showPickupDialog = ref(false);
 
 // Forms
 const approveForm = useForm({
@@ -151,13 +156,13 @@ const showPaymentDialog = ref(false);
 // list of actions available for the rental as defined in the model
 const actions = computed(() => props.rental.available_actions);
 
-// Fix the canShowHandover computed property
-const canShowHandover = computed(() => {
-	if (actions.value.canHandover) {
-		return props.rental.pickup_schedules?.some((schedule) => schedule.is_selected);
-	}
-	return actions.value.canReceive;
-});
+// // Fix the canShowHandover computed property
+// const canShowHandover = computed(() => {
+// 	if (actions.value.canHandover) {
+// 		return props.rental.pickup_schedules?.some((schedule) => schedule.is_selected);
+// 	}
+// 	return actions.value.canReceive;
+// });
 
 const lenderPayment = computed(() =>
 	props.rental.completion_payments?.find((p) => p.type === "lender_payment")
@@ -241,10 +246,30 @@ const formatTime = (timeStr) => {
 };
 
 // Add this computed property
-const showReturnScheduleButton = computed(() => 
-  props.rental.status === 'pending_return' && 
-  props.userRole === 'renter' && 
-  !props.rental.return_schedules?.some(s => s.is_selected)
+const showReturnScheduleButton = computed(
+	() =>
+		props.rental.status === "pending_return" &&
+		props.userRole === "renter" &&
+		!props.rental.return_schedules?.some((s) => s.is_selected)
+);
+
+// Add these computed properties
+const hasNoSchedule = computed(() => {
+	return !props.rental.pickup_schedules?.some((s) => s.is_selected);
+});
+
+const hasUnconfirmedSchedule = computed(() => {
+	const selectedSchedule = props.rental.pickup_schedules?.find((s) => s.is_selected);
+	return selectedSchedule && !selectedSchedule.is_confirmed;
+});
+
+const canShowHandover = computed(() => {
+	return actions.value.canHandover;
+});
+
+// Add computed for pickup schedule
+const selectedPickupSchedule = computed(() =>
+	props.rental.pickup_schedules?.find((s) => s.is_selected && s.is_confirmed)
 );
 </script>
 
@@ -276,11 +301,11 @@ const showReturnScheduleButton = computed(() =>
 
 		<RentalDurationTracker :rental="rental" />
 
-		<Card class="shadow-sm">
+		<Card class="shadow-sm overflow-hidden">
 			<CardHeader class="bg-card border-b">
 				<CardTitle>Timeline</CardTitle>
 			</CardHeader>
-			<CardContent class="p-6">
+			<CardContent class="p-3 sm:p-6">
 				<RentalTimeline
 					:events="rental.timeline_events"
 					:userRole="userRole"
@@ -290,7 +315,7 @@ const showReturnScheduleButton = computed(() =>
 		</Card>
 
 		<!-- Main Content -->
-		<div class="md:grid-cols-[2fr_1fr] grid gap-8">
+		<div class="grid gap-6 md:gap-8 md:grid-cols-[2fr_1fr]">
 			<!-- Left Column -->
 			<div class="space-y-8">
 				<!-- Listing Details -->
@@ -498,7 +523,7 @@ const showReturnScheduleButton = computed(() =>
 
 							<Separator />
 
-							 <!-- Enhanced Fee Breakdown -->
+							<!-- Enhanced Fee Breakdown -->
 							<div class="space-y-4">
 								<h4 class="font-medium">Fee Breakdown</h4>
 								<div class="space-y-4">
@@ -507,10 +532,16 @@ const showReturnScheduleButton = computed(() =>
 										<div class="space-y-1">
 											<span class="text-muted-foreground">Daily Rate</span>
 											<p class="text-xs text-muted-foreground">
-												{{ rental.quantity_approved || rental.quantity_requested }} unit(s) × {{ formatNumber(rental.listing.price) }}/day
+												{{ rental.quantity_approved || rental.quantity_requested }}
+												unit(s) × {{ formatNumber(rental.listing.price) }}/day
 											</p>
 										</div>
-										<span>{{ formatNumber(rental.listing.price * (rental.quantity_approved || rental.quantity_requested)) }}</span>
+										<span>{{
+											formatNumber(
+												rental.listing.price *
+													(rental.quantity_approved || rental.quantity_requested)
+											)
+										}}</span>
 									</div>
 
 									<!-- Overdue Days -->
@@ -529,7 +560,9 @@ const showReturnScheduleButton = computed(() =>
 												Fee per day × Days overdue
 											</p>
 										</div>
-										<span class="text-destructive">{{ formatNumber(rental.overdue_fee) }}</span>
+										<span class="text-destructive">{{
+											formatNumber(rental.overdue_fee)
+										}}</span>
 									</div>
 								</div>
 							</div>
@@ -554,12 +587,17 @@ const showReturnScheduleButton = computed(() =>
 							</div>
 
 							<!-- Warning for unpaid overdue -->
-							 <div v-else-if="!rental.overdue_payment" class="bg-destructive/10 p-4 mt-4 rounded-lg">
+							<div
+								v-else-if="!rental.overdue_payment"
+								class="bg-destructive/10 p-4 mt-4 rounded-lg"
+							>
 								<p class="text-destructive text-sm">
-								⚠️ Overdue payment must be settled before proceeding with the return process
+									⚠️ Overdue payment must be settled before proceeding with the return
+									process
 								</p>
 								<p class="text-muted-foreground mt-2 text-xs">
-								The total overdue fee is calculated based on your daily rental rate multiplied by the number of overdue days.
+									The total overdue fee is calculated based on your daily rental rate
+									multiplied by the number of overdue days.
 								</p>
 							</div>
 						</div>
@@ -580,7 +618,10 @@ const showReturnScheduleButton = computed(() =>
 				/>
 
 				<!-- Add pickup schedule section after rental details -->
-				<Card v-if="pickupSchedule && !rental.handover_at" class="shadow-sm">
+				<Card
+					v-if="pickupSchedule?.is_confirmed && !rental.handover_at"
+					class="shadow-sm"
+				>
 					<CardHeader class="bg-card border-b">
 						<CardTitle class="text-lg">Pickup Details</CardTitle>
 					</CardHeader>
@@ -703,7 +744,7 @@ const showReturnScheduleButton = computed(() =>
 							<template v-else-if="rental.status === 'disputed'">
 								<div class="space-y-4">
 									<p class="text-destructive text-sm font-medium">
-										 ⚠️ The lender has raised a dispute regarding the returned item
+										⚠️ The lender has raised a dispute regarding the returned item
 									</p>
 									<div class="bg-muted p-4 space-y-2 rounded-lg">
 										<p class="text-sm font-medium">Dispute Reason:</p>
@@ -745,16 +786,41 @@ const showReturnScheduleButton = computed(() =>
 							</Button>
 
 							<!-- Handover Actions -->
-							<Button
-								v-if="actions.canHandover"
-								variant="default"
-								class="w-full"
-								@click="showHandoverDialog = true"
-								:disabled="!canShowHandover"
+							<template
+								v-if="actions.canHandover || hasUnconfirmedSchedule || hasNoSchedule"
 							>
-								{{ canShowHandover ? "Hand Over Item" : "Waiting for Schedule" }}
-							</Button>
+								<!-- Show waiting message when no schedule -->
+								<Button
+									v-if="hasNoSchedule && userRole == 'lender' && canHandover"
+									variant="default"
+									class="w-full"
+									disabled
+								>
+									Waiting for Schedule
+								</Button>
 
+								<!-- Show confirm button for unconfirmed schedule -->
+								<Button
+									v-else-if="hasUnconfirmedSchedule && userRole == 'lender'"
+									variant="default"
+									class="w-full"
+									@click="showPickupDialog = true"
+								>
+									Confirm Schedule
+								</Button>
+
+								<!-- Show handover button only when schedule confirmed -->
+								<Button
+									v-else-if="canShowHandover"
+									variant="default"
+									class="w-full"
+									@click="showHandoverDialog = true"
+								>
+									Hand Over Item
+								</Button>
+							</template>
+
+							<!-- Rest of the actions remain unchanged -->
 							<Button
 								v-if="actions.canReceive"
 								variant="default"
@@ -764,14 +830,14 @@ const showReturnScheduleButton = computed(() =>
 								Confirm Receipt
 							</Button>
 
-							<!-- Cancel Action -->
+							<!-- Add schedule selection button -->
 							<Button
-								v-if="actions.canCancel"
-								variant="destructive"
+								v-if="actions.canChoosePickupSchedule"
+								variant="default"
 								class="w-full"
-								@click="showCancelDialog = true"
+								@click="showScheduleDialog = true"
 							>
-								Cancel Request
+								Choose Pickup Schedule
 							</Button>
 
 							<!-- Lender Actions -->
@@ -841,16 +907,7 @@ const showReturnScheduleButton = computed(() =>
 								Raise Dispute
 							</Button>
 
-							<!-- Add button in the actions section -->
-							<Button
-								v-if="actions.canChoosePickupSchedule"
-								class="w-full"
-								@click="showScheduleDialog = true"
-							>
-								Choose Pickup Schedule
-							</Button>
-
-							 <!-- Replace the existing return schedule button with this -->
+							<!-- Replace the existing return schedule button with this -->
 							<Button
 								v-if="showReturnScheduleButton"
 								variant="default"
@@ -860,6 +917,27 @@ const showReturnScheduleButton = computed(() =>
 								Select Return Schedule
 							</Button>
 
+							<!-- Cancel Action -->
+							<Button
+								v-if="actions.canCancel"
+								variant="destructive"
+								class="w-full"
+								:disabled="cancelForm.processing"
+								@click="showCancelDialog = true"
+							>
+								Cancel Request
+							</Button>
+
+							<!-- Add this inside actions card content -->
+							<Button
+								v-if="rental.can_report_no_show && selectedPickupSchedule"
+								variant="destructive"
+								class="w-full"
+								@click="showNoShowDialog = true"
+							>
+								Report No-Show
+							</Button>
+
 							<!-- No Actions Message -->
 							<p
 								v-if="
@@ -867,6 +945,8 @@ const showReturnScheduleButton = computed(() =>
 									!actions.canCancel &&
 									!actions.canApprove &&
 									!actions.canHandover &&
+									!hasUnconfirmedSchedule &&
+									!hasNoSchedule &&
 									!actions.canReceive &&
 									!actions.canSubmitReturn &&
 									!actions.canConfirmReturn &&
@@ -1054,7 +1134,7 @@ const showReturnScheduleButton = computed(() =>
 								<!-- Lender specific message -->
 								<template v-if="userRole === 'lender'">
 									<p class="text-destructive text-sm font-medium">
-										 ⚠️ Your dispute claim has been rejected by the admin
+										⚠️ Your dispute claim has been rejected by the admin
 									</p>
 									<div class="mt-3 space-y-2">
 										<p class="text-sm font-medium">Reason for Rejection:</p>
@@ -1095,7 +1175,7 @@ const showReturnScheduleButton = computed(() =>
 									>
 										<div class="space-y-3">
 											<p class="text-primary text-sm font-medium">
-												 ✓ This dispute has been resolved with deposit deduction
+												✓ This dispute has been resolved with deposit deduction
 											</p>
 
 											<!-- Show amount details -->
@@ -1298,4 +1378,20 @@ const showReturnScheduleButton = computed(() =>
 		:lenderSchedules="lenderSchedules"
 	/>
 
+	<!-- Add PickupScheduleDialog near other dialogs at bottom of template -->
+	<PickupScheduleDialog
+		v-model:show="showPickupDialog"
+		:rental="rental"
+		:userRole="userRole"
+		:lenderSchedules="lenderSchedules"
+	/>
+
+	<!-- Add before end of template -->
+	<NoShowDisputeDialog
+		v-if="selectedPickupSchedule"
+		v-model:show="showNoShowDialog"
+		:rental="rental"
+		:type="userRole === 'lender' ? 'renter_no_show' : 'lender_no_show'"
+		:schedule="selectedPickupSchedule"
+	/>
 </template>

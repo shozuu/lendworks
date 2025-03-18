@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useForm } from "@inertiajs/vue3";
@@ -158,7 +158,7 @@ const generateTimeSlots = (schedule) => {
 	const { hours: endHour, minutes: endMin } = parseTime(schedule.end_time);
 
 	const slots = [];
-	const slotDuration = 120; // 2 hours per slot
+	const slotDuration = 60; // Change to 1 hour per slot
 
 	let currentSlotStart = startHour * 60 + startMin;
 	const endTime = endHour * 60 + endMin;
@@ -211,85 +211,229 @@ const availableTimeSlots = computed(() => {
 		}))
 		.sort((a, b) => a.start_time.localeCompare(b.start_time));
 });
+
+const showSuggestionForm = computed(() => {
+	return (
+		props.userRole === "renter" &&
+		(!availableTimeSlots.value.length ||
+			availableTimeSlots.value.every((slot) => isPastTimeSlot(slot)))
+	);
+});
+
+const suggestForm = useForm({
+	start_time: "",
+	end_time: "",
+	pickup_datetime: props.rental.start_date,
+});
+
+// Fix the handleSuggestSchedule to explicitly set the pickup_datetime
+const handleSuggestSchedule = () => {
+	if (!selectedSlot.value) return;
+
+	// Set times from selected slot
+	suggestForm.start_time = selectedSlot.value.start_time;
+	suggestForm.end_time = selectedSlot.value.end_time;
+
+	// Get rental start date at midnight
+	const rentalStartDate = new Date(props.rental.start_date);
+	rentalStartDate.setHours(0, 0, 0, 0);
+
+	// Create pickup datetime by adding the selected time to rental start date
+	const [hours, minutes] = selectedSlot.value.start_time.split(":");
+	const pickupDateTime = new Date(rentalStartDate);
+	pickupDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+	// Set the pickup datetime
+	suggestForm.pickup_datetime = pickupDateTime.toISOString();
+
+	suggestForm.post(
+		route("pickup-schedules.suggest", {
+			rental: props.rental.id,
+		}),
+		{
+			preserveScroll: true,
+			onSuccess: () => {
+				selectedSlot.value = null;
+				emit("schedule-selected");
+			},
+			onError: (errors) => {
+				console.error("Failed to suggest schedule:", errors);
+			},
+		}
+	);
+};
+
+// Generate time slots for suggestion (1-hour blocks from now until end of day)
+const suggestedTimeSlots = computed(() => {
+	const now = new Date();
+	const slots = [];
+	const currentHour = now.getHours();
+	const endHour = 22; // End at 10 PM
+
+	// Change to 1-hour intervals
+	for (let hour = currentHour + 1; hour < endHour; hour += 1) {
+		const startDate = new Date();
+		startDate.setHours(hour, 0);
+		const endDate = new Date();
+		endDate.setHours(hour + 1, 0); // Change to +1 hour
+
+		const formattedStart = startDate.toLocaleTimeString("en-US", {
+			hour: "numeric",
+			minute: "2-digit",
+			hour12: true,
+		});
+		const formattedEnd = endDate.toLocaleTimeString("en-US", {
+			hour: "numeric",
+			minute: "2-digit",
+			hour12: true,
+		});
+
+		slots.push({
+			start_time: `${hour}:00`,
+			end_time: `${hour + 1}:00`, // Change to +1 hour
+			formattedTime: `${formattedStart} - ${formattedEnd}`,
+		});
+	}
+
+	return slots;
+});
+
+const selectedSlot = ref(null);
+
+const handleSelectSlot = (slot) => {
+	selectedSlot.value = slot;
+};
+
+// Add success message after slot selection
+const handleConfirmSelection = () => {
+	if (!selectedSlot.value) return;
+
+	selectForm.start_time = selectedSlot.value.start_time;
+	selectForm.end_time = selectedSlot.value.end_time;
+
+	selectForm.patch(
+		route("pickup-schedules.select", {
+			rental: props.rental.id,
+			lender_schedule: selectedSlot.value.id,
+		}),
+		{
+			preserveScroll: true,
+			onSuccess: () => {
+				emit("schedule-selected");
+				selectedSlot.value = null;
+			},
+		}
+	);
+};
+
+const isSuggestedSchedule = computed(() => {
+	if (!selectedSchedule.value) return false;
+	return selectedSchedule.value.is_suggested;
+});
 </script>
 
 <template>
 	<Card class="shadow-sm">
 		<CardHeader class="bg-card border-b">
-			<CardTitle>Pickup Schedule</CardTitle>
-			<p class="text-muted-foreground text-sm">
-				Select a pickup time for
-				{{ format(new Date(props.rental.start_date), "MMMM d, yyyy") }}
-			</p>
+			<CardTitle>
+				{{ userRole === "lender" ? "Confirm Schedule Selection" : "Pickup Schedule" }}
+			</CardTitle>
+			<div
+				v-if="selectedSchedule && isSuggestedSchedule"
+				class="mt-2 p-4 bg-muted rounded-lg"
+			>
+				<p class="text-sm font-medium mb-2">Renter's Suggested Schedule:</p>
+				<div class="space-y-2">
+					<div class="flex justify-between">
+						<span class="text-sm text-muted-foreground">Date:</span>
+						<span class="text-sm">{{
+							format(new Date(selectedSchedule.pickup_datetime), "MMMM d, yyyy")
+						}}</span>
+					</div>
+					<div class="flex justify-between">
+						<span class="text-sm text-muted-foreground">Time:</span>
+						<span class="text-sm">{{ formatScheduleTime(selectedSchedule) }}</span>
+					</div>
+				</div>
+			</div>
 		</CardHeader>
-		<CardContent class="p-0">
-			<!-- Show available time slots -->
-			<div v-if="userRole === 'renter' && !selectedSchedule" class="px-6 py-4">
-				<div v-if="availableTimeSlots.length" class="space-y-4">
-					<div class="bg-muted/50 p-3 rounded-lg">
-						<div class="flex items-baseline justify-between">
-							<h4 class="font-medium">Available Time Slots</h4>
-							<p class="text-xs text-muted-foreground">
-								{{ format(availableTimeSlots[0].scheduleDate, "MMM d, yyyy") }}
-							</p>
-						</div>
-						<div class="mt-2 space-y-2">
-							<div
-								v-for="slot in availableTimeSlots"
-								:key="slot.id"
-								class="flex items-center justify-between bg-background p-2 rounded"
-							>
-								<span class="text-sm">{{ slot.formattedTime }}</span>
-								<Button
-									size="sm"
-									variant="outline"
-									@click="handleSelectDate(slot)"
-									:disabled="selectForm.processing"
-								>
-									Select
-								</Button>
+		<CardContent class="p-6">
+			<div v-if="!isSuggestedSchedule">
+				<!-- Time Slots Grid -->
+				<div v-if="availableTimeSlots.length" class="space-y-6">
+					<h4 class="text-base font-medium">Available Time Slots</h4>
+					<div class="grid sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto px-1">
+						<div
+							v-for="slot in availableTimeSlots"
+							:key="slot.id"
+							:class="[
+								'flex items-center p-3 rounded-lg border transition-colors cursor-pointer',
+								selectedSlot?.id === slot.id
+									? 'border-primary bg-primary/5'
+									: 'hover:border-muted-foreground/25',
+							]"
+							@click="handleSelectSlot(slot)"
+						>
+							<div class="flex-1">
+								<p class="font-medium text-sm">{{ slot.formattedTime }}</p>
+							</div>
+							<div v-if="selectedSlot?.id === slot.id" class="text-primary">
+								<CheckIcon class="w-5 h-5" />
 							</div>
 						</div>
 					</div>
+
+					<!-- Add Confirm Button -->
+					<Button
+						v-if="selectedSlot"
+						class="w-full mt-4"
+						:disabled="selectForm.processing"
+						@click="handleConfirmSelection"
+					>
+						{{ selectForm.processing ? "Confirming..." : "Confirm Schedule" }}
+					</Button>
 				</div>
-				<p v-else class="text-muted-foreground py-8 text-center text-sm">
-					No available time slots for the rental start date.
+
+				<!-- No slots message -->
+				<p v-else class="text-muted-foreground text-center py-4">
+					No available time slots for this date.
 				</p>
-			</div>
 
-			<!-- Selected schedule display -->
-			<div v-if="selectedSchedule" class="p-6 space-y-4">
-				<div class="text-center">
-					<h3 class="font-medium">Selected Pickup Schedule</h3>
-				</div>
+				<!-- Suggestion Section -->
+				<div v-if="showSuggestionForm" class="space-y-6 mt-6 pt-6 border-t">
+					<div class="space-y-2">
+						<h4 class="text-base font-medium">Suggest Alternative Time</h4>
+						<p class="text-sm text-muted-foreground">
+							No available slots found. You can suggest a preferred meeting time:
+						</p>
+					</div>
 
-				<div class="p-4 border rounded-lg bg-muted/30">
-					<div class="space-y-3">
-						<div class="flex items-baseline justify-between">
-							<h4 class="font-medium">{{ selectedScheduleDetails.dayOfWeek }}</h4>
-							<span class="text-sm">{{ selectedScheduleDetails.date }}</span>
-						</div>
-
-						<div class="flex items-center justify-between">
-							<span class="text-sm text-muted-foreground">Time Frame</span>
-							<span class="font-medium">{{ selectedScheduleDetails.time }}</span>
-						</div>
-
+					<div class="grid sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto px-1">
 						<div
-							class="pt-2 mt-2 border-t text-xs text-muted-foreground text-center italic"
+							v-for="slot in suggestedTimeSlots"
+							:key="slot.start_time"
+							:class="[
+								'flex items-center p-3 rounded-lg border transition-colors cursor-pointer',
+								selectedSlot?.start_time === slot.start_time
+									? 'border-primary bg-primary/5'
+									: 'hover:border-muted-foreground/25',
+							]"
+							@click="handleSelectSlot(slot)"
 						>
-							Schedule selected on {{ selectedScheduleDetails.selectedOn }}
+							<p class="font-medium text-sm">{{ slot.formattedTime }}</p>
 						</div>
 					</div>
-				</div>
-			</div>
 
-			<!-- Lender waiting message -->
-			<div
-				v-if="userRole === 'lender' && !selectedSchedule"
-				class="p-6 text-center text-muted-foreground"
-			>
-				Waiting for renter to select a pickup schedule...
+					<!-- Add Confirm Button for Suggestions -->
+					<Button
+						v-if="selectedSlot"
+						class="w-full"
+						:disabled="suggestForm.processing"
+						@click="handleSuggestSchedule"
+					>
+						{{ suggestForm.processing ? "Suggesting..." : "Suggest Time" }}
+					</Button>
+				</div>
 			</div>
 		</CardContent>
 	</Card>

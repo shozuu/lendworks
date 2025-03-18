@@ -7,6 +7,8 @@ import { useForm } from "@inertiajs/vue3";
 import ConfirmDialog from "@/Components/ConfirmDialog.vue";
 import HandoverDialog from "@/Components/HandoverDialog.vue";
 import { format } from "date-fns";
+import PickupScheduleDialog from "@/Components/PickupScheduleDialog.vue";
+import NoShowDisputeDialog from "@/Components/NoShowDisputeDialog.vue"; // Add this import
 
 const props = defineProps({
 	data: {
@@ -88,8 +90,10 @@ const details = computed(() => {
 		},
 	];
 
-	// Only show meetup schedule if not yet active
-	const schedule = props.data.rental_request.pickup_schedules?.find((s) => s.is_selected);
+	// Only show meetup schedule if not yet active and schedule is confirmed
+	const schedule = props.data.rental_request.pickup_schedules?.find(
+		(s) => s.is_selected && s.is_confirmed
+	);
 	if (schedule && props.data.rental_request.status !== "active") {
 		const pickupDate = new Date(schedule.pickup_datetime);
 		baseDetails.push({
@@ -132,6 +136,8 @@ const showRejectDialog = ref(false);
 const showAcceptDialog = ref(false);
 const showCancelDialog = ref(false);
 const showHandoverDialog = ref(false);
+const showPickupDialog = ref(false);
+const showNoShowDialog = ref(false);
 const approveForm = useForm({
 	quantity_approved: 1,
 });
@@ -196,13 +202,27 @@ const actions = computed(() => props.data.rental_request.available_actions);
 // computed property for payment request
 const paymentRequest = computed(() => props.data.rental_request.payment_request);
 
-const canShowHandover = computed(() => {
-	if (!actions.value.canHandover) return false;
-
-	return props.data.rental_request.pickup_schedules?.some(
-		(schedule) => schedule.is_selected
-	);
+const hasNoSchedule = computed(() => {
+	// Return true if there are no schedules or no selected schedule
+	return !props.data.rental_request.pickup_schedules?.some((s) => s.is_selected);
 });
+
+const hasUnconfirmedSchedule = computed(() => {
+	// Return true if there is a selected but unconfirmed schedule
+	const selectedSchedule = props.data.rental_request.pickup_schedules?.find(
+		(s) => s.is_selected
+	);
+	return selectedSchedule && !selectedSchedule.is_confirmed;
+});
+
+// Add event handler for schedule confirmation
+const handleScheduleConfirmed = () => {
+	showPickupDialog.value = false;
+};
+
+const selectedPickupSchedule = computed(() =>
+	props.data.rental_request.pickup_schedules?.find((s) => s.is_selected && s.is_confirmed)
+);
 </script>
 
 <template>
@@ -242,6 +262,31 @@ const canShowHandover = computed(() => {
 		<!-- Actions slot -->
 		<template #actions>
 			<div class="sm:justify-end flex flex-wrap gap-2">
+				<!-- Schedule Related Actions -->
+				<template v-if="hasUnconfirmedSchedule">
+					<Button variant="default" size="sm" @click.stop="showPickupDialog = true">
+						Confirm Schedule
+					</Button>
+				</template>
+
+				<!-- Handover Action -->
+				<template v-if="actions.canHandover">
+					<Button variant="default" size="sm" @click.stop="showHandoverDialog = true">
+						Hand Over Item
+					</Button>
+				</template>
+
+				<!-- Waiting Message -->
+				<Button
+					v-if="actions.canHandover && hasNoSchedule"
+					variant="default"
+					size="sm"
+					disabled
+				>
+					Waiting for Schedule
+				</Button>
+
+				<!-- Other actions remain unchanged -->
 				<Button
 					v-if="actions.canApprove"
 					variant="default"
@@ -273,13 +318,16 @@ const canShowHandover = computed(() => {
 				</Button>
 
 				<Button
-					v-if="actions.canHandover"
-					variant="default"
+					v-if="
+						data.rental_request.can_report_no_show &&
+						data.rental_request.status === 'to_handover' &&
+						selectedPickupSchedule
+					"
+					variant="destructive"
 					size="sm"
-					:disabled="!canShowHandover"
-					@click.stop="showHandoverDialog = true"
+					@click.stop="showNoShowDialog = true"
 				>
-					{{ canShowHandover ? "Hand Over Item" : "Waiting for Schedule" }}
+					Report No-Show
 				</Button>
 			</div>
 		</template>
@@ -358,5 +406,22 @@ const canShowHandover = computed(() => {
 		:rental="data.rental_request"
 		:lender-schedules="lenderSchedules"
 		type="handover"
+	/>
+
+	<!-- Pickup Schedule Dialog -->
+	<PickupScheduleDialog
+		v-model:show="showPickupDialog"
+		:rental="data.rental_request"
+		:userRole="'lender'"
+		:lenderSchedules="lenderSchedules"
+		@schedule-confirmed="handleScheduleConfirmed"
+	/>
+
+	<NoShowDisputeDialog
+		v-if="selectedPickupSchedule"
+		v-model:show="showNoShowDialog"
+		:rental="data.rental_request"
+		:type="'renter_no_show'"
+		:schedule="selectedPickupSchedule"
 	/>
 </template>

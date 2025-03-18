@@ -19,6 +19,8 @@ return new class extends Migration
             $table->time('start_time');
             $table->time('end_time');    
             $table->boolean('is_selected')->default(false);
+            $table->boolean('is_confirmed')->default(false);
+            $table->boolean('is_suggested')->default(false);
             $table->timestamps();
         });
     }

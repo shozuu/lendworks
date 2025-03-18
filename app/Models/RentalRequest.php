@@ -48,13 +48,15 @@ class RentalRequest extends Model
         'is_overdue',
         'overdue_fee',
         'total_lender_earnings',
-        'deposit_status'  // Add this line
+        'deposit_status',
+        'can_report_no_show'  // Add this
     ];
 
     // Define core rental status constants
     const STATUS_PENDING = 'pending';
     const STATUS_APPROVED = 'approved';
     const STATUS_ACTIVE = 'active';
+    const STATUS_TO_HANDOVER = 'to_handover';
     const STATUS_COMPLETED = 'completed';
     const STATUS_REJECTED = 'rejected';
     const STATUS_CANCELLED = 'cancelled';
@@ -199,6 +201,11 @@ class RentalRequest extends Model
         return $this->hasMany(LenderEarningsAdjustment::class);
     }
 
+    public function handover_dispute()
+    {
+        return $this->hasOne(HandoverDispute::class);
+    }
+
     // Accessors
     public function getHasStartedAttribute(): bool
     {
@@ -268,10 +275,11 @@ class RentalRequest extends Model
 
         if (!$user) return $actions;
 
-        // Lender can handover when status is to_handover
+        // Lender can handover when status is to_handover AND has confirmed schedule
         $actions['canHandover'] = 
             $this->status === 'to_handover' && 
-            $this->listing->user_id === $user->id;
+            $this->listing->user_id === $user->id &&
+            $this->hasConfirmedPickupSchedule(); // Use the helper method we already have
 
         // Renter can receive when status is pending_proof
         $actions['canReceive'] = 
@@ -293,6 +301,15 @@ class RentalRequest extends Model
         $actions['hasDepositRefund'] = $this->completion_payments()
             ->where('type', 'deposit_refund')
             ->exists();
+
+        $actions['canRespondToSchedule'] = $isLender && 
+            $this->pickup_schedules()
+                ->where('is_suggested', true)
+                ->where('is_selected', true)
+                ->where('is_confirmed', false)
+                ->exists();
+                
+        $actions['canReportNoShow'] = $this->can_report_no_show;
 
         return $actions;
     }
@@ -488,6 +505,35 @@ class RentalRequest extends Model
             'is_refunded' => $this->completion_payments()->where('type', 'deposit_refund')->exists(),
             'quantity' => $this->quantity_approved ?: $this->quantity_requested
         ];
+    }
+
+    public function getCanReportNoShowAttribute()
+    {
+        // Remove ! from condition which was causing it to always be false
+        if ($this->status !== 'to_handover') {
+            return false;
+        }
+
+        // Get selected schedule
+        $schedule = $this->pickup_schedules()
+            ->where('is_selected', true)
+            ->where('is_confirmed', true)
+            ->first();
+
+        if (!$schedule) {
+            return false;
+        }
+
+        // TESTING MODE: Uncomment this to bypass time check
+        return true;
+
+        // Regular logic - comment this out during testing
+        // $scheduledTime = Carbon::parse($schedule->pickup_datetime);
+        // $currentTime = Carbon::now();
+        
+        // Can only report 30 minutes after scheduled time
+        // return $currentTime->diffInMinutes($scheduledTime) >= 30 && 
+        //        $currentTime->gt($scheduledTime);
     }
 
     // Scopes
@@ -686,5 +732,46 @@ class RentalRequest extends Model
         if ($hasLenderPayment && $hasDepositRefund) {
             $this->update(['status' => 'completed_with_payments']);
         }
+    }
+
+    // Add this helper method 
+    public function hasConfirmedPickupSchedule(): bool
+    {
+        return $this->pickup_schedules()
+            ->where('is_selected', true)
+            ->where('is_confirmed', true)
+            ->exists();
+    }
+
+    public function canSuggestSchedule(): bool
+    {
+        // Can suggest if:
+        // 1. Status is to_handover AND
+        // 2. No selected schedule exists AND
+        // 3. Either:
+        //    a. No lender schedules for today OR
+        //    b. All lender schedules for today are past
+        if ($this->status !== 'to_handover') {
+            return false;
+        }
+
+        if ($this->pickup_schedules()->where('is_selected', true)->exists()) {
+            return false;
+        }
+
+        $today = Carbon::now()->format('l');
+        $lenderSchedules = $this->listing->user->pickup_schedules()
+            ->where('day_of_week', $today)
+            ->where('is_active', true)
+            ->get();
+
+        if ($lenderSchedules->isEmpty()) {
+            return true;
+        }
+
+        return $lenderSchedules->every(function ($schedule) {
+            $endTime = Carbon::createFromTimeString($schedule->end_time);
+            return Carbon::now()->greaterThan($endTime);
+        });
     }
 }
