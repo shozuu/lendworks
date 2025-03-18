@@ -87,6 +87,8 @@ Route::middleware(['auth'])->group(function () {
         ->name('pickup-schedules.select');
     Route::delete('/rentals/{rental}/schedules/{schedule}', [PickupScheduleController::class, 'destroy'])
         ->name('pickup-schedules.destroy');
+    Route::patch('/rentals/{rental}/schedules/confirm', [PickupScheduleController::class, 'confirmSchedule'])
+        ->name('pickup-schedules.confirm');
 
     // Lender pickup schedules
     Route::delete('lender/pickup-schedules/{schedule}', [LenderPickupScheduleController::class, 'destroy'])

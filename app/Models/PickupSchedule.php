@@ -11,8 +11,9 @@ class PickupSchedule extends Model
         'lender_pickup_schedule_id',
         'pickup_datetime',
         'is_selected',
-        'start_time',  // Add this
-        'end_time'     // Add this
+        'is_confirmed',
+        'start_time',
+        'end_time'
     ];
 
     protected $casts = [

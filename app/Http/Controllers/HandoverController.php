@@ -17,6 +17,11 @@ class HandoverController extends Controller
             abort(403, 'You are not authorized to perform this action.');
         }
 
+        // Check for confirmed schedule
+        if (!$rental->hasConfirmedPickupSchedule()) {
+            return back()->with('error', 'Please confirm the pickup schedule before proceeding with handover.');
+        }
+
         // Validate that the rental is in the correct status
         if (!in_array($rental->status, ['to_handover', 'pending_proof'])) {
             abort(400, 'Invalid rental status for handover.');

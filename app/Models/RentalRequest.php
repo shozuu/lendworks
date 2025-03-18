@@ -55,6 +55,7 @@ class RentalRequest extends Model
     const STATUS_PENDING = 'pending';
     const STATUS_APPROVED = 'approved';
     const STATUS_ACTIVE = 'active';
+    const STATUS_TO_HANDOVER = 'to_handover';
     const STATUS_COMPLETED = 'completed';
     const STATUS_REJECTED = 'rejected';
     const STATUS_CANCELLED = 'cancelled';
@@ -268,10 +269,11 @@ class RentalRequest extends Model
 
         if (!$user) return $actions;
 
-        // Lender can handover when status is to_handover
+        // Lender can handover when status is to_handover AND has confirmed schedule
         $actions['canHandover'] = 
             $this->status === 'to_handover' && 
-            $this->listing->user_id === $user->id;
+            $this->listing->user_id === $user->id &&
+            $this->hasConfirmedPickupSchedule(); // Use the helper method we already have
 
         // Renter can receive when status is pending_proof
         $actions['canReceive'] = 
