@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\RentalDispute as Dispute; // Add this line to alias RentalDispute as Dispute
+use App\Models\RentalDispute;
 use App\Notifications\DisputeStatusUpdated;
 use App\Notifications\DisputeResolved;
 use Illuminate\Http\Request;
@@ -14,7 +14,7 @@ class DisputeController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Dispute::query()
+        $query = RentalDispute::query()
             ->with(['rental.listing', 'rental.renter'])
             ->latest();
 
@@ -47,10 +47,10 @@ class DisputeController extends Controller
         }
 
         $stats = [
-            'total' => Dispute::count(),
-            'pending' => Dispute::where('status', 'pending')->count(),
-            'reviewed' => Dispute::where('status', 'reviewed')->count(),
-            'resolved' => Dispute::where('status', 'resolved')->count(),
+            'total' => RentalDispute::count(),
+            'pending' => RentalDispute::where('status', 'pending')->count(),
+            'reviewed' => RentalDispute::where('status', 'reviewed')->count(),
+            'resolved' => RentalDispute::where('status', 'resolved')->count(),
         ];
 
         return Inertia::render('Admin/Disputes', [
