@@ -89,8 +89,10 @@ const details = computed(() => {
 		},
 	];
 
-	// Only show meetup schedule if not yet active
-	const schedule = props.data.rental_request.pickup_schedules?.find((s) => s.is_selected);
+	// Only show meetup schedule if not yet active and schedule is confirmed
+	const schedule = props.data.rental_request.pickup_schedules?.find(
+		(s) => s.is_selected && s.is_confirmed
+	);
 	if (schedule && props.data.rental_request.status !== "active") {
 		const pickupDate = new Date(schedule.pickup_datetime);
 		baseDetails.push({
@@ -211,11 +213,6 @@ const hasUnconfirmedSchedule = computed(() => {
 	return selectedSchedule && !selectedSchedule.is_confirmed;
 });
 
-const canShowHandover = computed(() => {
-	// Only check if handover is possible through actions
-	return actions.value.canHandover;
-});
-
 // Add event handler for schedule confirmation
 const handleScheduleConfirmed = () => {
 	showPickupDialog.value = false;
@@ -308,16 +305,6 @@ const handleScheduleConfirmed = () => {
 				>
 					Cancel Request
 				</Button>
-
-				<Button
-					v-if="actions.canHandover"
-					variant="default"
-					size="sm"
-					:disabled="!canShowHandover"
-					@click.stop="showHandoverDialog = true"
-				>
-					{{ canShowHandover ? "Hand Over Item" : "Waiting for Schedule" }}
-				</Button>
 			</div>
 		</template>
 	</BaseRentalCard>
@@ -396,7 +383,7 @@ const handleScheduleConfirmed = () => {
 		:lender-schedules="lenderSchedules"
 		type="handover"
 	/>
-	{{ console.log(props) }}
+
 	<!-- Pickup Schedule Dialog -->
 	<PickupScheduleDialog
 		v-model:show="showPickupDialog"

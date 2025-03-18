@@ -74,6 +74,7 @@ const returnDialogType = ref("submit");
 const showDisputeDialog = ref(false);
 const showScheduleDialog = ref(false);
 const showReturnScheduleDialog = ref(false);
+const showPickupDialog = ref(false);
 
 // Forms
 const approveForm = useForm({
@@ -608,7 +609,10 @@ const canShowHandover = computed(() => {
 				/>
 
 				<!-- Add pickup schedule section after rental details -->
-				<Card v-if="pickupSchedule && !rental.handover_at" class="shadow-sm">
+				<Card
+					v-if="pickupSchedule?.is_confirmed && !rental.handover_at"
+					class="shadow-sm"
+				>
 					<CardHeader class="bg-card border-b">
 						<CardTitle class="text-lg">Pickup Details</CardTitle>
 					</CardHeader>
@@ -777,13 +781,18 @@ const canShowHandover = computed(() => {
 								v-if="actions.canHandover || hasUnconfirmedSchedule || hasNoSchedule"
 							>
 								<!-- Show waiting message when no schedule -->
-								<Button v-if="hasNoSchedule" variant="default" class="w-full" disabled>
+								<Button
+									v-if="hasNoSchedule && userRole == 'lender'"
+									variant="default"
+									class="w-full"
+									disabled
+								>
 									Waiting for Schedule
 								</Button>
 
 								<!-- Show confirm button for unconfirmed schedule -->
 								<Button
-									v-else-if="hasUnconfirmedSchedule"
+									v-else-if="hasUnconfirmedSchedule && userRole == 'lender'"
 									variant="default"
 									class="w-full"
 									@click="showPickupDialog = true"
@@ -1345,6 +1354,14 @@ const canShowHandover = computed(() => {
 	<!-- Add this at the end of the template with other dialogs -->
 	<ReturnScheduleDialog
 		v-model:show="showReturnScheduleDialog"
+		:rental="rental"
+		:userRole="userRole"
+		:lenderSchedules="lenderSchedules"
+	/>
+
+	<!-- Add PickupScheduleDialog near other dialogs at bottom of template -->
+	<PickupScheduleDialog
+		v-model:show="showPickupDialog"
 		:rental="rental"
 		:userRole="userRole"
 		:lenderSchedules="lenderSchedules"

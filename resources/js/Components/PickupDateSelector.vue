@@ -216,10 +216,18 @@ const availableTimeSlots = computed(() => {
 <template>
 	<Card class="shadow-sm">
 		<CardHeader class="bg-card border-b">
-			<CardTitle>Pickup Schedule</CardTitle>
+			<CardTitle>
+				{{ userRole === "lender" ? "Confirm Schedule Selection" : "Pickup Schedule" }}
+			</CardTitle>
 			<p class="text-muted-foreground text-sm">
-				Select a pickup time for
-				{{ format(new Date(props.rental.start_date), "MMMM d, yyyy") }}
+				{{
+					userRole === "lender"
+						? "The renter has selected this schedule from your available time slots"
+						: `Select a pickup time for ${format(
+								new Date(props.rental.start_date),
+								"MMMM d, yyyy"
+						  )}`
+				}}
 			</p>
 		</CardHeader>
 		<CardContent class="p-0">
@@ -257,10 +265,16 @@ const availableTimeSlots = computed(() => {
 				</p>
 			</div>
 
-			<!-- Selected schedule display -->
+			<!-- Update the selected schedule display -->
 			<div v-if="selectedSchedule" class="p-6 space-y-4">
 				<div class="text-center">
-					<h3 class="font-medium">Selected Pickup Schedule</h3>
+					<h3 class="font-medium">
+						{{
+							userRole === "lender"
+								? "Selected Pickup Schedule"
+								: "Your Selected Schedule"
+						}}
+					</h3>
 				</div>
 
 				<div class="p-4 border rounded-lg bg-muted/30">
@@ -279,6 +293,18 @@ const availableTimeSlots = computed(() => {
 							class="pt-2 mt-2 border-t text-xs text-muted-foreground text-center italic"
 						>
 							Schedule selected on {{ selectedScheduleDetails.selectedOn }}
+						</div>
+						<div class="pt-2 mt-2 text-center text-primary text-sm font-medium">
+							<div v-if="selectedSchedule.is_confirmed">
+								✓ Schedule confirmed by lender
+							</div>
+							<div v-else>
+								{{
+									userRole === "lender"
+										? "Please confirm this schedule to proceed with the handover"
+										: "Waiting for lender confirmation..."
+								}}
+							</div>
 						</div>
 					</div>
 				</div>
