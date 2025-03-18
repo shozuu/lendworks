@@ -46,27 +46,25 @@ onMounted(() => {
  * 5. Updated route references
  */
 
-const navigation = [
-    { name: "Dashboard", href: route("admin.dashboard"), component: "Admin/Dashboard", icon: LayoutDashboard },
-    { name: "Users", href: route("admin.users"), component: "Admin/Users", icon: Users },
-    { name: "Listings", href: route("admin.listings"), component: "Admin/Listings", icon: PackageSearch },
-    { name: "Rental Transactions", href: route("admin.rental-transactions"), component: "Admin/RentalTransactions", icon: ClipboardList },
-    { name: "Revenue", href: route("admin.revenue"), component: "Admin/Revenue", icon: CreditCard },
-    { name: "Payments", href: route("admin.payments"), component: "Admin/Payments/Index", icon: Receipt },
-    { name: "Disputes", href: route("admin.disputes"), component: "Admin/Disputes", icon: AlertTriangle },
-    { 
-        name: "System", 
-        href: route("admin.system"), 
-        component: "Admin/System",
-        icon: Settings 
-    },
-    { 
-        name: "System Logs", 
-        href: route("admin.logs"), 
-        component: "Admin/Logs",
-        icon: ClipboardList 
-    }
-];
+const navigationGroups = {
+    main: [
+        { name: "Dashboard", href: route("admin.dashboard"), component: "Admin/Dashboard", icon: LayoutDashboard },
+    ],
+    management: [
+        { name: "Users", href: route("admin.users"), component: "Admin/Users", icon: Users },
+        { name: "Listings", href: route("admin.listings"), component: "Admin/Listings", icon: PackageSearch },
+    ],
+    transactions: [
+        { name: "Rental Transactions", href: route("admin.rental-transactions"), component: "Admin/RentalTransactions", icon: ClipboardList },
+        { name: "Revenue", href: route("admin.revenue"), component: "Admin/Revenue", icon: CreditCard },
+        { name: "Payments", href: route("admin.payments"), component: "Admin/Payments/Index", icon: Receipt },
+        { name: "Disputes", href: route("admin.disputes"), component: "Admin/Disputes", icon: AlertTriangle },
+    ],
+    system: [
+        { name: "System", href: route("admin.system"), component: "Admin/System", icon: Settings },
+        { name: "System Logs", href: route("admin.logs"), component: "Admin/Logs", icon: ClipboardList },
+    ]
+};
 </script>
 
 <template>
@@ -82,21 +80,81 @@ const navigation = [
 
             <!-- sidebar navigation -->
             <div class="flex-1 overflow-y-auto">
-                <nav class="grid items-start gap-1 px-4 text-sm font-medium">
-                    <Link
-                        v-for="item in navigation"
-                        :key="item.name"
-                        :href="item.href"
-                        :class="[
-                            'flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary',
-                            $page.component === item.component
-                                ? 'bg-muted text-primary'
-                                : 'text-muted-foreground',
-                        ]"
-                    >
-                        <component :is="item.icon" class="w-5 h-5" />
-                        {{ item.name }}
-                    </Link>
+                <nav class="grid items-start gap-4 px-4 text-sm font-medium">
+                    <!-- Main -->
+                    <div class="space-y-1">
+                        <Link
+                            v-for="item in navigationGroups.main"
+                            :key="item.name"
+                            :href="item.href"
+                            :class="[
+                                'flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary',
+                                $page.component === item.component
+                                    ? 'bg-muted text-primary'
+                                    : 'text-muted-foreground',
+                            ]"
+                        >
+                            <component :is="item.icon" class="w-5 h-5" />
+                            {{ item.name }}
+                        </Link>
+                    </div>
+
+                    <!-- Management -->
+                    <div class="space-y-1">
+                        <div class="px-3 py-1 text-xs font-semibold text-muted-foreground">Management</div>
+                        <Link
+                            v-for="item in navigationGroups.management"
+                            :key="item.name"
+                            :href="item.href"
+                            :class="[
+                                'flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary',
+                                $page.component === item.component
+                                    ? 'bg-muted text-primary'
+                                    : 'text-muted-foreground',
+                            ]"
+                        >
+                            <component :is="item.icon" class="w-5 h-5" />
+                            {{ item.name }}
+                        </Link>
+                    </div>
+
+                    <!-- Transactions -->
+                    <div class="space-y-1">
+                        <div class="px-3 py-1 text-xs font-semibold text-muted-foreground">Transactions</div>
+                        <Link
+                            v-for="item in navigationGroups.transactions"
+                            :key="item.name"
+                            :href="item.href"
+                            :class="[
+                                'flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary',
+                                $page.component === item.component
+                                    ? 'bg-muted text-primary'
+                                    : 'text-muted-foreground',
+                            ]"
+                        >
+                            <component :is="item.icon" class="w-5 h-5" />
+                            {{ item.name }}
+                        </Link>
+                    </div>
+
+                    <!-- System -->
+                    <div class="space-y-1">
+                        <div class="px-3 py-1 text-xs font-semibold text-muted-foreground">System</div>
+                        <Link
+                            v-for="item in navigationGroups.system"
+                            :key="item.name"
+                            :href="item.href"
+                            :class="[
+                                'flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary',
+                                $page.component === item.component
+                                    ? 'bg-muted text-primary'
+                                    : 'text-muted-foreground',
+                            ]"
+                        >
+                            <component :is="item.icon" class="w-5 h-5" />
+                            {{ item.name }}
+                        </Link>
+                    </div>
                 </nav>
             </div>
         </div>
