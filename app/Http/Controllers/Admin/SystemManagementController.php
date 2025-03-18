@@ -40,6 +40,7 @@ use App\Models\Category;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
+use App\Models\RentalTimelineEvent;
 
 class SystemManagementController extends Controller
 {
@@ -308,152 +309,180 @@ class SystemManagementController extends Controller
 
     public function getLogs(Request $request)
     {
-        // Build the base query using rental timeline events
-        $query = DB::table('rental_timeline_events as e')
-            ->leftJoin('users as u', 'e.actor_id', '=', 'u.id')
-            ->leftJoin('rental_requests as r', 'e.rental_request_id', '=', 'r.id')
-            ->select([
-                'e.id',
-                'e.event_type',
-                'e.created_at',
-                'e.metadata',
-                'u.name as actor_name',
-                'r.id as rental_id'
+        try {
+            // Build query using the model
+            $query = RentalTimelineEvent::query()
+                ->select('rental_timeline_events.*')
+                ->with(['actor', 'rental_request']);
+
+            // Apply type filter
+            if ($type = $request->input('type', 'all')) {
+                if ($type !== 'all') {
+                    $query->when($type !== 'all', function($q) use ($type) {
+                        switch ($type) {
+                            case 'user':
+                                return $q->whereIn('event_type', RentalTimelineEvent::getUserEvents());
+                            case 'admin':
+                                return $q->whereIn('event_type', RentalTimelineEvent::getAdminEvents());
+                            case 'error':
+                                return $q->whereIn('event_type', RentalTimelineEvent::getErrorEvents());
+                            case 'system':
+                                return $q->whereIn('event_type', RentalTimelineEvent::getSystemEvents());
+                        }
+                    });
+                }
+            }
+
+            // Apply period filter
+            if ($period = $request->input('period')) {
+                if ($period !== 'all') {
+                    $query->where('created_at', '>=', now()->subDays((int)$period));
+                }
+            }
+
+            // Apply search
+            if ($search = $request->input('search')) {
+                $query->where(function($q) use ($search) {
+                    $q->where('event_type', 'like', "%{$search}%")
+                      ->orWhere('metadata', 'like', "%{$search}%")
+                      ->orWhereHas('actor', function($q) use ($search) {
+                          $q->where('name', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            // Get simple stats count using the model's methods
+            $stats = [
+                'system' => RentalTimelineEvent::whereIn('event_type', RentalTimelineEvent::getSystemEvents())
+                    ->when($period && $period !== 'all', function($q) use ($period) {
+                        $q->where('created_at', '>=', now()->subDays($period));
+                    })->count(),
+                'user' => RentalTimelineEvent::whereIn('event_type', RentalTimelineEvent::getUserEvents())
+                    ->when($period && $period !== 'all', function($q) use ($period) {
+                        $q->where('created_at', '>=', now()->subDays($period));
+                    })->count(),
+                'admin' => RentalTimelineEvent::whereIn('event_type', RentalTimelineEvent::getAdminEvents())
+                    ->when($period && $period !== 'all', function($q) use ($period) {
+                        $q->where('created_at', '>=', now()->subDays($period));
+                    })->count(),
+                'error' => RentalTimelineEvent::whereIn('event_type', RentalTimelineEvent::getErrorEvents())
+                    ->when($period && $period !== 'all', function($q) use ($period) {
+                        $q->where('created_at', '>=', now()->subDays($period));
+                    })->count()
+            ];
+
+            // Get paginated logs
+            $logs = $query->latest()
+                ->paginate(50)
+                ->through(function($log) {
+                    return [
+                        'id' => $log->id,
+                        'created_at' => $log->created_at,
+                        'event_type' => $log->event_type,
+                        'description' => $this->formatLogDescription($log),
+                        'actor' => $log->actor?->name,
+                        'level' => $this->getLogLevel($log->event_type),
+                        'log_type' => $this->getLogType($log->event_type),
+                        'properties' => $log->metadata
+                    ];
+                });
+
+            return Inertia::render('Admin/Logs', [
+                'logs' => $logs,
+                'stats' => $stats,
+                'filters' => $request->only(['type', 'period', 'search'])
             ]);
 
-        // Apply type filter
-        if ($type = $request->input('type', 'system')) {
-            $query->where(function($q) use ($type) {
-                switch ($type) {
-                    case 'user':
-                        $q->whereIn('e.event_type', [
-                            'rental_created',
-                            'payment_submitted',
-                            'handover_completed',
-                            'return_initiated',
-                            'return_submitted'
-                        ]);
-                        break;
-                    case 'admin':
-                        $q->whereIn('e.event_type', [
-                            'payment_verified',
-                            'payment_rejected',
-                            'dispute_resolved',
-                            'rental_completed',
-                            'deposit_refunded',
-                            'lender_paid'
-                        ]);
-                        break;
-                    case 'error':
-                        $q->whereIn('e.event_type', [
-                            'payment_failed',
-                            'verification_failed',
-                            'system_error'
-                        ]);
-                        break;
-                    default: // system
-                        $q->whereIn('e.event_type', [
-                            'status_updated',
-                            'rental_approved',
-                            'rental_rejected',
-                            'dispute_raised',
-                            'rental_cancelled'
-                        ]);
-                }
-            });
+        } catch (\Exception $e) {
+            report($e);
+            return back()->with('error', 'Error loading system logs: ' . $e->getMessage());
+        }
+    }
+
+    private function getEventTypesByCategory($category)
+    {
+        return match($category) {
+            'user' => [
+                'rental_created',
+                'payment_submitted',
+                'handover_completed',
+                'return_initiated',
+                'return_submitted'
+            ],
+            'admin' => [
+                'payment_verified',
+                'payment_rejected',
+                'dispute_resolved',
+                'rental_completed',
+                'deposit_refunded',
+                'lender_paid'
+            ],
+            'error' => [
+                'payment_failed',
+                'verification_failed',
+                'system_error'
+            ],
+            'system' => [
+                'status_updated',
+                'rental_approved',
+                'rental_rejected',
+                'dispute_raised',
+                'rental_cancelled'
+            ],
+            default => []
+        };
+    }
+
+    private function getEventCountByCategory($category, $period)
+    {
+        $query = DB::table('rental_timeline_events')
+            ->whereIn('event_type', $this->getEventTypesByCategory($category));
+
+        if ($period && $period !== 'all') {
+            $query->where('created_at', '>=', now()->subDays((int)$period));
         }
 
-        // Apply level filter
-        if ($level = $request->input('level')) {
-            if ($level !== 'all') {
-                $query->where('e.level', $level);
-            }
-        }
+        return $query->count();
+    }
 
-        // Apply period filter
-        if ($period = $request->input('period')) {
-            if ($period !== 'all') {
-                $query->where('e.created_at', '>=', now()->subDays($period));
-            }
-        }
+    private function formatLogDescription($log)
+    {
+        $rentalId = $log->rental_id ? "#{$log->rental_id}" : "";
+        
+        return match($log->event_type) {
+            'rental_created' => "New rental request created for Rental {$rentalId}",
+            'payment_submitted' => "Payment submitted for Rental {$rentalId}",
+            'payment_verified' => "Payment verified for Rental {$rentalId}",
+            'payment_rejected' => "Payment rejected for Rental {$rentalId}",
+            'handover_completed' => "Item handover completed for Rental {$rentalId}",
+            'return_initiated' => "Return initiated for Rental {$rentalId}",
+            'return_submitted' => "Return proof submitted for Rental {$rentalId}",
+            'dispute_raised' => "Dispute raised for Rental {$rentalId}",
+            'dispute_resolved' => "Dispute resolved for Rental {$rentalId}",
+            'rental_completed' => "Rental {$rentalId} marked as completed",
+            'deposit_refunded' => "Security deposit refunded for Rental {$rentalId}",
+            'lender_paid' => "Lender payment processed for Rental {$rentalId}",
+            default => str_replace('_', ' ', ucwords($log->event_type)) . ($rentalId ? " for Rental {$rentalId}" : "")
+        };
+    }
 
-        // Apply search
-        if ($search = $request->input('search')) {
-            $query->where(function($q) use ($search) {
-                $q->where('e.event_type', 'like', "%{$search}%")
-                  ->orWhere('e.metadata', 'like', "%{$search}%")
-                  ->orWhere('u.name', 'like', "%{$search}%");
-            });
-        }
+    private function getLogLevel($eventType)
+    {
+        return match(true) {
+            in_array($eventType, ['payment_failed', 'verification_failed', 'system_error']) => 'error',
+            in_array($eventType, ['dispute_raised', 'payment_rejected']) => 'warning',
+            default => 'info'
+        };
+    }
 
-        // Get stats for the overview
-        $stats = [
-            'system' => DB::table('rental_timeline_events')
-                ->whereIn('event_type', ['status_updated', 'rental_approved', 'rental_rejected'])
-                ->count(),
-            'user' => DB::table('rental_timeline_events')
-                ->whereIn('event_type', ['rental_created', 'payment_submitted', 'handover_completed'])
-                ->count(),
-            'admin' => DB::table('rental_timeline_events')
-                ->whereIn('event_type', ['payment_verified', 'payment_rejected', 'dispute_resolved'])
-                ->count(),
-            'error' => DB::table('rental_timeline_events')
-                ->whereIn('event_type', ['payment_failed', 'verification_failed', 'system_error'])
-                ->count()
-        ];
-
-        // Format log entries
-        $logs = $query->orderBy('e.created_at', 'desc')
-            ->paginate(50)
-            ->through(function($log) {
-                $metadata = json_decode($log->metadata, true);
-                
-                // Format description based on event type
-                $description = match($log->event_type) {
-                    'rental_created' => "New rental request created for Rental #{$log->rental_id}",
-                    'payment_submitted' => "Payment submitted for Rental #{$log->rental_id}",
-                    'payment_verified' => "Payment verified for Rental #{$log->rental_id}",
-                    'payment_rejected' => "Payment rejected for Rental #{$log->rental_id}",
-                    'handover_completed' => "Item handover completed for Rental #{$log->rental_id}",
-                    'return_initiated' => "Return initiated for Rental #{$log->rental_id}",
-                    'return_submitted' => "Return proof submitted for Rental #{$log->rental_id}",
-                    'dispute_raised' => "Dispute raised for Rental #{$log->rental_id}",
-                    'dispute_resolved' => "Dispute resolved for Rental #{$log->rental_id}",
-                    'rental_completed' => "Rental #{$log->rental_id} marked as completed",
-                    'deposit_refunded' => "Security deposit refunded for Rental #{$log->rental_id}",
-                    'lender_paid' => "Lender payment processed for Rental #{$log->rental_id}",
-                    default => "System event occurred for Rental #{$log->rental_id}"
-                };
-
-                // Determine log level
-                $level = match($log->event_type) {
-                    'payment_failed', 'verification_failed', 'system_error' => 'error',
-                    'dispute_raised', 'payment_rejected' => 'warning',
-                    default => 'info'
-                };
-
-                return [
-                    'id' => $log->id,
-                    'description' => $description,
-                    'actor' => $log->actor_name,
-                    'created_at' => $log->created_at,
-                    'event_type' => $log->event_type,
-                    'level' => $level,
-                    'log_type' => match($log->event_type) {
-                        'payment_verified', 'payment_rejected', 'dispute_resolved' => 'admin',
-                        'rental_created', 'payment_submitted', 'handover_completed' => 'user',
-                        'payment_failed', 'verification_failed', 'system_error' => 'error',
-                        default => 'system'
-                    },
-                    'properties' => $metadata
-                ];
-            });
-
-        return Inertia::render('Admin/Logs', [
-            'logs' => $logs,
-            'stats' => $stats,
-            'filters' => $request->only(['type', 'period', 'level', 'search'])
-        ]);
+    private function getLogType($eventType)
+    {
+        return match(true) {
+            in_array($eventType, $this->getEventTypesByCategory('admin')) => 'admin',
+            in_array($eventType, $this->getEventTypesByCategory('user')) => 'user',
+            in_array($eventType, $this->getEventTypesByCategory('error')) => 'error',
+            default => 'system'
+        };
     }
 
     public function exportLogs(Request $request)
