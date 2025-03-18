@@ -232,8 +232,7 @@ const showCustomReason = computed(() => selectedReason.value === "custom");
 	<div class="space-y-6">
 		<div class="flex items-center justify-between">
 			<h2 class="text-2xl font-semibold tracking-tight">
-				{{ dispute.dispute_type === "return" ? "Return" : "Handover" }}
-				Dispute #{{ dispute.id }}
+				Dispute Details #{{ dispute.id }}
 			</h2>
 			<Link
 				:href="route('admin.rental-transactions.show', dispute.rental.id)"
@@ -242,14 +241,6 @@ const showCustomReason = computed(() => selectedReason.value === "custom");
 				View Related Transaction #{{ dispute.rental.id }}
 			</Link>
 		</div>
-
-		<!-- Add conditional rendering based on dispute type -->
-		<template v-if="dispute.dispute_type === 'handover'">
-			<div class="text-sm">
-				<span class="font-medium">Dispute Type:</span>
-				{{ dispute.type === "lender_no_show" ? "Lender No-Show" : "Renter No-Show" }}
-			</div>
-		</template>
 
 		<div class="grid gap-6 md:grid-cols-2">
 			<!-- Dispute Information -->
@@ -304,7 +295,7 @@ const showCustomReason = computed(() => selectedReason.value === "custom");
 							<!-- Lender Info -->
 							<div>
 								<p class="text-sm font-medium">Lender</p>
-								<p class="text-sm">{{ dispute.rental.listing.user.name }}</p>
+								<p class="text-sm">{{ dispute.rental.lender.name }}</p>
 							</div>
 							<!-- Renter Info -->
 							<div>
@@ -566,14 +557,14 @@ const showCustomReason = computed(() => selectedReason.value === "custom");
 									class="text-sm"
 									:class="{
 										'text-blue-500':
-											dispute.raised_by_user.id === dispute.rental.listing.user.id,
+											dispute.raised_by_user.id === dispute.rental.lender.id,
 										'text-emerald-500':
 											dispute.raised_by_user.id === dispute.rental.renter.id,
 									}"
 								>
 									{{ dispute.raised_by_user.name }}
 									({{
-										dispute.raised_by_user.id === dispute.rental.listing.user.id
+										dispute.raised_by_user.id === dispute.rental.lender.id
 											? "Lender"
 											: "Renter"
 									}})
