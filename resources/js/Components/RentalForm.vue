@@ -9,6 +9,7 @@ import { ref, reactive, watch, onMounted, computed } from "vue";
 import { useForm as useInertiaForm } from "@inertiajs/vue3";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { XCircle, Clock } from "lucide-vue-next";
+import TermsAndConditionsDialog from "../Pages/TermsAndConditionsDialog .vue";
 
 const props = defineProps({
 	listing: {
@@ -28,10 +29,12 @@ const props = defineProps({
 		default: null,
 	},
 });
+const showTerms = ref(false);
+const termsAccepted = ref(false);
 const dailyRate = props.listing.price;
 const itemValue = props.listing.value;
 const rentalDays = ref(7);
-const quantity = ref(1); // Add this line
+const quantity = ref(1);
 
 const rentalPrice = reactive({
 	basePrice: 0,
@@ -50,7 +53,7 @@ const rentalForm = useInertiaForm({
 	service_fee: 0,
 	deposit_fee: props.listing.deposit_fee,
 	total_price: 0,
-	quantity_requested: 1, // Add this line
+	quantity_requested: 1,
 });
 
 const selectedDates = ref({
@@ -242,32 +245,33 @@ onMounted(() => {
 					</p>
 				</div>
 				<template v-else>
-						<!-- Update quantity section -->
-						<div class="space-y-2">
-							<div class="font-semibold">Quantity</div>
-							<div class="flex items-center gap-2">
-								<Button
-									variant="outline"
-									size="sm"
-									:disabled="quantity === 1"
-									@click="quantity--"
-								>
-									-
-								</Button>
-								<span class="w-12 text-center">{{ quantity }}</span>
-								<Button
-									variant="outline"
-									size="sm"
-									:disabled="quantity >= availableQuantity"
-									@click="quantity++"
-								>
-									+
-								</Button>
-							</div>
-							<p class="text-muted-foreground text-xs">
-								{{ availableQuantity }} unit{{ availableQuantity !== 1 ? 's' : '' }} available for rent
-							</p>
+					<!-- Update quantity section -->
+					<div class="space-y-2">
+						<div class="font-semibold">Quantity</div>
+						<div class="flex items-center gap-2">
+							<Button
+								variant="outline"
+								size="sm"
+								:disabled="quantity === 1"
+								@click="quantity--"
+							>
+								-
+							</Button>
+							<span class="w-12 text-center">{{ quantity }}</span>
+							<Button
+								variant="outline"
+								size="sm"
+								:disabled="quantity >= availableQuantity"
+								@click="quantity++"
+							>
+								+
+							</Button>
 						</div>
+						<p class="text-muted-foreground text-xs">
+							{{ availableQuantity }} unit{{ availableQuantity !== 1 ? "s" : "" }}
+							available for rent
+						</p>
+					</div>
 
 					<div class="space-y-2">
 						<div class="font-semibold">Rental Dates</div>
@@ -337,13 +341,36 @@ onMounted(() => {
 						<p v-for="error in errors" :key="error">{{ error }}</p>
 					</div>
 
+					<div class="mt-4 mb-4" v-if="selectedDates.start && selectedDates.end">
+						<div class="flex items-start gap-3 p-4 rounded-lg border bg-muted/20">
+							<Checkbox
+								id="rental-terms"
+								v-model:checked="termsAccepted"
+								class="mt-0.5"
+							/>
+							<div>
+								<label for="rental-terms" class="text-sm cursor-pointer">
+									I have read and agree to the
+									<button
+										type="button"
+										@click="showTerms = true"
+										class="text-primary hover:underline inline-flex"
+									>
+										Terms and Conditions
+									</button>
+								</label>
+							</div>
+						</div>
+					</div>
+
 					<Button
 						class="w-full"
 						:disabled="
 							!selectedDates.start ||
 							!selectedDates.end ||
 							isSubmitting ||
-							listing.is_rented
+							listing.is_rented ||
+							!termsAccepted
 						"
 						@click.prevent="handleSubmit"
 					>
@@ -355,6 +382,11 @@ onMounted(() => {
 						</template>
 						<template v-else> Send Rent Request </template>
 					</Button>
+
+					<TermsAndConditionsDialog
+						v-model:show="showTerms"
+						@accept="termsAccepted = true"
+					/>
 				</template>
 			</template>
 		</CardContent>

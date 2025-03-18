@@ -21,6 +21,7 @@ const props = defineProps({
 	showPendingMessage: Boolean,
 	justUpdated: Boolean,
 	flashError: String,
+	flashError: String,
 });
 
 const showDeleteDialog = ref(false);
@@ -207,17 +208,37 @@ const handleDelete = () => {
 						Security Deposit (Refundable):
 						<span class="font-medium">{{ formatNumber(listing.deposit_fee) }}</span>
 					</p>
+					<p class="text-xs">
+						* The security deposit will be refunded after the rental period, subject to
+						item condition
+					</p>
+				</div>
+			</div>
+			<!-- pricing information -->
+			<div class="space-y-1">
+				<h2 class="text-lg font-semibold tracking-tight">Pricing Information</h2>
+				<div class="text-muted-foreground space-y-2">
+					<p>
+						Daily Rate: <span class="font-medium">{{ formatNumber(listing.price) }}</span>
+					</p>
+					<p>
+						Security Deposit (Refundable):
+						<span class="font-medium">{{ formatNumber(listing.deposit_fee) }}</span>
+					</p>
 					<!-- Add quantity information -->
 					<p>
-                        Total Units: <span class="font-medium">{{ listing.quantity }}</span>
-                    </p>
-                    <p>
-                        Available Units:
-                        <span class="font-medium">{{ listing.available_quantity }}</span>
-                    </p>
-                    <p v-if="listing.quantity !== listing.available_quantity" class="text-xs text-muted-foreground">
-                        ({{ listing.quantity - listing.available_quantity }} units currently rented)
-                    </p>
+						Total Units: <span class="font-medium">{{ listing.quantity }}</span>
+					</p>
+					<p>
+						Available Units:
+						<span class="font-medium">{{ listing.available_quantity }}</span>
+					</p>
+					<p
+						v-if="listing.quantity !== listing.available_quantity"
+						class="text-xs text-muted-foreground"
+					>
+						({{ listing.quantity - listing.available_quantity }} units currently rented)
+					</p>
 					<p class="text-xs">
 						* The security deposit will be refunded after the rental period, subject to
 						item condition
@@ -305,7 +326,11 @@ const handleDelete = () => {
 						</Button>
 					</div>
 
-					<Link v-else href="" class="sm:w-auto w-full">
+					<Link
+						v-else
+						:href="route('users.profile', listing.user.id)"
+						class="sm:w-auto w-full"
+					>
 						<Button class="sm:w-auto w-full">View Profile</Button>
 					</Link>
 				</CardContent>
