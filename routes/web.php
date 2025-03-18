@@ -9,6 +9,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MyRentalsController;
 use App\Http\Controllers\MyListingsController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\RentalRequestController;
 use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Support\Facades\Route;
@@ -23,7 +24,6 @@ Route::middleware(['auth', 'fully-verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'updateInfo'])->name('profile.info');
     Route::put('/profile', [ProfileController::class, 'updatePassword'])->name('profile.password');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // my rentals 
     Route::get('/my-rentals', [MyRentalsController::class, 'index'])->middleware('verified')->name('my-rentals');
@@ -65,6 +65,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     Route::patch('/users/{user}/activate', [AdminController::class, 'activateUser'])->name('users.activate');
     Route::get('/users/{user}', [AdminController::class, 'showUser'])->name('users.show');
     
+    
     // Listing management routes
     Route::get('/listings', [AdminController::class, 'listings'])->name('listings');
     Route::get('/listings/{listing}', [AdminController::class, 'showListing'])->name('listings.show');
@@ -78,7 +79,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     Route::get('/rental-transactions/{rental}', [RentalTransactionsController::class, 'show'])
         ->name('rental-transactions.show');
 });
-
+Route::get('/users/{user}', [UserProfileController::class, 'show'])->name('users.profile');
 Route::get('/', [ListingController::class, 'index'])->name('home');
 Route::get('listing/{listing}', [ListingController::class, 'show'])->name('listing.show');
 Route::get('/explore', [ExploreController::class, 'index'])->name('explore');

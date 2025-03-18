@@ -63,7 +63,7 @@ const capitalize = (str) => {
 			>
 		</CardHeader>
 
-		<CardContent class="flex-1">
+		<CardContent class="flex-1 lg:w-3/5 lg:self-end">
 			<p v-if="status" class="mb-2 text-sm text-green-700">{{ status }}</p>
 
 			<Alert v-if="form.recentlySuccessful === true" class="mb-5" variant="success">
@@ -113,7 +113,9 @@ const capitalize = (str) => {
 					</Button>
 				</div>
 			</form>
+		</CardContent>
 
+		<CardContent class="flex-1">
 			<!-- Profile information - Read Only -->
 			<div class="mt-8 pt-6 border-t">
 				<h3 class="text-lg font-medium mb-4">Profile Information (Verified)</h3>
