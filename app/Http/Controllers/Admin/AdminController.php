@@ -998,7 +998,7 @@ class AdminController extends Controller
                     'email' => $user->email,
                     'status' => $user->status,
                     'verification' => $user->email_verified_at ? 'Verified' : 'Unverified',
-                    'join_date' => $user->created_at->format('Y-m-d'),
+                    'join_date' => $user->created_at ? date('m/d/Y', strtotime($user->created_at)) : 'N/A',
                     'listings_count' => $user->listings_count,
                     'actions_required' => $this->getUserActionFlags($user)
                 ];
