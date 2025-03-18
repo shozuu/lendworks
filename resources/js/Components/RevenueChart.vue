@@ -55,11 +55,12 @@ const options = {
       },
       ticks: {
         font: {
-          size: 12,
-          weight: '500',
-          family: 'system-ui'
+          size: 13,
+          weight: '600',
+          family: 'Inter, system-ui'
         },
-        color: '#334155', // Darker color for better contrast
+        color: '#1e293b', // Even darker for better contrast
+        padding: 8,
         maxRotation: 45,
         minRotation: 45
       }
@@ -76,12 +77,12 @@ const options = {
       },
       ticks: {
         font: {
-          size: 12,
-          weight: '500',
-          family: 'system-ui'
+          size: 13,
+          weight: '600',
+          family: 'Inter, system-ui'
         },
-        color: '#334155', // Darker color for better contrast
-        padding: 8,
+        color: '#1e293b',
+        padding: 10,
         callback: value => '₱' + value.toLocaleString(),
         maxTicksLimit: 6 // Limit number of ticks for cleaner look
       }
@@ -150,68 +151,86 @@ const enhancedData = computed(() => ({
 // Add chart instance ref
 const chartInstance = ref(null);
 
+// Add a new method to get the chart image
+const getChartImage = () => {
+  if (!chartInstance.value) return null;
+  return chartInstance.value.$el.toDataURL('image/png', 1.0);
+};
+
 // Update download method
 const downloadChart = async (type = 'png') => {
   if (!chartInstance.value) return;
   
-  // Get chart canvas
-  const canvas = chartInstance.value.$el;
+  // Get chart image first
+  const chartImage = getChartImage();
+  if (!chartImage) return;
   
   if (type === 'png') {
     try {
-      // Create wrapper div and add it to the document
       const wrapper = document.createElement('div');
       wrapper.style.cssText = `
         background-color: white;
-        padding: 20px;
-        width: 1000px;
+        padding: 40px;
+        width: 1200px;
         position: fixed;
         left: -9999px;
+        font-family: Inter, system-ui;
       `;
       
-      // Add content to wrapper
       wrapper.innerHTML = `
-        <div style="margin-bottom: 20px; font-family: system-ui;">
-          <h2 style="font-size: 24px; margin-bottom: 10px;">Revenue Overview</h2>
-          <p style="color: #64748b; margin-bottom: 8px;">${props.overview}</p>
-          <p style="font-size: 18px; font-weight: 600;">Total Revenue: ₱${props.totalRevenue.toLocaleString()}</p>
+        <div style="margin-bottom: 30px;">
+          <h2 style="
+            font-size: 28px;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 12px;
+            font-family: Inter, system-ui;
+          ">Revenue Overview</h2>
+          <p style="
+            font-size: 16px;
+            color: #475569;
+            margin-bottom: 12px;
+            font-family: Inter, system-ui;
+          ">${props.overview}</p>
+          <p style="
+            font-size: 20px;
+            font-weight: 600;
+            color: #0f172a;
+            font-family: Inter, system-ui;
+          ">Total Revenue: ₱${props.totalRevenue.toLocaleString()}</p>
         </div>
-        <div style="width: 100%;">
-          ${canvas.outerHTML}
+        <div style="
+          padding: 20px;
+          border-radius: 12px;
+          background-color: white;
+          box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        ">
+          <img src="${chartImage}" style="width: 100%; height: auto;" />
         </div>
       `;
       
-      // Add to document, wait for elements to load
       document.body.appendChild(wrapper);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 200));
       
-      // Capture the image
       const finalCanvas = await html2canvas(wrapper, {
         useCORS: true,
-        scale: 3, // Higher scale for better quality
+        scale: 2,
         logging: false,
         allowTaint: true,
-        backgroundColor: 'white',
-        onclone: (document) => {
-          const canvas = document.querySelector('canvas');
-          if (canvas) {
-            canvas.style.filter = 'none'; // Remove shadow for cleaner export
-          }
-        }
+        backgroundColor: 'white'
       });
       
-      // Create download link
       const link = document.createElement('a');
       link.download = `revenue-chart-${new Date().toISOString().slice(0,10)}.png`;
       link.href = finalCanvas.toDataURL('image/png', 1.0);
       link.click();
       
-      // Cleanup
       document.body.removeChild(wrapper);
     } catch (error) {
       console.error('Error generating image:', error);
     }
   } else if (type === 'print') {
+    // Update print template to use chart image
     const printWindow = window.open('');
     printWindow.document.write(`
       <html>
@@ -221,7 +240,7 @@ const downloadChart = async (type = 'png') => {
             @media print {
               body {
                 padding: 40px;
-                font-family: system-ui;
+                font-family: Inter, system-ui;
               }
               .container {
                 max-width: 800px;
@@ -233,19 +252,28 @@ const downloadChart = async (type = 'png') => {
               .header h1 {
                 font-size: 24px;
                 margin-bottom: 10px;
+                color: #0f172a;
               }
               .header p {
-                color: #64748b;
+                color: #475569;
                 margin-bottom: 8px;
               }
               .total {
                 font-size: 18px;
                 font-weight: 600;
                 margin-bottom: 20px;
+                color: #0f172a;
+              }
+              .chart-container {
+                padding: 20px;
+                border-radius: 12px;
+                background: white;
+                box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
               }
               img {
                 width: 100%;
-                margin-top: 20px;
+                height: auto;
+                display: block;
               }
             }
           </style>
@@ -257,7 +285,9 @@ const downloadChart = async (type = 'png') => {
               <p>${props.overview}</p>
               <div class="total">Total Revenue: ₱${props.totalRevenue.toLocaleString()}</div>
             </div>
-            <img src="${canvas.toDataURL('image/png', 1.0)}" />
+            <div class="chart-container">
+              <img src="${chartImage}" />
+            </div>
           </div>
         </body>
       </html>
