@@ -36,22 +36,26 @@ Route::middleware('auth')->group(function() {
     Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'handler'])->middleware('signed')->name('verification.verify');
     Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])->middleware('throttle:6,1')->name('verification.send');
 
-         // ID verification
+    // ID verification
     Route::get('/verify-id', [FaceMatchController::class, 'show'])->name('verify-id.show');
     Route::post('/verify-id', [FaceMatchController::class, 'matchFace'])->name('verify-id.match');
     Route::post('/api/validate-id-type', [FaceMatchController::class, 'validateIdType'])->name('verify-id.validate');
     Route::get('/api/valid-id-types', [FaceMatchController::class, 'getValidIdTypes'])->name('verify-id.types');
     Route::post('/verify-liveness', [FaceMatchController::class, 'verifyLiveness']);
 
-    // password confirmation
-    Route::get('/confirm-password', [ConfirmPasswordController::class, 'create'])->name('password.confirm');
-    Route::post('/confirm-password', [ConfirmPasswordController::class, 'store'])->middleware('throttle:6,1')->name('password.confirm');
+    // Consolidated password confirmation routes
+    Route::prefix('confirm-password')->group(function() {
+        Route::get('/', [ConfirmPasswordController::class, 'create'])->name('password.confirm');
+        Route::post('/', [ConfirmPasswordController::class, 'store'])
+            ->middleware('throttle:6,1')
+            ->name('password.confirm.store');
+    });
 
-     Route::get('/verification-form', [VerificationFormController::class, 'show'])
-         ->name('verification.form');
+    // Profile verification routes
+    Route::get('/verification-form', [VerificationFormController::class, 'show'])
+        ->name('verification.form');
     Route::get('/verify-id/extracted-data', [VerificationFormController::class, 'extractData'])
-         ->name('verification.extracted-data');
+        ->name('verification.extracted-data');
     Route::post('/verification-form', [VerificationFormController::class, 'submit'])
-         ->name('verification.form.submit');
-
+        ->name('verification.form.submit');
 });

@@ -76,10 +76,6 @@ Route::middleware(['auth', 'fully-verified'])->group(function () {
     Route::post('/rentals/{rental}/submit-payment', [PaymentController::class, 'store'])->name('rentals.submit-payment');
     Route::post('/rentals/{rental}/submit-overdue-payment', [PaymentController::class, 'storeOverduePayment'])
         ->name('rentals.submit-overdue-payment');
-
-    // handover dispute
-    Route::post('/rentals/{rental}/handover-dispute', [HandoverDisputeController::class, 'store'])
-        ->name('rentals.handover-dispute');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -119,26 +115,20 @@ Route::middleware(['auth'])->group(function () {
             ->name('rentals.initiate-return');
         Route::post('/rentals/{rental}/return-schedules', 'storeSchedule')
             ->name('return-schedules.store');
-        Route::patch('/rentals/{rental}/return-schedules/{schedule}/select', 'selectSchedule')
+        Route::patch('/rentals/{rental}/return-schedules/{lender_schedule}/select', 'selectSchedule')
             ->name('return-schedules.select');
-        Route::patch('/rentals/{rental}/return-schedules/{schedule}/confirm', 'confirmSchedule')
-            ->name('return-schedules.confirm');
         Route::patch('/rentals/{rental}/return-schedules/confirm', 'confirmSchedule')
             ->name('return-schedules.confirm');
         Route::post('/rentals/{rental}/submit-return', 'submitReturn')
             ->name('rentals.submit-return');
         Route::post('/rentals/{rental}/confirm-return', 'confirmReturn')
             ->name('rentals.confirm-return');
-        Route::post('/rentals/{rental}/return-item', 'submitReturn')
-            ->name('rentals.submit-return');
         Route::post('/rentals/{rental}/confirm-receipt', 'confirmItemReceived')
             ->name('rentals.confirm-receipt');
         Route::post('/rentals/{rental}/finalize-return', 'finalizeReturn')
             ->name('rentals.finalize-return');
         Route::post('/rentals/{rental}/raise-dispute', 'raiseDispute')
             ->name('rentals.raise-dispute');
-        Route::patch('/rentals/{rental}/return-schedules/{lender_schedule}/select', 'selectSchedule')
-            ->name('return-schedules.select');
     });
 });
 
