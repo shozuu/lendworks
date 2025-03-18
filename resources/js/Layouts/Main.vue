@@ -70,8 +70,8 @@ const search = () => {
 							<span class="sr-only">Toggle dark mode</span>
 						</Button>
 
-						<!-- notifications -->
-						<Notifications />
+						<!-- notifications - only show for logged in users -->
+						<Notifications v-if="$page.props.auth.user" />
 
 						<!-- user dropdown menu -->
 						<UserDropdownMenu />

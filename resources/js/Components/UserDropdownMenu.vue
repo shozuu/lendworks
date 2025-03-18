@@ -36,7 +36,6 @@ const user = computed(() => usePage().props.auth.user);
 			</DropdownMenuLabel>
 			<DropdownMenuSeparator />
 			<DropdownMenuItem as-child routeName="profile.edit">Profile </DropdownMenuItem>
-			<DropdownMenuItem as-child routeName="home">Test Link </DropdownMenuItem>
 			<DropdownMenuSeparator />
 			<DropdownMenuItem as-child routeName="logout" method="post"
 				>Logout
