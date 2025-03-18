@@ -18,7 +18,7 @@ class EmailVerificationController extends Controller
     public function handler(EmailVerificationRequest $request) {
         $request->fulfill();
      
-        return redirect()->route('home');
+        return redirect()->route('verify-id.show');
     }
 
     public function resend(Request $request) {

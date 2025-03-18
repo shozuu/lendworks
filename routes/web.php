@@ -12,12 +12,13 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RentalRequestController;
 use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\OpenStreetMapController;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
 
 // 'verified' and password.confirm middleware can be used to protect routes that need full user verification but for now, i'll put it at my rentals to demonstrate functionality
 
-Route::middleware(['auth', 'verified'])->group(function() {
+Route::middleware(['auth', 'fully-verified'])->group(function () {
     // profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'updateInfo'])->name('profile.info');
@@ -50,6 +51,8 @@ Route::middleware(['auth', 'verified'])->group(function() {
 
     // rental transactions
     Route::get('/rentals/{rental}', [RentalRequestController::class, 'show'])->name('rental.show');
+
+    
 });
 
 // Admin routes with auth and admin middleware
@@ -79,5 +82,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
 Route::get('/', [ListingController::class, 'index'])->name('home');
 Route::get('listing/{listing}', [ListingController::class, 'show'])->name('listing.show');
 Route::get('/explore', [ExploreController::class, 'index'])->name('explore');
+Route::get('/api/location/search', [App\Http\Controllers\OpenStreetMapController::class, 'search'])
+    ->name('api.location.search');
 
 require __DIR__ . '/auth.php';

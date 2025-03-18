@@ -6,6 +6,8 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -19,10 +21,38 @@ class User extends Authenticatable implements MustVerifyEmail
         'status',
     ];
 
-    protected $casts = [
+      protected $casts = [
         'email_verified_at' => 'datetime',
+        'id_verified_at' => 'datetime',
+        'password' => 'hashed',
     ];
 
+    public function profile()
+    {
+        return $this->hasOne(Profile::class);
+    }
+     public function hasProfile(): bool
+    {
+        return $this->profile()->exists();
+    }
+
+    public function markIdAsVerified(): bool
+    {
+        return $this->forceFill([
+            'id_verified_at' => $this->freshTimestamp(),
+        ])->save();
+    }
+
+    public function hasVerifiedId()
+{
+    return !is_null($this->id_verified_at);
+}
+
+    public function isFullyVerified()
+    {
+        return $this->hasVerifiedEmail() && $this->hasVerifiedId();
+    }
+    
     // Tools listed by user (as lender)
     public function listings() {
         return $this->hasMany(Listing::class);

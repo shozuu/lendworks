@@ -39,6 +39,7 @@
         "vee-validate": "^4.14.7",
         "vue": "^3.4.38",
         "vue-filepond": "^7.0.4",
+        "vue-web-cam": "^1.9.0",
         "zod": "^3.23.8"
     }
 }

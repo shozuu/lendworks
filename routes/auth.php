@@ -5,6 +5,8 @@ use App\Http\Controllers\Auth\ConfirmPasswordController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ResetPasswordController;
+use App\Http\Controllers\FaceMatchController;
+use App\Http\Controllers\VerificationFormController;
 use Illuminate\Support\Facades\Route;
 
 // available for guests
@@ -29,15 +31,27 @@ Route::middleware('auth')->group(function() {
     // logout
     Route::post('/logout', [AuthenticateController::class, 'destroy'])->name('logout'); 
 
-    // by using password.confirm as middleware, we enable the password confirmation routes that confirm user's password before accessing a page/view
-    // notice can be triggered if the user tries to access other features of the website. this logic can also be used to fully verify user in the future (other credentials/documents)
-
     // email verification 
     Route::get('/email/verify', [EmailVerificationController::class, 'notice'])->name('verification.notice');
     Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'handler'])->middleware('signed')->name('verification.verify');
     Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])->middleware('throttle:6,1')->name('verification.send');
 
+         // ID verification
+    Route::get('/verify-id', [FaceMatchController::class, 'show'])->name('verify-id.show');
+    Route::post('/verify-id', [FaceMatchController::class, 'matchFace'])->name('verify-id.match');
+    Route::post('/api/validate-id-type', [FaceMatchController::class, 'validateIdType'])->name('verify-id.validate');
+    Route::get('/api/valid-id-types', [FaceMatchController::class, 'getValidIdTypes'])->name('verify-id.types');
+    Route::post('/verify-liveness', [FaceMatchController::class, 'verifyLiveness']);
+
     // password confirmation
     Route::get('/confirm-password', [ConfirmPasswordController::class, 'create'])->name('password.confirm');
     Route::post('/confirm-password', [ConfirmPasswordController::class, 'store'])->middleware('throttle:6,1')->name('password.confirm');
+
+     Route::get('/verification-form', [VerificationFormController::class, 'show'])
+         ->name('verification.form');
+    Route::get('/verify-id/extracted-data', [VerificationFormController::class, 'extractData'])
+         ->name('verification.extracted-data');
+    Route::post('/verification-form', [VerificationFormController::class, 'submit'])
+         ->name('verification.form.submit');
+
 });
