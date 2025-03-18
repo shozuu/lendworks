@@ -12,13 +12,13 @@ use Inertia\Inertia;
 
 class ProfileController extends Controller
 {
+   
     public function edit(Request $request) {
         $user = $request->user();
-        $profile = Profile::where('user_id', $user->id)->first();
-    
+        
         return Inertia::render('Profile/Edit', [
-            'user' => $request->user(),
-            'profile' => Auth::user()->profile,
+            'user' => $user,
+            'profile' => $user->profile,
             'status' => session('status')
         ]);
     }
