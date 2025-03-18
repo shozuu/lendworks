@@ -199,7 +199,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
 
     // Update the logs routes with the correct controller namespace
     Route::get('/logs', [LogController::class, 'index'])->name('logs');
-    Route::get('/logs/export', [LogController::class, 'export'])->name('logs.export');
+    Route::get('/logs/export', [SystemManagementController::class, 'exportLogs'])->name('logs.export');
     Route::get('/admin/logs', [SystemManagementController::class, 'getLogs'])->name('admin.logs');
 });
 

@@ -455,4 +455,128 @@ class SystemManagementController extends Controller
             'filters' => $request->only(['type', 'period', 'level', 'search'])
         ]);
     }
+
+    public function exportLogs(Request $request)
+    {
+        try {
+            $query = DB::table('rental_timeline_events as e')
+                ->leftJoin('users as u', 'e.actor_id', '=', 'u.id')
+                ->leftJoin('rental_requests as r', 'e.rental_request_id', '=', 'r.id')
+                ->select([
+                    'e.created_at',
+                    'e.event_type',
+                    'u.name as actor_name',
+                    'e.metadata',
+                    'r.id as rental_id',
+                    'e.status'
+                ]);
+
+            // Apply filters if they exist
+            if ($type = $request->input('type', 'all')) {
+                $query->when($type !== 'all', function($q) use ($type) {
+                    switch ($type) {
+                        case 'user':
+                            return $q->whereIn('e.event_type', [
+                                'rental_created',
+                                'payment_submitted',
+                                'handover_completed',
+                                'return_initiated',
+                                'return_submitted'
+                            ]);
+                        case 'admin':
+                            return $q->whereIn('e.event_type', [
+                                'payment_verified',
+                                'payment_rejected',
+                                'dispute_resolved',
+                                'rental_completed',
+                                'deposit_refunded',
+                                'lender_paid'
+                            ]);
+                        case 'error':
+                            return $q->whereIn('e.event_type', [
+                                'payment_failed',
+                                'verification_failed',
+                                'system_error'
+                            ]);
+                        case 'system':
+                            return $q->whereIn('e.event_type', [
+                                'status_updated',
+                                'rental_approved',
+                                'rental_rejected',
+                                'dispute_raised',
+                                'rental_cancelled'
+                            ]);
+                    }
+                });
+            }
+
+            // Apply period filter
+            if ($period = $request->input('period')) {
+                if ($period !== 'all') {
+                    $query->where('e.created_at', '>=', now()->subDays($period));
+                }
+            }
+
+            $logs = $query->orderBy('e.created_at', 'desc')->get();
+
+            // Prepare CSV data
+            $csvData = [];
+            
+            // Add headers
+            $csvData[] = [
+                'Timestamp',
+                'Event Type',
+                'Actor',
+                'Rental ID',
+                'Status',
+                'Details'
+            ];
+
+            // Format each log entry
+            foreach ($logs as $log) {
+                $metadata = json_decode($log->metadata, true);
+                $details = [];
+
+                // Format metadata for readable output
+                if (is_array($metadata)) {
+                    foreach ($metadata as $key => $value) {
+                        if (!is_array($value)) {
+                            $details[] = "$key: $value";
+                        }
+                    }
+                }
+
+                $csvData[] = [
+                    $log->created_at,
+                    str_replace('_', ' ', ucwords($log->event_type)),
+                    $log->actor_name ?? 'System',
+                    $log->rental_id ?? 'N/A',
+                    ucfirst($log->status ?? 'N/A'),
+                    implode('; ', $details)
+                ];
+            }
+
+            // Create CSV content
+            $output = '';
+            foreach ($csvData as $row) {
+                $output .= implode(',', array_map(function($field) {
+                    $field = str_replace('"', '""', $field); // Escape quotes
+                    return '"' . $field . '"';
+                }, $row)) . "\n";
+            }
+
+            // Generate response
+            return response($output, 200, [
+                'Content-Type' => 'text/csv',
+                'Content-Disposition' => 'attachment; filename=system_logs_' . date('Y-m-d_H-i-s') . '.csv',
+                'Pragma' => 'no-cache',
+                'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+                'Expires' => '0'
+            ]);
+
+        } catch (\Exception $e) {
+            report($e);
+            return back()->with('error', 'Failed to export logs: ' . $e->getMessage());
+        }
+    }
 }
