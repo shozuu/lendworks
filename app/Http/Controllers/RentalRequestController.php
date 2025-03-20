@@ -406,7 +406,8 @@ class RentalRequestController extends Controller
         $validated = $request->validate([
             'reason' => 'required|string',
             'issue_description' => 'required|string',
-            'proof_image' => 'required|image|max:5120'
+            'proof_image' => 'required|image|max:5120',
+            'additional_images.*' => 'image|max:5120'
         ]);
 
         \Log::info('Validation passed', $validated);
@@ -440,6 +441,16 @@ class RentalRequestController extends Controller
                 ]);
 
                 \Log::info('Dispute record created', ['dispute_id' => $dispute->id]);
+
+                // Store additional images
+                if ($request->hasFile('additional_images')) {
+                    foreach ($request->file('additional_images') as $image) {
+                        $imagePath = $image->store('dispute-proofs', 'public');
+                        $dispute->images()->create([
+                            'image_path' => $imagePath
+                        ]);
+                    }
+                }
 
                 // Update rental status
                 $rental->update(['status' => 'disputed']);

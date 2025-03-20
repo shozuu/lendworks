@@ -38,13 +38,21 @@ const props = defineProps({
 
 const emit = defineEmits(['update:show']);
 
+const MAX_ADDITIONAL_IMAGES = 4;
+const showAdditionalUpload = ref(false);
+const mainProofImage = ref([]);
+const additionalImages = ref([]);
+
+const selectedDisputeImage = computed(() => {
+  return [...mainProofImage.value, ...additionalImages.value];
+});
+
 const disputeForm = useForm({
   reason: '',
   issue_description: '',
-  proof_image: null
+  proof_image: null,
+  additional_images: []
 });
-
-const selectedDisputeImage = ref([]);
 
 const isOtherReason = computed(() => disputeForm.reason === 'other');
 
@@ -52,31 +60,50 @@ const handleDisputeSubmit = () => {
   console.log('Starting dispute submission...', {
     reason: disputeForm.reason,
     description: disputeForm.issue_description,
-    imageSelected: selectedDisputeImage.value.length > 0,
-    imageData: selectedDisputeImage.value[0]
+    mainImage: mainProofImage.value[0],
+    additionalImages: additionalImages.value
   });
 
   // Reset previous errors
   disputeForm.clearErrors();
 
-  // Create form data and set values directly on disputeForm
-  disputeForm.reason = disputeForm.reason;
-  disputeForm.issue_description = disputeForm.issue_description;
-  disputeForm.proof_image = selectedDisputeImage.value[0];
+  // Create form data
+  let formData = new FormData();
+  formData.append('reason', disputeForm.reason);
+  formData.append('issue_description', disputeForm.issue_description);
+
+  // Explicitly set proof_image and additional_images
+  disputeForm.proof_image = mainProofImage.value[0];
+  disputeForm.additional_images = additionalImages.value;
+
+  // Append main proof image
+  if (mainProofImage.value[0]) {
+    formData.append('proof_image', mainProofImage.value[0]);
+  }
+
+  // Append additional images if any
+  if (additionalImages.value.length > 0) {
+    additionalImages.value.forEach((image, index) => {
+      formData.append(`additional_images[${index}]`, image);
+    });
+  }
 
   console.log('Form data prepared:', {
     hasReason: !!disputeForm.reason,
     hasDescription: !!disputeForm.issue_description,
-    hasImage: !!disputeForm.proof_image
+    totalImages: selectedDisputeImage.value.length
   });
 
   disputeForm.post(route('rentals.raise-dispute', props.rental.id), {
+    forceFormData: true,
     preserveScroll: true,
     onSuccess: () => {
-      console.log('Dispute submitted successfully');
+      console.log('Dispute submitted successfully with', selectedDisputeImage.value.length, 'images');
       emit('update:show', false);
       disputeForm.reset();
-      selectedDisputeImage.value = [];
+      mainProofImage.value = [];
+      additionalImages.value = [];
+      showAdditionalUpload.value = false;
     },
     onError: (errors) => {
       console.error('Dispute submission failed:', errors);
@@ -121,18 +148,48 @@ const handleDisputeSubmit = () => {
           </Select>
         </div>
 
-        <!-- Photo Evidence Upload -->
+        <!-- Main Photo Evidence Upload -->
         <div class="space-y-2">
-          <label class="text-sm font-medium">Upload Photo Evidence</label>
+          <label class="text-sm font-medium">Upload Main Proof Photo</label>
           <ImageUpload
             :maxFiles="1"
-            @images="selectedDisputeImage = $event"
+            @images="mainProofImage = $event"
             :error="disputeForm.errors.proof_image"
             class="w-full aspect-video"
           />
           <p class="text-xs text-muted-foreground">
-            Please provide clear photos of the issues or damages
+            Upload a clear photo showing the main issue
           </p>
+        </div>
+
+        <!-- Option to add more photos -->
+        <div v-if="mainProofImage.length > 0" class="space-y-4">
+          <div class="flex items-center justify-between">
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm"
+              @click="showAdditionalUpload = !showAdditionalUpload"
+            >
+              {{ showAdditionalUpload ? 'Hide Additional Upload' : 'Add More Photos' }}
+            </Button>
+            <span v-if="additionalImages.length > 0" class="text-xs text-muted-foreground">
+              {{ additionalImages.length }} additional photo(s)
+            </span>
+          </div>
+
+          <!-- Additional Photos Upload -->
+          <div v-if="showAdditionalUpload" class="space-y-2">
+            <ImageUpload
+              :maxFiles="MAX_ADDITIONAL_IMAGES"
+              @images="additionalImages = $event"
+              class="w-full aspect-video"
+              multiple
+            />
+            <p class="text-xs text-muted-foreground">
+              Upload up to {{ MAX_ADDITIONAL_IMAGES }} additional photos as evidence
+            </p>
+          </div>
         </div>
 
         <!-- Issue Description -->
@@ -165,10 +222,10 @@ const handleDisputeSubmit = () => {
             variant="destructive"
             :disabled="!disputeForm.reason || 
                       !disputeForm.issue_description || 
-                      selectedDisputeImage.length === 0 || 
+                      mainProofImage.length === 0 || 
                       disputeForm.processing"
           >
-            Submit Dispute
+            {{ disputeForm.processing ? "Submitting..." : "Submit Dispute" }}
           </Button>
         </div>
       </form>

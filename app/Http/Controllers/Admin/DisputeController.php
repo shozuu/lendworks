@@ -82,7 +82,8 @@ class DisputeController extends Controller
             'rental.overdue_payment',
             'rental.disputes',  // Add this line to load all disputes
             'raisedBy',
-            'resolvedBy'  // Ensure resolvedBy relationship is loaded
+            'resolvedBy',  // Ensure resolvedBy relationship is loaded
+            'images'  // Add this line to load additional images
         ]);
 
         // Simplify the dispute data structure
@@ -92,6 +93,9 @@ class DisputeController extends Controller
             'reason' => $dispute->reason,
             'description' => $dispute->description,
             'old_proof_path' => $dispute->old_proof_path,  // Changed from proof_path
+            'additional_images' => $dispute->images->map(function($image) {
+                return ['image_path' => $image->image_path];
+            }),
             'created_at' => $dispute->created_at,
             'resolution_type' => $dispute->resolution_type,
             'verdict' => $dispute->verdict,

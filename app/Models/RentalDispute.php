@@ -44,6 +44,11 @@ class RentalDispute extends Model
         return $this->belongsTo(User::class, 'resolved_by');
     }
 
+    public function images()
+    {
+        return $this->hasMany(DisputeImage::class, 'dispute_id');
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', '!=', 'resolved');
