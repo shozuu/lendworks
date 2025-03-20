@@ -394,4 +394,44 @@ class RentalRequestController extends Controller
             return back()->with('error', 'Failed to cancel rental request.');
         }
     }
+
+    // Add this method to handle dispute creation
+    public function raiseDispute(Request $request, RentalRequest $rental)
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string',
+            'issue_description' => 'required|string',
+            'proof_image' => 'required|image|max:5120'
+        ]);
+
+        // Ensure user is lender and can raise dispute
+        if (auth()->id() !== $rental->listing->user_id || !$rental->available_actions['canRaiseDispute']) {
+            abort(403);
+        }
+
+        DB::transaction(function () use ($rental, $validated, $request) {
+            // Store proof image
+            $proofPath = $request->file('proof_image')->store('dispute-proofs', 'public');
+
+            // Create new dispute record - keep old records
+            $dispute = $rental->disputes()->create([
+                'reason' => $validated['reason'],
+                'description' => $validated['issue_description'],
+                'proof_path' => $proofPath,
+                'status' => 'pending',
+                'raised_by' => auth()->id()
+            ]);
+
+            // Update rental status
+            $rental->update(['status' => 'disputed']);
+
+            // Record timeline event
+            $rental->recordTimelineEvent('dispute_raised', auth()->id(), [
+                'dispute_id' => $dispute->id,
+                'reason' => $validated['reason']
+            ]);
+        });
+
+        return back()->with('success', 'Dispute has been raised successfully.');
+    }
 }

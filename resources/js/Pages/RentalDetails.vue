@@ -1119,6 +1119,11 @@ const selectedPickupSchedule = computed(() =>
 					</CardHeader>
 					<CardContent class="p-6">
 						<div class="space-y-4">
+							 <!-- Update message for multiple disputes -->
+							 <div v-if="rental.disputes?.length > 1" class="text-sm text-muted-foreground mb-4">
+								<p>Previous disputes: {{ rental.disputes.length - 1 }}</p>
+							</div>
+
 							<!-- Rejection Messages -->
 							<div
 								v-if="rental.dispute.resolution_type === 'rejected'"

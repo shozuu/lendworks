@@ -42,11 +42,15 @@ const updateForm = useForm({
 
 const handleUpdateStatus = (newStatus) => {
 	updateForm.status = newStatus;
+	// Change from post to submit to match the route
 	updateForm.post(route("admin.disputes.update-status", props.dispute.id), {
 		preserveScroll: true,
 		onSuccess: () => {
 			updateForm.reset();
 		},
+		onError: (errors) => {
+			console.error('Status update failed:', errors);
+		}
 	});
 };
 

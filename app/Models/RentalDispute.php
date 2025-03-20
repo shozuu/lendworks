@@ -42,4 +42,14 @@ class RentalDispute extends Model
     {
         return $this->belongsTo(User::class, 'resolved_by');
     }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', '!=', 'resolved');
+    }
+
+    public function scopeResolved($query)
+    {
+        return $query->where('status', 'resolved');
+    }
 }

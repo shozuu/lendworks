@@ -58,7 +58,7 @@ const navigationGroups = {
         { name: "Rental Transactions", href: route("admin.rental-transactions"), component: "Admin/RentalTransactions", icon: ClipboardList },
         { name: "Revenue", href: route("admin.revenue"), component: "Admin/Revenue", icon: CreditCard },
         { name: "Payments", href: route("admin.payments"), component: "Admin/Payments/Index", icon: Receipt },
-        { name: "Disputes", href: route("admin.disputes"), component: "Admin/Disputes", icon: AlertTriangle },
+        { name: "Disputes", href: route("admin.disputes.index"), component: "Admin/Disputes", icon: AlertTriangle },
     ],
     system: [
         { name: "System", href: route("admin.system"), component: "Admin/System", icon: Settings },
