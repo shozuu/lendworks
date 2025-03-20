@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useForm } from "@inertiajs/vue3";
 import { format } from "date-fns";
+import { Check } from "lucide-vue-next"; // Replace HeroIcon with Lucide icon
 
 const props = defineProps({
 	rental: Object,
@@ -304,94 +305,160 @@ const handleSuggestSchedule = () => {
     }
   );
 };
+
+const handleConfirmSelection = () => {
+  if (!selectedSlot.value) return;
+
+  // Format the return datetime
+  const returnDate = new Date(returnDateContext.value);
+  const [hours, minutes] = selectedSlot.value.start_time.split(":");
+  returnDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+  selectForm.return_datetime = returnDate.toISOString();
+  selectForm.start_time = selectedSlot.value.start_time;
+  selectForm.end_time = selectedSlot.value.end_time;
+
+  // Use original.id instead of id for lender_schedule
+  selectForm.patch(
+    route("return-schedules.select", {
+      rental: props.rental.id,
+      lender_schedule: selectedSlot.value.original.id,
+    }),
+    {
+      preserveScroll: true,
+      onSuccess: () => {
+        emit("schedule-selected");
+        selectedSlot.value = null;
+      },
+      onError: (errors) => {
+        console.error("Failed to select schedule:", errors);
+      },
+    }
+  );
+};
+
+const selectedSchedule = computed(() => {
+  if (!props.rental.return_schedules?.length) return null;
+  return props.rental.return_schedules.find((s) => s.is_selected);
+});
+
+const isSuggestedSchedule = computed(() => {
+  if (!selectedSchedule.value) return false;
+  return selectedSchedule.value.is_suggested;
+});
+
 </script>
 
 <template>
-	<Card class="shadow-sm">
-		<CardHeader class="bg-card border-b">
-			<CardTitle>Return Schedule</CardTitle>
-			<p class="text-muted-foreground text-sm">{{ contextMessage }}</p>
-			<div class="mt-2 p-3 bg-muted rounded-lg">
-				<div class="flex items-baseline justify-between">
-					<span class="font-medium">{{ format(returnDateContext, "EEEE") }}</span>
-					<span class="text-sm text-muted-foreground">
-						{{ format(returnDateContext, "MMMM d, yyyy") }}
-					</span>
-				</div>
-			</div>
-		</CardHeader>
-		<CardContent class="p-0">
-			<div class="px-6 py-4">
-				<!-- Regular Time Slots -->
-				<div v-if="availableTimeSlots.length" class="space-y-4">
-					<h4 class="text-sm font-medium">Available Time Slots</h4>
-					<div class="bg-muted/50 p-3 rounded-lg">
-						<div class="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-							<div
-								v-for="slot in availableTimeSlots"
-								:key="slot.id"
-								class="flex items-center justify-between bg-background p-2 rounded"
-							>
-								<span class="text-sm">{{ slot.formattedTime }}</span>
-								<Button
-									size="sm"
-									variant="outline"
-									@click="handleSelectDate(slot)"
-									:disabled="selectForm.processing"
-								>
-									Select
-								</Button>
-							</div>
-						</div>
-					</div>
-				</div>
+  <Card class="shadow-sm">
+    <CardHeader class="bg-card border-b">
+      <CardTitle>Return Schedule</CardTitle>
+      <p class="text-muted-foreground text-sm">{{ contextMessage }}</p>
+      <div class="mt-2 p-3 bg-muted rounded-lg">
+        <div class="flex items-baseline justify-between">
+          <span class="font-medium">{{ format(returnDateContext, "EEEE") }}</span>
+          <span class="text-sm text-muted-foreground">
+            {{ format(returnDateContext, "MMMM d, yyyy") }}
+          </span>
+        </div>
+      </div>
+    </CardHeader>
+    <CardContent class="p-6">
+      <div v-if="!isSuggestedSchedule">
+        <!-- Time Slots Grid -->
+        <div v-if="availableTimeSlots.length" class="space-y-6">
+          <h4 class="text-base font-medium">Available Time Slots</h4>
+          <div class="grid sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto px-1">
+            <div
+              v-for="slot in availableTimeSlots"
+              :key="`${slot.id}-${slot.start_time}`"
+              :class="[
+                'flex items-center p-3 rounded-lg border transition-colors cursor-pointer',
+                selectedSlot?.start_time === slot.start_time &&
+                selectedSlot?.end_time === slot.end_time
+                  ? 'border-primary bg-primary/5'
+                  : 'hover:border-muted-foreground/25',
+              ]"
+              @click="handleSelectSlot(slot)"
+            >
+              <div class="flex-1">
+                <p class="font-medium text-sm">{{ slot.formattedTime }}</p>
+              </div>
+              <div
+                v-if="
+                  selectedSlot?.start_time === slot.start_time &&
+                  selectedSlot?.end_time === slot.end_time
+                "
+                class="text-primary"
+              >
+                <Check class="w-5 h-5" /> <!-- Replace CheckIcon with Check -->
+              </div>
+            </div>
+          </div>
 
-				<!-- Suggestion Section -->
-				<div v-if="showSuggestionForm" class="space-y-6 mt-6 pt-6 border-t">
-					<div class="space-y-2">
-						<h4 class="text-sm font-medium">Suggest Alternative Time</h4>
-						<p class="text-sm text-muted-foreground">
-							No available slots found. You can suggest a preferred return time:
-						</p>
-					</div>
+          <!-- Confirm Button -->
+          <Button
+            v-if="selectedSlot"
+            class="w-full mt-4"
+            :disabled="selectForm.processing"
+            @click="handleConfirmSelection"
+          >
+            {{ selectForm.processing ? "Confirming..." : "Confirm Schedule" }}
+          </Button>
+        </div>
 
-					<div class="bg-muted/50 p-3 rounded-lg">
-						<div class="grid sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto px-1">
-							<div
-								v-for="slot in suggestedTimeSlots"
-								:key="slot.start_time"
-								:class="[
-									'flex items-center p-3 rounded-lg border transition-colors cursor-pointer bg-background',
-									selectedSlot?.start_time === slot.start_time
-										? 'border-primary bg-primary/5'
-										: 'hover:border-muted-foreground/25',
-								]"
-								@click="handleSelectSlot(slot)"
-							>
-								<p class="text-sm">{{ slot.formattedTime }}</p>
-							</div>
-						</div>
+        <!-- Suggestion Section -->
+        <div v-if="showSuggestionForm" class="space-y-6 mt-6 pt-6 border-t">
+          <div class="space-y-2">
+            <h4 class="text-base font-medium">Suggest Alternative Time</h4>
+            <p class="text-sm text-muted-foreground">
+              No available slots found. You can suggest a preferred return time:
+            </p>
+          </div>
 
-						<!-- Suggest Button -->
-						<Button
-							v-if="selectedSlot"
-							class="w-full mt-4"
-							:disabled="suggestForm.processing"
-							@click="handleSuggestSchedule"
-						>
-							{{ suggestForm.processing ? "Suggesting..." : "Suggest Time" }}
-						</Button>
-					</div>
-				</div>
+          <div class="grid sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto px-1">
+            <div
+              v-for="slot in suggestedTimeSlots"
+              :key="slot.start_time"
+              :class="[
+                'flex items-center p-3 rounded-lg border transition-colors cursor-pointer',
+                selectedSlot?.start_time === slot.start_time
+                  ? 'border-primary bg-primary/5'
+                  : 'hover:border-muted-foreground/25',
+              ]"
+              @click="handleSelectSlot(slot)"
+            >
+              <div class="flex-1">
+                <p class="font-medium text-sm">{{ slot.formattedTime }}</p>
+              </div>
+              <div
+                v-if="selectedSlot?.start_time === slot.start_time"
+                class="text-primary"
+              >
+                <Check class="w-5 h-5" /> <!-- Replace CheckIcon with Check -->
+              </div>
+            </div>
+          </div>
 
-				<!-- No Slots Message -->
-				<p
-					v-if="!availableTimeSlots.length && !showSuggestionForm"
-					class="text-muted-foreground py-8 text-center text-sm"
-				>
-					No available time slots for this date.
-				</p>
-			</div>
-		</CardContent>
-	</Card>
+          <!-- Suggest Button -->
+          <Button
+            v-if="selectedSlot"
+            class="w-full"
+            :disabled="suggestForm.processing"
+            @click="handleSuggestSchedule"
+          >
+            {{ suggestForm.processing ? "Suggesting..." : "Suggest Time" }}
+          </Button>
+        </div>
+
+        <!-- No Slots Message -->
+        <p
+          v-if="!availableTimeSlots.length && !showSuggestionForm"
+          class="text-muted-foreground text-center py-4"
+        >
+          No available time slots for this date.
+        </p>
+      </div>
+    </CardContent>
+  </Card>
 </template>
