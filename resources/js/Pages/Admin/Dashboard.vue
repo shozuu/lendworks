@@ -182,7 +182,7 @@ defineProps({
                 </Card>
 
                 <Link 
-                    :href="route('admin.disputes')"
+                    :href="route('admin.disputes.index')"
                     class="transition-transform hover:scale-105"
                 >
                     <Card>
