@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useForm } from "@inertiajs/vue3";
@@ -211,6 +211,99 @@ const contextMessage = computed(() => {
 
 	return `Select a time slot to return the item on the end date`;
 });
+
+const suggestedTimeSlots = computed(() => {
+  const returnDate = new Date(returnDateContext.value);
+  const now = new Date();
+  const slots = [];
+
+  // Compare dates for today's logic
+  const isReturnDateToday = 
+    format(returnDate, "yyyy-MM-dd") === format(now, "yyyy-MM-dd");
+
+  let startHour;
+  if (isReturnDateToday) {
+    const currentHour = now.getHours();
+    if (currentHour >= 8 && currentHour < 20) {
+      startHour = currentHour + 1;
+    } else if (currentHour < 8) {
+      startHour = 8;
+    } else {
+      return [];
+    }
+  } else {
+    startHour = 8;
+  }
+
+  const endHour = 20;
+
+  if (startHour < endHour) {
+    for (let hour = startHour; hour < endHour; hour++) {
+      const startDate = new Date(returnDate);
+      startDate.setHours(hour, 0, 0);
+      const endDate = new Date(returnDate);
+      endDate.setHours(hour + 1, 0, 0);
+
+      slots.push({
+        start_time: `${hour.toString().padStart(2, "0")}:00`,
+        end_time: `${(hour + 1).toString().padStart(2, "0")}:00`,
+        formattedTime: `${format(startDate, "h:mm a")} - ${format(endDate, "h:mm a")}`,
+      });
+    }
+  }
+
+  return slots;
+});
+
+const showSuggestionForm = computed(() => {
+  return (
+    props.userRole === "renter" &&
+    (!availableTimeSlots.value.length ||
+      availableTimeSlots.value.every((slot) => isPastTimeSlot(slot)))
+  );
+});
+
+const suggestForm = useForm({
+  start_time: "",
+  end_time: "",
+  return_datetime: returnDateContext.value,
+});
+
+const selectedSlot = ref(null);
+
+const handleSelectSlot = (slot) => {
+  selectedSlot.value = slot;
+};
+
+const handleSuggestSchedule = () => {
+  if (!selectedSlot.value) return;
+
+  suggestForm.start_time = selectedSlot.value.start_time;
+  suggestForm.end_time = selectedSlot.value.end_time;
+
+  // Set return datetime by combining context date with selected time
+  const returnDate = new Date(returnDateContext.value);
+  const [hours, minutes] = selectedSlot.value.start_time.split(":");
+  returnDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+  suggestForm.return_datetime = returnDate.toISOString();
+
+  // Make sure this route name matches exactly what's defined in web.php
+  suggestForm.post(
+    route("return-schedules.suggest", {
+      rental: props.rental.id,
+    }),
+    {
+      preserveScroll: true,
+      onSuccess: () => {
+        selectedSlot.value = null;
+        emit("schedule-selected");
+      },
+      onError: (errors) => {
+        console.error("Failed to suggest schedule:", errors);
+      },
+    }
+  );
+};
 </script>
 
 <template>
@@ -229,6 +322,7 @@ const contextMessage = computed(() => {
 		</CardHeader>
 		<CardContent class="p-0">
 			<div class="px-6 py-4">
+				<!-- Regular Time Slots -->
 				<div v-if="availableTimeSlots.length" class="space-y-4">
 					<h4 class="text-sm font-medium">Available Time Slots</h4>
 					<div class="bg-muted/50 p-3 rounded-lg">
@@ -251,7 +345,50 @@ const contextMessage = computed(() => {
 						</div>
 					</div>
 				</div>
-				<p v-else class="text-muted-foreground py-8 text-center text-sm">
+
+				<!-- Suggestion Section -->
+				<div v-if="showSuggestionForm" class="space-y-6 mt-6 pt-6 border-t">
+					<div class="space-y-2">
+						<h4 class="text-sm font-medium">Suggest Alternative Time</h4>
+						<p class="text-sm text-muted-foreground">
+							No available slots found. You can suggest a preferred return time:
+						</p>
+					</div>
+
+					<div class="bg-muted/50 p-3 rounded-lg">
+						<div class="grid sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto px-1">
+							<div
+								v-for="slot in suggestedTimeSlots"
+								:key="slot.start_time"
+								:class="[
+									'flex items-center p-3 rounded-lg border transition-colors cursor-pointer bg-background',
+									selectedSlot?.start_time === slot.start_time
+										? 'border-primary bg-primary/5'
+										: 'hover:border-muted-foreground/25',
+								]"
+								@click="handleSelectSlot(slot)"
+							>
+								<p class="text-sm">{{ slot.formattedTime }}</p>
+							</div>
+						</div>
+
+						<!-- Suggest Button -->
+						<Button
+							v-if="selectedSlot"
+							class="w-full mt-4"
+							:disabled="suggestForm.processing"
+							@click="handleSuggestSchedule"
+						>
+							{{ suggestForm.processing ? "Suggesting..." : "Suggest Time" }}
+						</Button>
+					</div>
+				</div>
+
+				<!-- No Slots Message -->
+				<p
+					v-if="!availableTimeSlots.length && !showSuggestionForm"
+					class="text-muted-foreground py-8 text-center text-sm"
+				>
 					No available time slots for this date.
 				</p>
 			</div>

@@ -129,6 +129,8 @@ Route::middleware(['auth'])->group(function () {
             ->name('rentals.finalize-return');
         Route::post('/rentals/{rental}/raise-dispute', 'raiseDispute')
             ->name('rentals.raise-dispute');
+        Route::post('/rentals/{rental}/return-schedules/suggest', 'suggestSchedule')
+            ->name('return-schedules.suggest');
     });
 });
 
