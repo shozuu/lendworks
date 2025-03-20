@@ -55,6 +55,7 @@ class RentalTimelineEvent extends Model
             'end_time',
             'confirmed_by',
             'confirmation_datetime',
+            'selected_by',
             'is_early_return'
         ],
         'return_submitted' => [
@@ -161,7 +162,9 @@ class RentalTimelineEvent extends Model
             'payment_submitted',
             'handover_completed',
             'return_initiated',
-            'return_submitted'
+            'return_submitted',
+            'return_schedule_selected',
+            'return_schedule_confirmed'
         ];
     }
 

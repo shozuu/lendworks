@@ -304,9 +304,21 @@ const formatEventMessage = (event) => {
 			)}`;
 
 		case "return_schedule_confirmed":
-			return `${actorLabel} confirmed the return schedule for ${formatDateTime(
-				event.metadata?.datetime
-			)}`;
+			if (isLatest) {
+				const metadata = event.metadata || {};
+				const scheduleText = `${metadata.day_of_week}, ${metadata.date} from ${formatTime(metadata.start_time)} to ${formatTime(metadata.end_time)}`;
+				
+				if (performedByViewer) {
+					return `You confirmed the return schedule for ${scheduleText}`;
+				}
+				
+				if (performedByLender) {
+					return `The owner confirmed the return schedule for ${scheduleText}`;
+				}
+				
+				return `${actorLabel} confirmed the return schedule for ${scheduleText}`;
+			}
+			return `${actorLabel} confirmed the return schedule`;
 
 		case "return_submitted":
 			if (isLatest) {
