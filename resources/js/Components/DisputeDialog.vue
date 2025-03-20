@@ -120,7 +120,7 @@ const handleDisputeSubmit = () => {
 
 <template>
   <Dialog :open="show" @update:open="emit('update:show', $event)">
-    <DialogContent>
+    <DialogContent class="max-h-[90vh] flex flex-col">
       <DialogHeader>
         <DialogTitle>Raise Return Dispute</DialogTitle>
         <DialogDescription>
@@ -128,107 +128,135 @@ const handleDisputeSubmit = () => {
         </DialogDescription>
       </DialogHeader>
 
-      <form @submit.prevent="handleDisputeSubmit" class="space-y-4">
-        <!-- Add Reason Selector -->
-        <div class="space-y-2">
-          <label class="text-sm font-medium">Select Dispute Reason</label>
-          <Select v-model="disputeForm.reason" :error="disputeForm.errors.reason">
-            <SelectTrigger>
-              <SelectValue placeholder="Select a reason for the dispute" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem 
-                v-for="reason in disputeReasons" 
-                :key="reason.id"
-                :value="reason.value"
-              >
-                {{ reason.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <!-- Main Photo Evidence Upload -->
-        <div class="space-y-2">
-          <label class="text-sm font-medium">Upload Main Proof Photo</label>
-          <ImageUpload
-            :maxFiles="1"
-            @images="mainProofImage = $event"
-            :error="disputeForm.errors.proof_image"
-            class="w-full aspect-video"
-          />
-          <p class="text-xs text-muted-foreground">
-            Upload a clear photo showing the main issue
-          </p>
-        </div>
-
-        <!-- Option to add more photos -->
-        <div v-if="mainProofImage.length > 0" class="space-y-4">
-          <div class="flex items-center justify-between">
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="sm"
-              @click="showAdditionalUpload = !showAdditionalUpload"
-            >
-              {{ showAdditionalUpload ? 'Hide Additional Upload' : 'Add More Photos' }}
-            </Button>
-            <span v-if="additionalImages.length > 0" class="text-xs text-muted-foreground">
-              {{ additionalImages.length }} additional photo(s)
-            </span>
+      <form @submit.prevent="handleDisputeSubmit" class="space-y-4 flex-1 overflow-y-auto">
+        <div class="space-y-4 p-1">
+          <!-- Reason Selector -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Select Dispute Reason</label>
+            <Select v-model="disputeForm.reason" :error="disputeForm.errors.reason">
+              <SelectTrigger>
+                <SelectValue placeholder="Select a reason for the dispute" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem 
+                  v-for="reason in disputeReasons" 
+                  :key="reason.id"
+                  :value="reason.value"
+                >
+                  {{ reason.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          <!-- Additional Photos Upload -->
-          <div v-if="showAdditionalUpload" class="space-y-2">
-            <ImageUpload
-              :maxFiles="MAX_ADDITIONAL_IMAGES"
-              @images="additionalImages = $event"
-              class="w-full aspect-video"
-              multiple
-            />
+          <!-- Main Photo Evidence Upload -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Upload Main Proof Photo</label>
+            <div class="max-h-[300px] overflow-hidden rounded-lg">
+              <ImageUpload
+                :maxFiles="1"
+                @images="mainProofImage = $event"
+                :error="disputeForm.errors.proof_image"
+                class="w-full aspect-video"
+              />
+            </div>
             <p class="text-xs text-muted-foreground">
-              Upload up to {{ MAX_ADDITIONAL_IMAGES }} additional photos as evidence
+              Upload a clear photo showing the main issue
             </p>
           </div>
-        </div>
 
-        <!-- Issue Description -->
-        <div class="space-y-2">
-          <label class="text-sm font-medium">
-            {{ isOtherReason ? 'Describe Your Issue' : 'Additional Details' }}
-          </label>
-          <Textarea
-            v-model="disputeForm.issue_description"
-            :placeholder="isOtherReason ? 
-              'Please provide specific details about your dispute...' : 
-              'Add any additional information about the selected issue...'
-            "
-            :error="disputeForm.errors.issue_description"
-            rows="4"
-          />
-        </div>
+          <!-- Option to add more photos -->
+          <div v-if="mainProofImage.length > 0" class="space-y-4">
+            <div class="flex items-center justify-between">
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                @click="showAdditionalUpload = !showAdditionalUpload"
+              >
+                {{ showAdditionalUpload ? 'Hide Additional Upload' : 'Add More Photos' }}
+              </Button>
+              <span v-if="additionalImages.length > 0" class="text-xs text-muted-foreground">
+                {{ additionalImages.length }} additional photo(s)
+              </span>
+            </div>
 
-        <!-- Action Buttons -->
-        <div class="flex justify-end gap-2">
-          <Button 
-            type="button" 
-            variant="outline" 
-            @click="emit('update:show', false)"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="destructive"
-            :disabled="!disputeForm.reason || 
-                      !disputeForm.issue_description || 
-                      mainProofImage.length === 0 || 
-                      disputeForm.processing"
-          >
-            {{ disputeForm.processing ? "Submitting..." : "Submit Dispute" }}
-          </Button>
+            <!-- Additional Photos Upload -->
+            <div v-if="showAdditionalUpload" class="space-y-2">
+              <div class="max-h-[300px] overflow-hidden rounded-lg">
+                <ImageUpload
+                  :maxFiles="MAX_ADDITIONAL_IMAGES"
+                  @images="additionalImages = $event"
+                  class="w-full aspect-video"
+                  multiple
+                />
+              </div>
+              <div class="space-y-2">
+                <p class="text-xs text-muted-foreground">
+                  Upload up to {{ MAX_ADDITIONAL_IMAGES }} additional photos as evidence
+                </p>
+                <!-- Add scrollable preview section -->
+                <div v-if="additionalImages.length > 0" class="border rounded-md p-2 mt-2">
+                  <div class="text-xs font-medium mb-2">Additional Photos Preview:</div>
+                  <div class="max-h-[150px] overflow-y-auto space-y-2 pr-2">
+                    <div 
+                      v-for="(image, index) in additionalImages" 
+                      :key="index"
+                      class="flex items-center gap-2 p-2 bg-muted/50 rounded-md"
+                    >
+                      <div class="w-12 h-12 shrink-0 rounded overflow-hidden">
+                        <img 
+                          :src="URL.createObjectURL(image)" 
+                          class="w-full h-full object-cover"
+                        />
+                      </div>
+                      <span class="text-xs text-muted-foreground">Additional Photo {{ index + 1 }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Issue Description -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium">
+              {{ isOtherReason ? 'Describe Your Issue' : 'Additional Details' }}
+            </label>
+            <Textarea
+              v-model="disputeForm.issue_description"
+              :placeholder="isOtherReason ? 
+                'Please provide specific details about your dispute...' : 
+                'Add any additional information about the selected issue...'
+              "
+              :error="disputeForm.errors.issue_description"
+              rows="4"
+            />
+          </div>
         </div>
       </form>
+
+      <!-- Action Buttons - Fixed at bottom -->
+      <div class="flex justify-end gap-2 pt-4 border-t mt-4">
+        <Button 
+          type="button" 
+          variant="outline" 
+          @click="emit('update:show', false)"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          variant="destructive"
+          :disabled="!disputeForm.reason || 
+                    !disputeForm.issue_description || 
+                    mainProofImage.length === 0 || 
+                    disputeForm.processing"
+          @click="handleDisputeSubmit"
+        >
+          {{ disputeForm.processing ? "Submitting..." : "Submit Dispute" }}
+        </Button>
+      </div>
     </DialogContent>
   </Dialog>
 </template>

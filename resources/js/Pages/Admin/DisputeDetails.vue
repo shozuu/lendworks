@@ -240,14 +240,14 @@ const allImages = computed(() => {
   return [mainImage, ...additionalImages];
 });
 
-const nextImage = () => {
-  currentImageIndex.value = (currentImageIndex.value + 1) % allImages.value.length;
-};
-
-const previousImage = () => {
-  currentImageIndex.value = currentImageIndex.value === 0 
-    ? allImages.value.length - 1 
-    : currentImageIndex.value - 1;
+const navigateImage = (direction) => {
+  if (direction === 'next') {
+    currentImageIndex.value = (currentImageIndex.value + 1) % allImages.value.length;
+  } else {
+    currentImageIndex.value = currentImageIndex.value === 0 
+      ? allImages.value.length - 1 
+      : currentImageIndex.value - 1;
+  }
 };
 </script>
 
@@ -299,25 +299,26 @@ const previousImage = () => {
 						<p class="text-sm">{{ dispute.description }}</p>
 					</div>
 
+					<!-- Replace the evidence photos section in template -->
 					<div class="space-y-2">
-						<h4 class="font-medium">Evidence Photos</h4>
-						<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-							<!-- Main evidence and additional photos in one grid -->
-							<div 
-								v-for="(image, index) in allImages" 
-								:key="index"
-								class="relative aspect-square rounded-lg overflow-hidden border bg-muted/10 group"
-							>
-								<ProofImageViewer 
-									:image-path="image.image_path" 
-									class="w-full h-full object-cover cursor-pointer transition-transform group-hover:scale-105"
-									@click="() => { currentImageIndex = index; showGallery = true; }"
-								/>
-								<span class="absolute bottom-2 left-2 text-xs bg-black/50 text-white px-2 py-1 rounded">
-									{{ index === 0 ? 'Main Evidence' : `Additional ${index}` }}
-								</span>
-							</div>
-						</div>
+					  <h4 class="font-medium">Evidence Photos</h4>
+					  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+					    <div 
+					      v-for="(image, index) in allImages" 
+					      :key="index"
+					      class="relative aspect-square rounded-lg overflow-hidden border bg-muted cursor-pointer hover:opacity-90 transition-opacity"
+					    >
+					      <ProofImageViewer 
+					        :image-path="image.image_path" 
+					        class="w-full h-full object-cover"
+					      />
+					      <div class="absolute inset-x-0 bottom-0 bg-black/50 p-2">
+					        <p class="text-white text-xs text-center">
+					          {{ index === 0 ? 'Main Evidence' : `Additional ${index}` }}
+					        </p>
+					      </div>
+					    </div>
+					  </div>
 					</div>
 
 					<div class="space-y-2">
@@ -795,52 +796,6 @@ const previousImage = () => {
 			</div>
 		</div>
 	</div>
-
-	<!-- Image Gallery Dialog -->
-	<Dialog :open="showGallery" @update:open="showGallery = $event" class="sm:max-w-5xl">
-		<DialogContent class="p-0">
-			<div class="relative bg-black flex items-center justify-center min-h-[80vh]">
-				<ProofImageViewer 
-					:image-path="allImages[currentImageIndex].image_path" 
-					class="max-h-[80vh] max-w-full object-contain"
-				/>
-				<div class="absolute top-4 right-4 flex items-center gap-2 bg-black/50 px-3 py-2 rounded text-white">
-					<span class="text-sm">
-						{{ currentImageIndex === 0 ? 'Main Evidence' : `Additional ${currentImageIndex}` }}
-					</span>
-					<span class="text-xs text-muted">
-						({{ currentImageIndex + 1 }} / {{ allImages.length }})
-					</span>
-				</div>
-				<Button
-					v-if="allImages.length > 1"
-					class="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/75"
-					variant="ghost"
-					size="icon"
-					@click="previousImage"
-				>
-					←
-				</Button>
-				<Button
-					v-if="allImages.length > 1"
-					class="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/75"
-					variant="ghost"
-					size="icon"
-					@click="nextImage"
-				>
-					→
-				</Button>
-				<Button
-					class="absolute top-4 left-4 bg-black/50 hover:bg-black/75"
-					variant="ghost"
-					size="sm"
-					@click="showGallery = false"
-				>
-					Close
-				</Button>
-			</div>
-		</DialogContent>
-	</Dialog>
 </template>
 
 <style scoped>
