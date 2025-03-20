@@ -7,6 +7,9 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Inertia\Inertia;
+use function file_get_contents;
+use function md5;
+use function sha1;
 
 class FaceMatchController extends Controller
 {
@@ -52,6 +55,9 @@ class FaceMatchController extends Controller
     return $path;
     }
 
+    private const MAX_LIVENESS_ATTEMPTS = 5;
+    private const MAX_FACEMATCH_ATTEMPTS = 3;
+    private const COOLDOWN_MINUTES = 30;
 
     public function show()
     {
@@ -71,6 +77,16 @@ class FaceMatchController extends Controller
                 'action' => $request->input('action')
             ]);
 
+             // Check for rate limiting first
+            $attemptsRemaining = $this->checkLivenessAttempts();
+            if ($attemptsRemaining <= 0) {
+                return response()->json([
+                    'error' => 'Too many attempts',
+                    'message' => 'You have reached the maximum number of liveness detection attempts. Please try again in 30 minutes.',
+                    'cooldown_minutes' => self::COOLDOWN_MINUTES
+                ], 429);
+            }
+
             $request->validate([
                 'image' => 'required|image|mimes:jpeg,png|max:2048',
                 'action' => 'required|string|in:smile,blink,turn_head'
@@ -84,6 +100,7 @@ class FaceMatchController extends Controller
                 ], 500);
             }
 
+            
             $imageBase64 = base64_encode(file_get_contents($request->file('image')));
             
             // Call Face++ API for liveness detection
@@ -117,9 +134,19 @@ class FaceMatchController extends Controller
                 'verified' => $verificationResult['verified']
             ]);
 
+             $this->recordLivenessAttempt();
+            
+            // On success, reset counter if verification succeeds
+            if ($verificationResult['verified']) {
+                $this->resetLivenessAttempts();
+            }
+
             return response()->json($verificationResult);
 
         } catch (\Exception $e) {
+            // Still record failed attempts due to errors
+            $this->recordLivenessAttempt();
+            
             Log::error('Liveness detection error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -130,6 +157,54 @@ class FaceMatchController extends Controller
                 'message' => 'An error occurred during liveness detection'
             ], 500);
         }
+    }
+
+    private function checkLivenessAttempts()
+    {
+        $key = 'liveness_attempts_' . $this->getIpFingerprint();
+        $attempts = Session::get($key, 0);
+        $lastAttemptTime = Session::get($key . '_time');
+        
+        // Reset if cooldown period has passed
+        if ($lastAttemptTime && now()->diffInMinutes($lastAttemptTime) >= self::COOLDOWN_MINUTES) {
+            Session::forget($key);
+            Session::forget($key . '_time');
+            return self::MAX_LIVENESS_ATTEMPTS;
+        }
+        
+        return self::MAX_LIVENESS_ATTEMPTS - $attempts;
+    }
+
+     /**
+     * Record a liveness verification attempt
+     */
+    private function recordLivenessAttempt()
+    {
+        $key = 'liveness_attempts_' . $this->getIpFingerprint();
+        $attempts = Session::get($key, 0);
+        Session::put($key, $attempts + 1);
+        Session::put($key . '_time', now());
+    }
+    
+    /**
+     * Reset liveness verification attempts after success
+     */
+    private function resetLivenessAttempts()
+    {
+        $key = 'liveness_attempts_' . $this->getIpFingerprint();
+        Session::forget($key);
+        Session::forget($key . '_time');
+    }
+    
+    /**
+     * Get a fingerprint combining IP and user agent
+     * @return string Fingerprint hash
+     */
+    private function getIpFingerprint()
+    {
+        $ip = request()->ip();
+        $userAgent = request()->userAgent();
+        return md5($ip . $userAgent . (auth()->id() ?? 'guest'));
     }
 
     private function getLivenessAttributes($action)
@@ -271,6 +346,16 @@ class FaceMatchController extends Controller
             'secondary_id_type' => $request->input('id_type_secondary')
         ]);
 
+        // Check for rate limiting first
+            $attemptsRemaining = $this->checkFaceMatchAttempts();
+            if ($attemptsRemaining <= 0) {
+                return response()->json([
+                    'error' => 'Too many attempts',
+                    'message' => 'You have reached the maximum number of verification attempts. Please try again in 30 minutes.',
+                    'cooldown_minutes' => self::COOLDOWN_MINUTES
+                ], 429);
+            }
+
           $request->validate([
             'selfie' => 'required|image|mimes:jpeg,png|max:2048',
             'id_card' => 'required|image|mimes:jpeg,png|max:2048',
@@ -278,6 +363,21 @@ class FaceMatchController extends Controller
             'id_card_secondary' => 'required|image|mimes:jpeg,png|max:2048',
             'id_type_secondary' => 'required|string|in:' . implode(',', array_keys($this->validPhilippineIds)),
         ]);
+
+        // Check for reused IDs
+            if ($this->isIdReused($request)) {
+                Log::warning('Attempt to use previously registered ID', [
+                    'user_id' => auth()->id(),
+                    'primary_id_type' => $request->input('id_type'),
+                    'secondary_id_type' => $request->input('id_type_secondary')
+                ]);
+
+                return response()->json([
+                    'error' => 'ID validation failed',
+                    'message' => 'One or both of these IDs appear to have been used previously. Please use different identification.',
+                    'code' => 'duplicate_id'
+                ], 400);
+            }
 
             if (!env('FACEPP_API_KEY') || !env('FACEPP_API_SECRET')) {
                 Log::error('Face++ API credentials are missing');
@@ -326,10 +426,28 @@ class FaceMatchController extends Controller
                 'both_verified' => $bothVerified
             ]);
 
+            // Record this attempt before processing
+            $this->recordFaceMatchAttempt();
+            
+            // Continue with original face matching logic
+            $selfieBase64 = base64_encode(file_get_contents($request->file('selfie')));
+            $primaryIdBase64 = base64_encode(file_get_contents($request->file('id_card')));
+            $secondaryIdBase64 = base64_encode(file_get_contents($request->file('id_card_secondary')));
+
+
             if ($bothVerified) {
+
+                 $this->resetFaceMatchAttempts();
+                  // Store image hashes for future duplicate detection
+                 $this->storeIdHashes($request);
+                 
                 $request->user()->forceFill([
                     'id_verified_at' => now()
                 ])->save();
+            
+                 $this->resetFaceMatchAttempts();
+                  // Store image hashes for future duplicate detection
+                 $this->storeIdHashes($request);
             
             // Run OCR on ID card images
             $primaryIdOcrResult = $this->runOcr($request->file('id_card'));
@@ -377,17 +495,158 @@ class FaceMatchController extends Controller
         ]);
         
     } catch (\Exception $e) {
+        // Record failed attempt even for errors
+            $this->recordFaceMatchAttempt();
+
         Log::error('Face matching error', [
             'error' => $e->getMessage(),
             'trace' => $e->getTraceAsString()
         ]);
 
-        return response()->json([
-            'error' => 'Server error',
-            'message' => 'An unexpected error occurred while processing your request'
-        ], 500);
+       return response()->json([
+                'error' => 'Server error',
+                'message' => 'An unexpected error occurred while processing your request'
+            ], 500);
     }
 }
+
+
+ private function checkFaceMatchAttempts()
+    {
+        $key = 'facematch_attempts_' . $this->getIpFingerprint();
+        $attempts = Session::get($key, 0);
+        $lastAttemptTime = Session::get($key . '_time');
+        
+        // Reset if cooldown period has passed
+        if ($lastAttemptTime && now()->diffInMinutes($lastAttemptTime) >= self::COOLDOWN_MINUTES) {
+            Session::forget($key);
+            Session::forget($key . '_time');
+            return self::MAX_FACEMATCH_ATTEMPTS;
+        }
+        
+        return self::MAX_FACEMATCH_ATTEMPTS - $attempts;
+    }
+
+
+ /**
+     * Record a face match attempt
+     */
+    private function recordFaceMatchAttempt()
+    {
+        $key = 'facematch_attempts_' . $this->getIpFingerprint();
+        $attempts = Session::get($key, 0);
+        Session::put($key, $attempts + 1);
+        Session::put($key . '_time', now());
+    }
+
+     /**
+     * Reset face match attempts
+     */
+    private function resetFaceMatchAttempts()
+    {
+        $key = 'facematch_attempts_' . $this->getIpFingerprint();
+        Session::forget($key);
+        Session::forget($key . '_time');
+    }
+
+      /**
+     * Check if an ID has been used for verification previously
+     * 
+     * @param Request $request
+     * @return bool
+     */
+    private function isIdReused(Request $request)
+{
+    try {
+        // Generate perceptual hashes of the uploaded ID images
+        $primaryIdHash = $this->generateImageHash($request->file('id_card')->getPathname());
+        $secondaryIdHash = $this->generateImageHash($request->file('id_card_secondary')->getPathname());
+        
+        Log::info('Checking for reused IDs', [
+            'primary_hash' => substr($primaryIdHash, 0, 10) . '...',
+            'secondary_hash' => substr($secondaryIdHash, 0, 10) . '...'
+        ]);
+        
+        // Check if either hash exists in our database for any user other than current user
+        $primaryIdUsed = \App\Models\IdHash::where('primary_id_hash', $primaryIdHash)
+            ->where('user_id', '!=', auth()->id())
+            ->exists();
+            
+        $secondaryIdUsed = \App\Models\IdHash::where('secondary_id_hash', $secondaryIdHash)
+            ->where('user_id', '!=', auth()->id())
+            ->exists();
+            
+        $primaryAsSecondaryUsed = \App\Models\IdHash::where('secondary_id_hash', $primaryIdHash)
+            ->where('user_id', '!=', auth()->id())
+            ->exists();
+            
+        $secondaryAsPrimaryUsed = \App\Models\IdHash::where('primary_id_hash', $secondaryIdHash)
+            ->where('user_id', '!=', auth()->id())
+            ->exists();
+        
+        $isReused = $primaryIdUsed || $secondaryIdUsed || $primaryAsSecondaryUsed || $secondaryAsPrimaryUsed;
+        
+        if ($isReused) {
+            Log::warning('ID reuse detected', [
+                'primary_used' => $primaryIdUsed,
+                'secondary_used' => $secondaryIdUsed,
+                'primary_as_secondary_used' => $primaryAsSecondaryUsed,
+                'secondary_as_primary_used' => $secondaryAsPrimaryUsed
+            ]);
+        }
+        
+        return $isReused;
+        
+    } catch (\Exception $e) {
+        Log::error('Error checking for reused IDs', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        
+        // If there's an error, we should not block the user
+        return false;
+    }
+}
+    
+ /**
+     * Store hashes of verified IDs
+     * 
+     * @param Request $request
+     */
+    private function storeIdHashes(Request $request)
+{
+    try {
+        $primaryIdHash = $this->generateImageHash($request->file('id_card')->getPathname());
+        $secondaryIdHash = $this->generateImageHash($request->file('id_card_secondary')->getPathname());
+        
+        Log::info('Storing ID hashes for user', [
+            'user_id' => auth()->id(),
+            'primary_id_type' => $request->input('id_type'),
+            'secondary_id_type' => $request->input('id_type_secondary')
+        ]);
+        
+        // Delete any existing hash records for this user first
+        \App\Models\IdHash::where('user_id', auth()->id())->delete();
+        
+        // Create new hash record
+        \App\Models\IdHash::create([
+            'user_id' => auth()->id(),
+            'primary_id_hash' => $primaryIdHash,
+            'primary_id_type' => $request->input('id_type'),
+            'secondary_id_hash' => $secondaryIdHash,
+            'secondary_id_type' => $request->input('id_type_secondary'),
+            'verified_at' => now()
+        ]);
+        
+    } catch (\Exception $e) {
+        Log::error('Error storing ID hashes', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+    }
+}
+   
+
 
 /**
  * Run OCR on an ID image
@@ -1333,106 +1592,117 @@ private function extractExpirationDate($text, $idType)
 }
 
 /**
- * Flexible date parser that handles various date formats
- * 
- * @param string $dateString String containing a date
- * @return \DateTime|null Parsed date object or null if parsing fails
- */
-private function parseFlexibleDate($dateString)
+     * Parse flexible date that handles various date formats
+     * 
+     * @param string $dateString String containing a date
+     * @return \DateTime|null Parsed date object or null if parsing fails
+     */
+
+     private function parseFlexibleDate($dateString)
 {
     if (empty($dateString)) {
         return null;
     }
-
-    // Clean and normalize the date string
-    $dateString = trim(preg_replace('/[^\w\s\/\-\.]/', '', $dateString));
     
-    // Skip if the string contains non-date related words
-    $nonDateWords = ['civil', 'status', 'gender', 'sex', 'name', 'address'];
-    foreach ($nonDateWords as $word) {
-        if (stripos($dateString, $word) !== false) {
-            return null;
-        }
-    }
-
-    Log::debug("Attempting to parse cleaned date string: {$dateString}");
+    // Normalize the date string
+    $dateString = trim($dateString);
+    $dateString = preg_replace('/\s+/', ' ', $dateString);
     
-    // Try common date formats
+    // Common date formats to try
     $formats = [
-        'd/m/Y', 'm/d/Y', 'Y/m/d',
-        'd-m-Y', 'm-d-Y', 'Y-m-d',
-        'd.m.Y', 'm.d.Y', 'Y.m.d',
-        'F j Y', 'M j Y', 'j F Y', 'j M Y',
-        'F j, Y', 'M j, Y'
+        // MM/DD/YYYY or DD/MM/YYYY
+        'm/d/Y', 'd/m/Y', 
+        // MM-DD-YYYY or DD-MM-YYYY
+        'm-d-Y', 'd-m-Y',
+        // MM.DD.YYYY or DD.MM.YYYY
+        'm.d.Y', 'd.m.Y',
+        // YYYY-MM-DD (ISO format)
+        'Y-m-d',
+        // YYYY/MM/DD
+        'Y/m/d',
+        // Month DD, YYYY
+        'F j, Y', 'M j, Y',
+        // DD Month YYYY
+        'j F Y', 'j M Y',
+        // With day of week
+        'D, F j, Y', 'l, F j, Y',
     ];
     
+    // Try each format until one works
     foreach ($formats as $format) {
         $date = \DateTime::createFromFormat($format, $dateString);
-        if ($date && $date->format($format) === $dateString) {
-            $year = (int)$date->format('Y');
-            if ($year >= 1900 && $year <= date('Y') + 30) {
-                // Return DateTime object, not a string
-                return $date;
-            }
-        }
-    }
-
-    // Try strtotime as last resort
-    $timestamp = strtotime($dateString);
-    if ($timestamp !== false) {
-        $date = new \DateTime();
-        $date->setTimestamp($timestamp);
-        $year = (int)$date->format('Y');
-        if ($year >= 1900 && $year <= date('Y') + 30) {
-            // Return DateTime object, not a string
+        if ($date && $date->format($format) == $dateString) {
             return $date;
         }
     }
-
-    return null;
+    
+    // Try natural language parsing as a fallback
+    try {
+        return new \DateTime($dateString);
+    } catch (\Exception $e) {
+        return null;
+    }
 }
 
-private function getKeywordsForIdType($idType)
+   private function generateImageHash($imagePath)
 {
-    $keywords = [
-        'philsys' => [
-            'PAMBANSANG PAGKAKAKILANLAN', 'PhilSys Number'
-        ],
-        'drivers' => [
-            'DRIVER\'S LICENSE', 'LTO'
-        ],
-        'passport' => [
-            'Philippine Passport', 'DFA'
-        ],
-        'sss' => [
-            'SSS Number', 'Social Security System'
-        ],
-        'gsis' => [
-            'GSIS', 'BP Number'
-        ],
-        'postal' => [
-            'Postal ID', 'PhilPost'
-        ],
-        'voters' => [
-            'COMMISSION ON ELECTIONS'
-        ],
-        'prc' => [
-            'PRC License', 'Professional Regulation Commission'
-        ],
-        'philhealth' => [
-            'PhilHealth Number', 'Philippine Health Insurance Corporation'
-        ],
-        'tin' => [
-            'BUREAU OF INTERNAL REVENUE'
-        ],
-        'umid' => [
-            'UMID', 'Unified Multi-Purpose ID'
-        ],
-        'pwd' => [
-            'PWD ID', 'Persons with Disability'
-        ]
-    ];
-
-    return $keywords[$idType] ?? [];
+    // Read the file contents
+    $imageData = file_get_contents($imagePath);
+    
+    // Generate a hash from the image data - combine multiple algorithms for better uniqueness
+    $md5Hash = md5($imageData);
+    $sha1Hash = sha1($imageData);
+    
+    // Return a combined hash
+    return $md5Hash . substr($sha1Hash, 0, 16);
 }
+    /**
+     * Get keywords for ID type validation
+     * 
+     * @param string $idType The type of ID
+     * @return array List of keywords for the ID type
+     */
+    private function getKeywordsForIdType($idType)
+    {
+        $keywords = [
+            'philsys' => [
+                'PAMBANSANG PAGKAKAKILANLAN', 'PhilSys Number'
+            ],
+            'drivers' => [
+                'DRIVER\'S LICENSE', 'LTO'
+            ],
+            'passport' => [
+                'Philippine Passport', 'DFA'
+            ],
+            'sss' => [
+                'SSS Number', 'Social Security System'
+            ],
+            'gsis' => [
+                'GSIS', 'BP Number'
+            ],
+            'postal' => [
+                'Postal ID', 'PhilPost'
+            ],
+            'voters' => [
+                'COMMISSION ON ELECTIONS'
+            ],
+            'prc' => [
+                'PRC License', 'Professional Regulation Commission'
+            ],
+            'philhealth' => [
+                'PhilHealth Number', 'Philippine Health Insurance Corporation'
+            ],
+            'tin' => [
+                'BUREAU OF INTERNAL REVENUE'
+            ],
+            'umid' => [
+                'UMID', 'Unified Multi-Purpose ID'
+            ],
+            'pwd' => [
+                'PWD ID', 'Persons with Disability'
+            ]
+        ];
+
+        return $keywords[$idType] ?? [];
+    }
 }

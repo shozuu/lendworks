@@ -145,21 +145,32 @@ const startLivenessDetection = async () => {
 			formData.append("image", blob);
 			formData.append("action", livenessSteps[i].action);
 
-			const result = await axios.post("/verify-liveness", formData, {
-				headers: {
-					"Content-Type": "multipart/form-data",
-				},
-			});
+			try {
+				const result = await axios.post("/verify-liveness", formData, {
+					headers: {
+						"Content-Type": "multipart/form-data",
+					},
+				});
 
-			if (!result.data.verified) {
-				throw new Error(`Liveness check failed: ${result.data.message}`);
+				if (!result.data.verified) {
+					throw new Error(`Liveness check failed: ${result.data.message}`);
+				}
+
+				if (i === livenessSteps.length - 1) {
+					livenessImage.value = frame;
+				}
+
+				livenessProgress.value = ((i + 1) / livenessSteps.length) * 100;
+			} catch (apiError) {
+				// Handle rate limiting (429) specifically
+				if (apiError.response?.status === 429) {
+					const cooldownMinutes = apiError.response.data.cooldown_minutes || 30;
+					throw new Error(
+						`Too many verification attempts. Please try again in ${cooldownMinutes} minutes.`
+					);
+				}
+				throw apiError;
 			}
-
-			if (i === livenessSteps.length - 1) {
-				livenessImage.value = frame;
-			}
-
-			livenessProgress.value = ((i + 1) / livenessSteps.length) * 100;
 		}
 
 		livenessVerified.value = true;
@@ -309,37 +320,50 @@ const handleSubmit = async () => {
 		formData.append("id_card_secondary", secondIdCard.value);
 		formData.append("id_type_secondary", secondSelectedIdType.value);
 
-		const result = await axios.post("/verify-id", formData, {
-			headers: {
-				"Content-Type": "multipart/form-data",
-			},
-		});
+		try {
+			const result = await axios.post("/verify-id", formData, {
+				headers: {
+					"Content-Type": "multipart/form-data",
+				},
+			});
 
-		const data = result.data;
-		matchScore.value = data.average_match_score;
-		verified.value = data.verified; //log scores for both ID's
+			const data = result.data;
+			matchScore.value = data.average_match_score;
+			verified.value = data.verified;
 
-		// Add redirect after successful verification
-		if (data.verified) {
-			console.log("Verification successful, redirecting to:", data.redirect);
-			setTimeout(() => {
-				console.log("Executing redirect to:", data.redirect);
-				window.location.href = data.redirect;
-			}, 2000);
-		} else {
-			console.log("Verification failed, no redirect");
+			// Add redirect after successful verification
+			if (data.verified) {
+				console.log("Verification successful, redirecting to:", data.redirect);
+				setTimeout(() => {
+					console.log("Executing redirect to:", data.redirect);
+					window.location.href = data.redirect;
+				}, 2000);
+			} else {
+				console.log("Verification failed, no redirect");
+			}
+		} catch (apiError) {
+			// Handle specific error codes
+			if (apiError.response?.status === 429) {
+				const cooldownMinutes = apiError.response.data.cooldown_minutes || 30;
+				error.value = `Too many verification attempts. Please try again in ${cooldownMinutes} minutes.`;
+			} else if (apiError.response?.data?.code === "duplicate_id") {
+				error.value =
+					apiError.response.data.message ||
+					"These IDs have already been registered with another account.";
+			} else {
+				error.value =
+					apiError.response?.data?.message ||
+					apiError.response?.data?.error ||
+					"An error occurred during verification";
+			}
+			throw apiError; // Propagate to outer catch
 		}
-
-		console.log("Primary ID match score:", data.primary_id.match_score);
-		console.log("Secondary ID match score:", data.secondary_id.match_score);
-		console.log("Average match score:", data.average_match_score);
-		console.log("Both IDs verified:", data.verified);
 	} catch (err) {
 		console.error("Submission error:", err);
-		error.value =
-			err.response?.data?.message ||
-			err.response?.data?.error ||
-			"An error occurred during verification";
+		if (!error.value) {
+			// Only set if not already set in inner catch
+			error.value = "An unexpected error occurred during verification.";
+		}
 	} finally {
 		isSubmitting.value = false;
 	}
