@@ -266,15 +266,16 @@ const formatEventMessage = (event) => {
 				return "Item handover completed - rental period has started";
 			}
 			return performedByViewer
-				? `You confirmed receiving the item`
+				? "You confirmed receiving the item"
 				: `${actorLabel} confirmed receiving the item`;
 
 		case "pickup_schedule_selected":
 			if (isLatest) {
 				const metadata = event.metadata || {};
+				const scheduleText = `${metadata.day_of_week}, ${metadata.date} from ${formatTime(metadata.start_time)} to ${formatTime(metadata.end_time)}`;
 				return performedByViewer
-					? `You selected a pickup schedule for ${metadata.day_of_week}, ${metadata.date} from ${formatTime(metadata.start_time)} to ${formatTime(metadata.end_time)}`
-					: `${actorLabel} selected a pickup schedule for ${metadata.day_of_week}, ${metadata.date} from ${formatTime(metadata.start_time)} to ${formatTime(metadata.end_time)}`;
+					? `You selected a pickup schedule for ${scheduleText}`
+					: `${actorLabel} selected a pickup schedule for ${scheduleText}`;
 			}
 			return `${actorLabel} selected a pickup schedule`;
 
@@ -312,16 +313,22 @@ const formatEventMessage = (event) => {
 		case "overdue_payment_submitted":
 			if (isLatest) {
 				return performedByViewer
-					? "You submitted overdue payment - awaiting verification"
-					: `${actorLabel} submitted overdue payment - awaiting verification`;
+						? `You submitted overdue payment of ${formatNumber(props.rental.overdue_fee)} - awaiting verification`
+						: `${actorLabel} submitted overdue payment of ${formatNumber(props.rental.overdue_fee)} - awaiting verification`;
 			}
 			return `${actorLabel} submitted overdue payment (Reference: ${event.metadata?.reference_number})`;
 
 		case "overdue_payment_verified":
 			if (isLatest) {
-				return "Overdue payment verified - you can now proceed with return process";
+				if (props.userRole === "admin") {
+					return "Renter's overdue payment has been verified";
+				} else if (performedByRenter || props.userRole === "renter") {
+					return "Your overdue payment has been verified - you can now proceed with the return process";
+				} else if (props.userRole === "lender") {
+					return "Renter's overdue payment has been verified - waiting for return process";
+				}
 			}
-			return "Overdue payment was verified";
+			return "Renter's overdue payment was verified";
 
 		case "overdue_payment_rejected":
 			if (isLatest) {
@@ -511,6 +518,34 @@ const showReturnProof = (event) => {
 							</Button>
 						</template>
 
+						 <!-- Add specialized template for overdue payments -->
+						<template v-if="['overdue_payment_submitted', 'overdue_payment_verified', 'overdue_payment_rejected'].includes(event.event_type)">
+							<div class="flex flex-col items-start justify-between">
+								<div>
+									<p v-if="event.metadata.reference_number" class="text-xs">
+										<span class="font-medium">Reference Number:</span>
+										{{ event.metadata.reference_number }}
+									</p>
+									 <p class="text-xs mt-1">
+										<span class="font-medium">Overdue Fee Paid:</span>
+										{{ formatNumber(event.metadata.amount || props.rental.overdue_fee) }}
+									</p>
+								</div>
+							</div>
+							<p v-if="event.metadata.feedback" class="text-muted-foreground mt-2 text-xs italic">
+								"{{ event.metadata.feedback }}"
+							</p>
+							<Button
+								v-if="event.metadata.proof_path"
+								variant="outline"
+								size="sm"
+								class="mt-2"
+								@click="showPaymentProof(event)"
+							>
+								View Payment Proof
+							</Button>
+						</template>
+
 						<!-- Rejection/Cancellation Details -->
 						<template v-else-if="['rejected', 'cancelled'].includes(event.event_type)">
 							<p class="text-xs font-medium">Reason:</p>
@@ -579,6 +614,53 @@ const showReturnProof = (event) => {
 									</Button>
 								</div>
 							</div>
+						</div>
+
+						 <!-- Update the lender payment processing event display -->
+						<div 
+						  v-if="['lender_payment_processed'].includes(event.event_type)" 
+						  class="bg-muted p-3 mt-2 text-sm rounded-md"
+						>
+						  <div class="space-y-2">
+						    <!-- Add payment breakdown -->
+						    <div class="space-y-1 pb-2 border-b">
+						      <div class="flex justify-between">
+						        <span class="text-muted-foreground">Base Price:</span>
+						        <span>{{ formatNumber(rental.base_price) }}</span>
+						      </div>
+						      <div class="flex justify-between">
+						        <span class="text-muted-foreground">Discount:</span>
+						        <span class="text-destructive">- {{ formatNumber(rental.discount) }}</span>
+						      </div>
+						      <div class="flex justify-between">
+						        <span class="text-muted-foreground">Platform Fee:</span>
+						        <span class="text-destructive">- {{ formatNumber(rental.service_fee) }}</span>
+						      </div>
+						      <div v-if="rental.overdue_payment" class="flex justify-between">
+						        <span class="text-muted-foreground">Overdue Fees:</span>
+						        <span class="text-emerald-500">+ {{ formatNumber(rental.overdue_fee) }}</span>
+						      </div>
+						    </div>
+						    <!-- Total and reference details -->
+						    <div class="flex justify-between items-center font-medium">
+						      <span class="text-muted-foreground">Total Amount:</span>
+						      <span>{{ formatNumber(event.metadata?.amount) }}</span>
+						    </div>
+						    <div class="flex justify-between items-center">
+						      <span class="text-muted-foreground">Reference:</span>
+						      <span>{{ event.metadata?.reference_number }}</span>
+						    </div>
+						    <!-- Payment proof button -->
+						    <div v-if="event.metadata?.proof_path" class="flex justify-end mt-2">
+						      <Button
+						        variant="outline"
+						        size="sm"
+						        @click="showPaymentProof(event)"
+						      >
+						        View Payment Proof
+						      </Button>
+						    </div>
+						  </div>
 						</div>
 
 						<!-- Add specialized card for rental completion -->

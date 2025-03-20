@@ -54,7 +54,7 @@ const rentalDays = computed(() => {
 	const diffTime = Math.abs(end.getTime() - start.getTime());
 
 	// Add 1 to include both start and end dates
-	return Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+	return Math.floor(diffTime / (1000 * 60 * 60 * 24));
 });
 
 const discountPercentage = computed(() =>
@@ -180,6 +180,32 @@ const showPaymentProof = (payment) => {
   selectedPayment.value = payment;
   showPaymentProofDialog.value = true;
 };
+
+// Add these computed properties after other computed properties
+const displayTotal = computed(() => {
+  // Base calculation without deposit
+  const base = props.rental.base_price - props.rental.discount;
+  
+  if (props.userRole === 'renter') {
+    // For renter: add service fee
+    return base + props.rental.service_fee;
+  } else {
+    // For lender: subtract service fee
+    return base - props.rental.service_fee;
+  }
+});
+
+// Add these new computed properties after displayTotal
+const rentalOnlyTotal = computed(() => {
+  const base = props.rental.base_price - props.rental.discount;
+  return props.userRole === 'renter' 
+    ? base + props.rental.service_fee 
+    : base - props.rental.service_fee;
+});
+
+const totalWithDeposit = computed(() => {
+  return rentalOnlyTotal.value + props.rental.deposit_fee;
+});
 </script>
 
 <template>
@@ -300,64 +326,103 @@ const showPaymentProof = (payment) => {
 							</div>
 
 							<!-- Price Breakdown -->
-							<div class="space-y-4">
+							<div class="space-y-6">
 								<h4 class="font-medium">Price Details</h4>
-								<div class="space-y-2">
-									<!-- Regular pricing items -->
+								<div class="space-y-4">
+									<!-- Base price -->
 									<div class="flex justify-between text-sm">
 										<span class="text-muted-foreground">
-											{{ formatNumber(rental.listing.price) }} × {{ rentalDays }} rental
-											days
+											{{ formatNumber(rental.listing.price) }} × {{ rentalDays }} rental days
 										</span>
 										<span>{{ formatNumber(rental.base_price) }}</span>
 									</div>
 
+									<!-- Duration Discount -->
 									<div class="flex justify-between text-sm">
 										<span class="text-muted-foreground">
 											Duration Discount ({{ discountPercentage }}%)
 										</span>
-										<span>-{{ formatNumber(rental.discount) }}</span>
+										<span class="text-emerald-500 font-medium">
+											-{{ formatNumber(rental.discount) }}
+										</span>
 									</div>
 
+									<!-- LendWorks Fee -->
 									<div class="flex justify-between text-sm">
 										<span class="text-muted-foreground">LendWorks Fee</span>
-										<span>{{ formatNumber(rental.service_fee) }}</span>
+										<span :class="{
+											'text-emerald-500 font-medium': userRole === 'renter',
+											'text-red-500 font-medium': userRole === 'lender'
+										}">
+											{{ userRole === 'lender' ? '-' : '' }}{{ formatNumber(rental.service_fee) }}
+										</span>
 									</div>
 
-									<div class="flex justify-between text-sm">
-										<span class="text-muted-foreground">Security Deposit (Refundable)</span>
-										<span class="text-primary">{{ formatNumber(rental.deposit_fee) }}</span>
+									<Separator class="my-4" />
+
+									<!-- Rental Only Total -->
+									<div class="flex justify-between font-medium pb-2">
+										<span>{{ userRole === 'renter' ? 'Rental Amount' : 'Total Earnings' }}</span>
+										<span class="text-primary">{{ formatNumber(rentalOnlyTotal) }}</span>
 									</div>
 
-									<Separator class="my-2" />
-
-									<!-- Base total -->
-									<div class="flex justify-between font-medium">
-										<span>Total Amount</span>
-										<span>{{ formatNumber(baseTotal) }}</span>
-									</div>
-
-									<!-- Add Overdue Fee section if rental is overdue -->
-									<template v-if="rental.is_overdue">
-										<div class="mt-4 pt-4 border-t">
-											<!-- Overdue Fee -->
-											<div class="flex justify-between text-sm text-destructive">
-												<span class="font-medium">Overdue Fee</span>
-												<span>+ {{ formatNumber(rental.overdue_fee) }}</span>
+									<!-- Security Deposit section -->
+									<template v-if="userRole === 'renter'">
+										<div class="mt-6 pt-4 border-t space-y-4">
+											<div class="flex justify-between text-sm">
+												<span class="text-muted-foreground">Security Deposit (Refundable)</span>
+												<span class="text-primary">{{ formatNumber(rental.deposit_fee) }}</span>
 											</div>
 
-											<Separator class="my-2" />
+											<div class="flex justify-between font-medium mt-2">
+												<span>Total Payment Required</span>
+												<span class="text-primary">{{ formatNumber(totalWithDeposit) }}</span>
+											</div>
+										</div>
+									</template>
+									<template v-else>
+										<p class="text-muted-foreground mt-4 text-xs">
+											- Security deposit ({{ formatNumber(rental.deposit_fee) }}) is not included in your earnings and will be refunded to the renter.
+										</p>
+									</template>
 
-											<!-- Final total with overdue -->
+									<!-- Overdue section -->
+									<template v-if="rental.is_overdue">
+										<div class="mt-8 pt-4 border-t space-y-4">
+											<h4 class="font-medium text-destructive mb-4">Overdue Charges</h4>
+											
+											<!-- Overdue Rate -->
+											<div class="flex justify-between text-sm">
+												<span class="text-muted-foreground">Overdue Rate (per day)</span>
+												<span>{{ formatNumber(rental.listing.price) }}</span>
+											</div>
+											
+											<!-- Number of Overdue Days -->
+											<div class="flex justify-between text-sm">
+												<span class="text-muted-foreground">Days Overdue</span>
+												<span>{{ rental.overdue_days }} days</span>
+											</div>
+
+											<!-- Overdue Fee -->
+											<div class="flex justify-between text-sm text-destructive font-medium mt-2">
+												<span>Total Overdue Fee</span>
+													<span>{{ formatNumber(rental.overdue_fee) }}</span>
+											</div>
+
+											<Separator class="my-4" />
+
+											<!-- Final total with overdue - different for renter and lender -->
 											<div class="flex justify-between font-medium">
-												<span>Total Amount with Overdue Fee</span>
-												<span class="text-destructive">{{ formatNumber(totalWithOverdue) }}</span>
+												<span>{{ userRole === 'renter' ? 'Total Amount Due' : 'Total Earnings with Overdue' }}</span>
+												<span class="text-destructive">
+													{{ formatNumber(userRole === 'renter' ? rental.overdue_fee : rentalOnlyTotal + rental.overdue_fee) }}
+												</span>
 											</div>
 										</div>
 									</template>
 
-									<p class="text-muted-foreground mt-2 text-xs">
-										Note: Security deposit will be refunded after the rental period,
+									<p class="text-muted-foreground mt-6 text-xs">
+										- Security deposit will be refunded after the rental period,
 										subject to item condition
 									</p>
 								</div>

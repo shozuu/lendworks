@@ -29,9 +29,15 @@ const form = useForm({
   proof_image: null,
   reference_number: '',
   notes: '',
-  amount: props.type === 'lender_payment' ? 
-    props.rental?.base_price : 
-    props.rental?.deposit_fee
+  amount: computed(() => {
+    if (props.type === 'lender_payment') {
+      // Base earnings: rental price - discount - service fee + overdue fee (if verified)
+      const baseEarnings = props.rental.base_price - props.rental.discount - props.rental.service_fee;
+      const overdueFee = props.rental.overdue_payment ? props.rental.overdue_fee : 0;
+      return baseEarnings + overdueFee;
+    }
+    return props.rental.deposit_fee;  // For deposit refund
+  })
 });
 
 const selectedImage = ref([]);
@@ -75,10 +81,54 @@ const description = computed(() =>
       <form @submit.prevent="handleSubmit" class="space-y-4">
         <div class="space-y-2">
           <label class="text-sm font-medium">Amount</label>
+          <!-- Lender Payment Breakdown -->
+          <div v-if="type === 'lender_payment'" class="space-y-2 p-4 bg-muted rounded-lg">
+            <div class="space-y-1 text-sm">
+              <div class="flex justify-between">
+                <span class="text-muted-foreground">Base Rental Price:</span>
+                <span>{{ formatNumber(rental.base_price) }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-muted-foreground">Duration Discount:</span>
+                <span class="text-destructive">- {{ formatNumber(rental.discount) }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-muted-foreground">Platform Fee:</span>
+                <span class="text-destructive">- {{ formatNumber(rental.service_fee) }}</span>
+              </div>
+              <div v-if="rental.overdue_payment" class="flex justify-between">
+                <span class="text-muted-foreground">Overdue Fees:</span>
+                <span class="text-emerald-500">+ {{ formatNumber(rental.overdue_fee) }}</span>
+              </div>
+              <div class="flex justify-between font-medium pt-2 border-t mt-2">
+                <span>Total Payment:</span>
+                <span>{{ formatNumber(form.amount) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Deposit Refund Breakdown -->
+          <div v-else class="space-y-2 p-4 bg-muted rounded-lg">
+            <div class="space-y-1 text-sm">
+              <div class="flex justify-between">
+                <span class="text-muted-foreground">Security Deposit Amount:</span>
+                <span>{{ formatNumber(rental.deposit_fee) }}</span>
+              </div>
+              <div class="flex justify-between font-medium pt-2 border-t mt-2">
+                <span>Total Refund:</span>
+                <span>{{ formatNumber(form.amount) }}</span>
+              </div>
+              <p class="text-xs text-muted-foreground mt-2">
+                This is the full deposit amount that will be refunded to the renter.
+              </p>
+            </div>
+          </div>
+
           <Input
             v-model="form.amount"
             type="number"
             :error="form.errors.amount"
+            :readonly="true"
           />
         </div>
 

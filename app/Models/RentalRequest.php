@@ -321,6 +321,28 @@ class RentalRequest extends Model
         return abs($this->listing->price * $this->overdue_days);
     }
 
+    // Add these new methods
+    public function getLenderEarningsAttribute()
+    {
+        // Base earnings: rental price - discount - service fee
+        $baseEarnings = $this->base_price - $this->discount - $this->service_fee;
+        
+        // Add overdue fee if payment was verified
+        if ($this->hasVerifiedOverduePayment()) {
+            $baseEarnings += $this->overdue_fee;
+        }
+        
+        return $baseEarnings;
+    }
+
+    public function getOverduePaymentAttribute()
+    {
+        return $this->payment_request()
+            ->where('type', 'overdue')
+            ->where('status', 'verified')
+            ->first();
+    }
+
     // Scopes
     public function scopeActive($query)
     {
