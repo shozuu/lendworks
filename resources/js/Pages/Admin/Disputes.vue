@@ -57,7 +57,7 @@ const periodOptions = [
 // Update filters
 const updateFilters = (newFilters) => {
     router.get(
-        route('admin.disputes'),
+        route('admin.disputes.index'), // Change this line from 'admin.disputes' to 'admin.disputes.index'
         { ...props.filters, ...newFilters },
         { 
             preserveState: true,
