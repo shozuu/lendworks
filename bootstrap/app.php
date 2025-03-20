@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         
         $middleware->alias([
             'fully-verified' => \App\Http\Middleware\EnsureFullVerification::class,
+             'ensure.verification.order' => \App\Http\Middleware\EnsureVerificationOrder::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

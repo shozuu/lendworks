@@ -336,132 +336,93 @@ class FaceMatchController extends Controller
     }
 
     public function matchFace(Request $request)
-    {
-        try {
-            Log::info('Starting face match process', [
-            'has_selfie' => $request->hasFile('selfie'),
-            'has_primary_id' => $request->hasFile('id_card'),
-            'has_secondary_id' => $request->hasFile('id_card_secondary'),
-            'primary_id_type' => $request->input('id_type'),
-            'secondary_id_type' => $request->input('id_type_secondary')
-        ]);
+{
+    try {
+        Log::info('Starting face match process', [/* ... */]);
 
-        // Check for rate limiting first
-            $attemptsRemaining = $this->checkFaceMatchAttempts();
-            if ($attemptsRemaining <= 0) {
-                return response()->json([
-                    'error' => 'Too many attempts',
-                    'message' => 'You have reached the maximum number of verification attempts. Please try again in 30 minutes.',
-                    'cooldown_minutes' => self::COOLDOWN_MINUTES
-                ], 429);
-            }
+        // Rate limiting check
+        $attemptsRemaining = $this->checkFaceMatchAttempts();
+        if ($attemptsRemaining <= 0) {
+            return response()->json([/* ... */], 429);
+        }
 
-          $request->validate([
-            'selfie' => 'required|image|mimes:jpeg,png|max:2048',
-            'id_card' => 'required|image|mimes:jpeg,png|max:2048',
-            'id_type' => 'required|string|in:' . implode(',', array_keys($this->validPhilippineIds)),
-            'id_card_secondary' => 'required|image|mimes:jpeg,png|max:2048',
-            'id_type_secondary' => 'required|string|in:' . implode(',', array_keys($this->validPhilippineIds)),
-        ]);
+        // Validation
+        $request->validate([/* ... */]);
 
         // Check for reused IDs
-            if ($this->isIdReused($request)) {
-                Log::warning('Attempt to use previously registered ID', [
-                    'user_id' => auth()->id(),
-                    'primary_id_type' => $request->input('id_type'),
-                    'secondary_id_type' => $request->input('id_type_secondary')
-                ]);
+        if ($this->isIdReused($request)) {
+            Log::warning('Attempt to use previously registered ID', [/* ... */]);
+            return response()->json([/* ... */], 400);
+        }
 
-                return response()->json([
-                    'error' => 'ID validation failed',
-                    'message' => 'One or both of these IDs appear to have been used previously. Please use different identification.',
-                    'code' => 'duplicate_id'
-                ], 400);
-            }
+        // API credentials check
+        if (!env('FACEPP_API_KEY') || !env('FACEPP_API_SECRET')) {
+            Log::error('Face++ API credentials are missing');
+            return response()->json([/* ... */], 500);
+        }
 
-            if (!env('FACEPP_API_KEY') || !env('FACEPP_API_SECRET')) {
-                Log::error('Face++ API credentials are missing');
-                return response()->json([
-                    'error' => 'Face verification service is not properly configured',
-                    'message' => 'API credentials are missing'
-                ], 500);
-            }
+        // Encode images only once
+        $selfieBase64 = base64_encode(file_get_contents($request->file('selfie')));
+        $primaryIdBase64 = base64_encode(file_get_contents($request->file('id_card')));
+        $secondaryIdBase64 = base64_encode(file_get_contents($request->file('id_card_secondary')));
 
-            $selfieBase64 = base64_encode(file_get_contents($request->file('selfie')));
-            $primaryIdBase64 = base64_encode(file_get_contents($request->file('id_card')));
-            $secondaryIdBase64 = base64_encode(file_get_contents($request->file('id_card_secondary')));
+        // Compare faces
+        $primaryResult = $this->compareFaces($selfieBase64, $primaryIdBase64);
+        $secondaryResult = $this->compareFaces($selfieBase64, $secondaryIdBase64);
+        
+        $primaryIdOcrResult = $this->runOcr($request->file('id_card'));
+        $secondaryIdOcrResult = $this->runOcr($request->file('id_card_secondary'));
 
-             // Compare with primary ID
-            $primaryResult = $this->compareFaces($selfieBase64, $primaryIdBase64);
+        // Calculate metrics
+        $averageScore = ($primaryResult['score'] + $secondaryResult['score']) / 2;
+        $bothVerified = $primaryResult['verified'] && $secondaryResult['verified'];
+
+        // Save the images to storage and update user record
+        $user = $request->user();
+        $selfieImagePath = $this->saveVerificationImage($request->file('selfie'), 'selfies', $user->id);
+        $primaryIdImagePath = $this->saveVerificationImage($request->file('id_card'), 'primary_ids', $user->id);
+        $secondaryIdImagePath = $this->saveVerificationImage($request->file('id_card_secondary'), 'secondary_ids', $user->id);
+
+        // Update user record with image paths
+        $user->update([
+            'selfie_image_path' => $selfieImagePath,
+            'primary_id_image_path' => $primaryIdImagePath,
+            'secondary_id_image_path' => $secondaryIdImagePath,
+        ]);
+
+        // Record this attempt
+        $this->recordFaceMatchAttempt();
+
+        // Process if verified
+        if ($bothVerified) {
+            $this->resetFaceMatchAttempts();
             
-            // Compare with secondary ID
-            $secondaryResult = $this->compareFaces($selfieBase64, $secondaryIdBase64);
+            // Store image hashes for future duplicate detection
+            $this->storeIdHashes($request);
             
-            // Calculate metrics
-            $averageScore = ($primaryResult['score'] + $secondaryResult['score']) / 2;
-            
-            // Determine verification status - both must pass the threshold
-            $bothVerified = $primaryResult['verified'] && $secondaryResult['verified'];
-
-            // Save the images to storage and update user record
-            $user = $request->user();
-            $selfieImagePath = $this->saveVerificationImage($request->file('selfie'), 'selfies', $user->id);
-            $primaryIdImagePath = $this->saveVerificationImage($request->file('id_card'), 'primary_ids', $user->id);
-            $secondaryIdImagePath = $this->saveVerificationImage($request->file('id_card_secondary'), 'secondary_ids', $user->id);
-
-            // Update user record with image paths and ID types
-            $user->update([
-                'selfie_image_path' => $selfieImagePath,
-                'primary_id_image_path' => $primaryIdImagePath,
-                'secondary_id_image_path' => $secondaryIdImagePath,
-            ]);
-
-             // Log results
-            Log::info('Face match completed for both IDs', [
-                'primary_score' => $primaryResult['score'],
-                'secondary_score' => $secondaryResult['score'],
-                'average_score' => $averageScore,
-                'primary_verified' => $primaryResult['verified'],
-                'secondary_verified' => $secondaryResult['verified'],
-                'both_verified' => $bothVerified
-            ]);
-
-            // Record this attempt before processing
-            $this->recordFaceMatchAttempt();
-            
-            // Continue with original face matching logic
-            $selfieBase64 = base64_encode(file_get_contents($request->file('selfie')));
-            $primaryIdBase64 = base64_encode(file_get_contents($request->file('id_card')));
-            $secondaryIdBase64 = base64_encode(file_get_contents($request->file('id_card_secondary')));
-
-
-            if ($bothVerified) {
-
-                 $this->resetFaceMatchAttempts();
-                  // Store image hashes for future duplicate detection
-                 $this->storeIdHashes($request);
-                 
-                $request->user()->forceFill([
-                    'id_verified_at' => now()
-                ])->save();
-            
-                 $this->resetFaceMatchAttempts();
-                  // Store image hashes for future duplicate detection
-                 $this->storeIdHashes($request);
+            $request->user()->forceFill([
+                'id_verified_at' => now()
+            ])->save();
             
             // Run OCR on ID card images
             $primaryIdOcrResult = $this->runOcr($request->file('id_card'));
             $secondaryIdOcrResult = $this->runOcr($request->file('id_card_secondary'));
             
-            // Extract user data using the OCR results
             $extractedData = $this->extractUserDataFromOCR(
-                ['text' => $primaryIdOcrResult['text'], 'id_type' => $request->input('id_type')],
-                ['text' => $secondaryIdOcrResult['text'], 'id_type' => $request->input('id_type_secondary')]
+                ['text' => $primaryIdOcrResult['text'], 'id_type' => $idData['primary_id_type']],
+                ['text' => $secondaryIdOcrResult['text'], 'id_type' => $idData['secondary_id_type']]
             );
-            
-            Session::put('verification_extracted_data', $extractedData);
 
+            // Add this logging:
+            Log::info('Storing extracted data in session', [
+                'data' => $extractedData
+            ]);
+
+            Session::put('verification_extracted_data', $extractedData);
+            Session::save();        
             $redirectUrl = route('verification.form');
+            
+            session()->flash('verification_status', 'success');
             
             return response()->json([
                 'primary_id' => [
@@ -479,37 +440,15 @@ class FaceMatchController extends Controller
             ]);
         }
         
-        // If not verified, return the non-verified response
-        return response()->json([
-            'primary_id' => [
-                'match_score' => $primaryResult['score'],
-                'verified' => $primaryResult['verified']
-            ],
-            'secondary_id' => [
-                'match_score' => $secondaryResult['score'],
-                'verified' => $secondaryResult['verified']
-            ],
-            'average_match_score' => $averageScore,
-            'verified' => false,
-            'message' => 'Face verification failed'
-        ]);
-        
+        // Non-verified response
+        return response()->json([/* non-verified response */]);
     } catch (\Exception $e) {
-        // Record failed attempt even for errors
-            $this->recordFaceMatchAttempt();
-
-        Log::error('Face matching error', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-
-       return response()->json([
-                'error' => 'Server error',
-                'message' => 'An unexpected error occurred while processing your request'
-            ], 500);
+        // Error handling
+        $this->recordFaceMatchAttempt();
+        Log::error('Face matching error', [/* error details */]);
+        return response()->json([/* error response */], 500);
     }
 }
-
 
  private function checkFaceMatchAttempts()
     {
@@ -654,44 +593,92 @@ class FaceMatchController extends Controller
  * @param \Illuminate\Http\UploadedFile $file
  * @return array OCR result
  */
-private function runOcr($file)
+private function runOcr($file, $isPath = false)
 {
-    // Set PHP script timeout
-     ini_set('max_execution_time', 120);
-    // Get MIME type and map it to a file extension
-    $mimeType = $file->getMimeType();
-    $fileType = match ($mimeType) {
-        'image/jpeg', 'image/jpg' => 'JPG',
-        'image/png' => 'PNG',
-        default => 'JPG'
-    };
+    try {
+        // API credentials
+        $apiKey = env('OCR_SPACE_API_KEY');
+        if (!$apiKey) {
+            Log::error('OCR API key is missing');
+            return [
+                'text' => '',
+                'success' => false,
+                'error' => 'OCR API credentials are missing'
+            ];
+        }
 
-    // Make OCR request
-    $response = Http::withoutVerifying()
-      ->timeout(120) 
-        ->attach(
-            'file', 
-            file_get_contents($file->path()), 
-            'id_card.' . strtolower($fileType)
-        )
-        ->post('https://api.ocr.space/parse/image', [
-            'apikey' => env('OCR_SPACE_API_KEY'),
+        // Prepare the image file
+        $base64Image = '';
+        $mimeType = '';
+
+        if ($isPath) {
+            // Handle file path
+            if (!file_exists($file)) {
+                return [
+                    'text' => '',
+                    'success' => false,
+                    'error' => 'File not found at path: ' . $file
+                ];
+            }
+            $base64Image = base64_encode(file_get_contents($file));
+            $mimeType = mime_content_type($file);
+        } else {
+            // Handle file object
+            $base64Image = base64_encode(file_get_contents($file->path()));
+            $mimeType = $file->getMimeType();
+        }
+
+        // Prepare API request
+        $url = 'https://api.ocr.space/parse/image';
+        $data = [
+            'apikey' => $apiKey,
             'language' => 'eng',
-            'OCREngine' => 2,
-        ]);
+            'isOverlayRequired' => false,
+            'base64Image' => 'data:' . $mimeType . ';base64,' . $base64Image,
+            'scale' => true,
+            'detectOrientation' => true,
+        ];
 
-    if ($response->successful() && isset($response['ParsedResults'])) {
+        // Make API request
+        Log::info('Sending OCR request', ['url' => $url]);
+        $response = Http::timeout(30)->post($url, $data);
+        
+        // Process response
+        $result = $response->json();
+        
+        if ($response->successful() && isset($result['ParsedResults'][0]['ParsedText'])) {
+            $text = $result['ParsedResults'][0]['ParsedText'];
+            Log::info('OCR successful', ['text_length' => strlen($text)]);
+            
+            return [
+                'text' => $text,
+                'success' => true
+            ];
+        }
+        
+        // Log error response
+        Log::error('OCR failed', [
+            'status' => $response->status(),
+            'response' => $result
+        ]);
+        
         return [
-            'text' => $response['ParsedResults'][0]['ParsedText'] ?? '',
-            'success' => true
+            'text' => '',
+            'success' => false,
+            'error' => $result['ErrorMessage'] ?? 'OCR processing failed'
+        ];
+    } catch (\Exception $e) {
+        Log::error('OCR exception', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        
+        return [
+            'text' => '',
+            'success' => false,
+            'error' => 'OCR processing exception: ' . $e->getMessage()
         ];
     }
-    
-    return [
-        'text' => '',
-        'success' => false,
-        'error' => $response['ErrorMessage'] ?? 'OCR processing failed'
-    ];
 }
 
 
@@ -1705,4 +1692,303 @@ private function extractExpirationDate($text, $idType)
 
         return $keywords[$idType] ?? [];
     }
+
+    /**
+ * Show the ID verification view (first step)
+ */
+public function showIdVerification()
+{
+    return Inertia::render('Auth/IdVerifier', [
+        'initialData' => [
+            'validPhilippineIds' => $this->validPhilippineIds
+        ]
+    ]);
+}
+
+/**
+ * Show the liveness verification view (second step)
+ */
+public function showLivenessVerification()
+{
+    // Check if ID data exists in session
+    if (!Session::has('id_verification_data')) {
+        return redirect()->route('verify-id.show')
+            ->with('error', 'Please complete ID verification first');
+    }
+    
+    return Inertia::render('Auth/LivenessVerifier');
+}
+
+/**
+ * Store ID data temporarily in session
+ */
+public function storeIdData(Request $request)
+{
+    $request->validate([
+        'id_card' => 'required|image|mimes:jpeg,png|max:2048',
+        'id_type' => 'required|string|in:' . implode(',', array_keys($this->validPhilippineIds)),
+        'id_card_secondary' => 'required|image|mimes:jpeg,png|max:2048',
+        'id_type_secondary' => 'required|string|in:' . implode(',', array_keys($this->validPhilippineIds)),
+    ]);
+
+    // Check for reused IDs
+    if ($this->isIdReused($request)) {
+        Log::warning('Attempt to use previously registered ID', [
+            'user_id' => auth()->id(),
+            'primary_id_type' => $request->input('id_type'),
+            'secondary_id_type' => $request->input('id_type_secondary')
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'code' => 'duplicate_id',
+            'message' => 'One or both of these IDs appear to have been used previously. Please use different identification.'
+        ], 400);
+    }
+
+    // Store the ID files temporarily
+    $primaryIdPath = $request->file('id_card')->store('temp/primary_ids', 'local');
+    $secondaryIdPath = $request->file('id_card_secondary')->store('temp/secondary_ids', 'local');
+    
+    // Store information in session
+    Session::put('id_verification_data', [
+        'primary_id_path' => $primaryIdPath,
+        'primary_id_type' => $request->input('id_type'),
+        'secondary_id_path' => $secondaryIdPath,
+        'secondary_id_type' => $request->input('id_type_secondary'),
+        'created_at' => now()
+    ]);
+    
+    return response()->json([
+        'success' => true,
+        'message' => 'ID data stored successfully'
+    ]);
+}
+
+/**
+ * Check if ID data exists and is valid
+ */
+public function checkIdData()
+{
+    $idData = Session::get('id_verification_data');
+    
+    // Check if data exists and hasn't expired
+    $valid = false;
+    if ($idData && isset($idData['created_at'])) {
+        $createdAt = new \DateTime($idData['created_at']);
+        $now = new \DateTime();
+        $interval = $createdAt->diff($now);
+        
+        // Valid if created less than 30 minutes ago
+        $valid = $interval->i < 30;
+    }
+    
+    return response()->json([
+        'valid' => $valid
+    ]);
+}
+
+/**
+ * Complete the verification process with selfie and face matching
+ */
+public function completeVerification(Request $request)
+{
+    try {
+        Log::info('Starting final verification step');
+        
+        // Check if ID data exists
+        $idData = Session::get('id_verification_data');
+        if (!$idData) {
+            return response()->json([
+                'error' => 'Session expired',
+                'message' => 'Your verification session has expired. Please start over.'
+            ], 400);
+        }
+        
+        // Validate selfie
+        $request->validate([
+            'selfie' => 'required|image|mimes:jpeg,png|max:2048',
+        ]);
+        
+        // Check for rate limiting
+        $attemptsRemaining = $this->checkFaceMatchAttempts();
+        if ($attemptsRemaining <= 0) {
+            return response()->json([
+                'error' => 'Too many attempts',
+                'message' => 'You have reached the maximum number of verification attempts. Please try again in 30 minutes.',
+                'cooldown_minutes' => self::COOLDOWN_MINUTES
+            ], 429);
+        }
+        
+        // Get files from storage
+        $selfieBase64 = base64_encode(file_get_contents($request->file('selfie')->path()));
+        $primaryIdBase64 = base64_encode(file_get_contents(storage_path('app/'.$idData['primary_id_path'])));
+        $secondaryIdBase64 = base64_encode(file_get_contents(storage_path('app/'.$idData['secondary_id_path'])));
+        
+        // Compare with primary ID
+        $primaryResult = $this->compareFaces($selfieBase64, $primaryIdBase64);
+        
+        // Compare with secondary ID
+        $secondaryResult = $this->compareFaces($selfieBase64, $secondaryIdBase64);
+        
+        // Calculate metrics
+        $averageScore = ($primaryResult['score'] + $secondaryResult['score']) / 2;
+        
+        // Determine verification status - both must pass the threshold
+        $bothVerified = $primaryResult['verified'] && $secondaryResult['verified'];
+        
+        // Record this attempt
+        $this->recordFaceMatchAttempt();
+        
+        // Process verification if successful
+        if ($bothVerified) {
+            $user = $request->user();
+            
+            // Move temporary files to permanent storage
+            $selfieImagePath = $this->saveVerificationImage($request->file('selfie'), 'selfies', $user->id);
+            
+            // Move from temp to permanent storage
+            $primaryIdImagePath = 'verification/primary_ids/' . $user->id . '_' . time() . '_primary.' . 
+                pathinfo(storage_path('app/'.$idData['primary_id_path']), PATHINFO_EXTENSION);
+            
+            $secondaryIdImagePath = 'verification/secondary_ids/' . $user->id . '_' . time() . '_secondary.' .
+                pathinfo(storage_path('app/'.$idData['secondary_id_path']), PATHINFO_EXTENSION);
+            
+            // Copy from temp to public storage
+            \Storage::copy(
+                $idData['primary_id_path'], 
+                'public/' . $primaryIdImagePath
+            );
+            
+            \Storage::copy(
+                $idData['secondary_id_path'], 
+                'public/' . $secondaryIdImagePath
+            );
+            
+            // Update user record
+            $user->update([
+                'selfie_image_path' => $selfieImagePath,
+                'primary_id_image_path' => $primaryIdImagePath,
+                'secondary_id_image_path' => $secondaryIdImagePath,
+            ]);
+            
+            $user->forceFill([
+                'id_verified_at' => now()
+            ])->save();
+            
+            $this->resetFaceMatchAttempts();
+            
+            // Store image hashes for future duplicate detection
+            $this->storeIdHashesFromPaths(
+                storage_path('app/'.$idData['primary_id_path']),
+                storage_path('app/'.$idData['secondary_id_path']),
+                $idData['primary_id_type'],
+                $idData['secondary_id_type']
+            );
+            
+            // Run OCR on ID card images
+            $primaryIdOcrResult = $this->runOcr(storage_path('app/'.$idData['primary_id_path']), true);
+            $secondaryIdOcrResult = $this->runOcr(storage_path('app/'.$idData['secondary_id_path']), true);
+            
+            // Extract user data using the OCR results
+            $extractedData = $this->extractUserDataFromOCR(
+                ['text' => $primaryIdOcrResult['text'], 'id_type' => $request->input('id_type')],
+                ['text' => $secondaryIdOcrResult['text'], 'id_type' => $request->input('id_type_secondary')]
+            );
+            
+            Session::put('verification_extracted_data', $extractedData);
+            
+            // Clean up temp files
+            \Storage::delete($idData['primary_id_path']);
+            \Storage::delete($idData['secondary_id_path']);
+            Session::forget('id_verification_data');
+            
+            $redirectUrl = route('verification.form');
+            
+            return response()->json([
+                'primary_id' => [
+                    'match_score' => $primaryResult['score'],
+                    'verified' => $primaryResult['verified']
+                ],
+                'secondary_id' => [
+                    'match_score' => $secondaryResult['score'],
+                    'verified' => $secondaryResult['verified']
+                ],
+                'average_match_score' => $averageScore,
+                'verified' => true,
+                'message' => 'Face verification successful',
+                'redirect' => $redirectUrl
+            ]);
+        }
+        
+        // If not verified, return the non-verified response
+        return response()->json([
+            'primary_id' => [
+                'match_score' => $primaryResult['score'],
+                'verified' => $primaryResult['verified']
+            ],
+            'secondary_id' => [
+                'match_score' => $secondaryResult['score'],
+                'verified' => $secondaryResult['verified']
+            ],
+            'average_match_score' => $averageScore,
+            'verified' => false,
+            'message' => 'Face verification failed'
+        ]);
+    } catch (\Exception $e) {
+        // Record failed attempt even for errors
+        $this->recordFaceMatchAttempt();
+        
+        Log::error('Face matching error', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        
+        return response()->json([
+            'error' => 'Server error',
+            'message' => 'An unexpected error occurred while processing your request'
+        ], 500);
+    }
+}
+
+/**
+ * Store hashes of verified IDs from file paths
+ * 
+ * @param string $primaryIdPath
+ * @param string $secondaryIdPath
+ * @param string $primaryIdType
+ * @param string $secondaryIdType
+ */
+private function storeIdHashesFromPaths($primaryIdPath, $secondaryIdPath, $primaryIdType, $secondaryIdType)
+{
+    try {
+        $primaryIdHash = $this->generateImageHash($primaryIdPath);
+        $secondaryIdHash = $this->generateImageHash($secondaryIdPath);
+        
+        Log::info('Storing ID hashes for user from paths', [
+            'user_id' => auth()->id(),
+            'primary_id_type' => $primaryIdType,
+            'secondary_id_type' => $secondaryIdType
+        ]);
+        
+        // Delete any existing hash records for this user first
+        \App\Models\IdHash::where('user_id', auth()->id())->delete();
+        
+        // Create new hash record
+        \App\Models\IdHash::create([
+            'user_id' => auth()->id(),
+            'primary_id_hash' => $primaryIdHash,
+            'primary_id_type' => $primaryIdType,
+            'secondary_id_hash' => $secondaryIdHash,
+            'secondary_id_type' => $secondaryIdType,
+            'verified_at' => now()
+        ]);
+        
+    } catch (\Exception $e) {
+        Log::error('Error storing ID hashes from paths', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+    }
+}
 }

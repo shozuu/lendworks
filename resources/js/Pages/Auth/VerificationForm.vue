@@ -132,57 +132,68 @@ const loadExtractedData = async () => {
 	loadingMessage.value = "Loading your information from verified IDs...";
 
 	try {
+		console.log("Requesting extracted data from server...");
 		const response = await axios.get("/verify-id/extracted-data");
 		console.log("Received extracted data:", response.data);
 
-		// Pre-fill form with data from OCR if available
-		if (response.data) {
-			// Fix the birthdate format for HTML date input (requires YYYY-MM-DD)
-			let birthdate = response.data.birthdate || "";
-			if (birthdate) {
-				// Make sure it's in the YYYY-MM-DD format required by HTML date inputs
-				try {
-					// Parse the date string and format it properly
-					const date = new Date(birthdate);
-					if (!isNaN(date.getTime())) {
-						birthdate = date.toISOString().split("T")[0]; // Format as YYYY-MM-DD
-					}
-				} catch (e) {
-					console.error("Failed to parse birthdate:", birthdate, e);
-					birthdate = "";
-				}
+		const data = response.data;
+
+		// Check if we have useful data
+		if (data && Object.keys(data).length > 0) {
+			// Fill form with extracted data - use direct assignment to avoid reactivity issues
+			form.firstName = data.firstName || "";
+			form.middleName = data.middleName || "";
+			form.lastName = data.lastName || "";
+			form.birthdate = data.birthdate || "";
+			form.gender = data.gender || "";
+			form.nationality = data.nationality || "Filipino";
+			form.mobileNumber = data.mobileNumber || "";
+			form.email = data.email || form.email;
+			form.primaryIdType = data.primaryIdType || "";
+			form.secondaryIdType = data.secondaryIdType || "";
+
+			// Handle address components if available
+			form.streetAddress = data.streetAddress || "";
+			form.barangay = data.barangay || "";
+			form.city = data.city || "";
+			form.province = data.province || "";
+			form.postalCode = data.postalCode || "";
+
+			// Set the address query for display
+			if (data.streetAddress) {
+				addressQuery.value = data.streetAddress;
 			}
 
-			// Fix the typo in your code - you were setting birthdate to lastName!
-			console.log("Setting normalized values:", {
-				birthdate: birthdate,
+			// For debugging
+			console.log("Form data after populating:", {
+				firstName: form.firstName,
+				lastName: form.lastName,
+				birthdate: form.birthdate,
+				gender: form.gender,
+				email: form.email,
 			});
 
-			// Now set the values with proper formatting
-			form.firstName = response.data.firstName || "";
-			form.middleName = response.data.middleName || "";
-			form.lastName = response.data.lastName || "";
-			form.birthdate = birthdate; // FIXED: Use the formatted birthdate
-			form.nationality = response.data.nationality || "Filipino";
-			form.primaryIdType = response.data.primaryIdType || "";
-			form.secondaryIdType = response.data.secondaryIdType || "";
-			form.mobileNumber = response.data.mobileNumber || "";
-			form.email = response.data.email || "";
-
-			// Set civil status if empty
-			if (!form.civilStatus) {
-				form.civilStatus = "single"; // Default value
-			}
+			loadingMessage.value = "Information loaded from your verified IDs!";
+			setTimeout(() => {
+				loadingMessage.value = "";
+			}, 3000);
+		} else {
+			console.warn("Empty or invalid data received from server");
+			loadingMessage.value =
+				"Could not extract information from your IDs. Please fill the form manually.";
+			setTimeout(() => {
+				loadingMessage.value = "";
+			}, 3000);
 		}
 	} catch (error) {
-		console.error("Failed to get extracted data:", error);
-		console.error("Error details:", {
-			message: error.message,
-			response: error.response?.data,
-		});
+		console.error("Failed to load extracted data:", error);
+		loadingMessage.value =
+			"Could not load your information. Please fill in the form manually.";
+		setTimeout(() => {
+			loadingMessage.value = "";
+		}, 3000);
 	} finally {
 		isLoading.value = false;
-		loadingMessage.value = "";
 	}
 };
 

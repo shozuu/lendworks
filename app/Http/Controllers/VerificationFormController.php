@@ -24,64 +24,48 @@ class VerificationFormController extends Controller
         return Inertia::render('Auth/VerificationForm');
     }
     
-    public function extractData()
-    {
-        $extractedData = Session::get('verification_extracted_data', []);
-        
-        // Add fallbacks for missing data
-        if (empty($extractedData)) {
-            Log::warning('No extracted data found in session');
-        } else {
-            Log::info('Retrieved extracted data from session', $extractedData);
-        }
-        
-        // Format birthdate if exists
-        if (!empty($extractedData['birthdate'])) {
-            try {
-                // Parse the date using Carbon for flexible date handling
-                $date = Carbon::parse($extractedData['birthdate']);
-                $extractedData['birthdate'] = $date->format('Y-m-d');
-                
-                Log::info('Formatted birthdate', [
-                    'original' => $extractedData['birthdate'],
-                    'formatted' => $date->format('Y-m-d')
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Failed to parse birthdate', [
-                    'birthdate' => $extractedData['birthdate'],
-                    'error' => $e->getMessage()
-                ]);
-                $extractedData['birthdate'] = '';
-            }
-        }
-
-        // Normalize gender
-        if (!empty($extractedData['gender'])) {
-            $gender = strtolower(trim($extractedData['gender']));
-            
-            // Enhanced gender mapping
-            $genderMap = [
-                'male' => ['m', 'male', 'lalaki'],
-                'female' => ['f', 'female', 'babae']
-            ];
-
-            foreach ($genderMap as $normalizedGender => $variants) {
-                if (in_array($gender, $variants) || str_contains($gender, $normalizedGender)) {
-                    $extractedData['gender'] = $normalizedGender;
-                    break;
-                }
-            }
-
-            // If no match found, set to 'other'
-            if (!in_array($extractedData['gender'], ['male', 'female'])) {
-                $extractedData['gender'] = 'other';
-            }
-
-            Log::info('Normalized gender', [
-                'original' => $gender,
-                'normalized' => $extractedData['gender']
+public function extractData()
+{
+    $extractedData = Session::get('verification_extracted_data', []);
+    
+    // Debug the data being retrieved
+    Log::info('Extracted data from session', $extractedData);
+    
+    // Ensure consistent camelCase naming for frontend
+    $formattedData = [
+        'firstName' => $extractedData['first_name'] ?? $extractedData['firstName'] ?? '',
+        'middleName' => $extractedData['middle_name'] ?? $extractedData['middleName'] ?? '',
+        'lastName' => $extractedData['last_name'] ?? $extractedData['lastName'] ?? '',
+        'birthdate' => '', // Format this below
+        'gender' => $extractedData['gender'] ?? '',
+        'mobileNumber' => $extractedData['mobile_number'] ?? $extractedData['mobileNumber'] ?? '',
+        'streetAddress' => $extractedData['street_address'] ?? $extractedData['streetAddress'] ?? '',
+        'barangay' => $extractedData['barangay'] ?? '',
+        'city' => $extractedData['city'] ?? '',
+        'province' => $extractedData['province'] ?? '',
+        'postalCode' => $extractedData['postal_code'] ?? $extractedData['postalCode'] ?? '',
+        'nationality' => $extractedData['nationality'] ?? 'Filipino',
+        'primaryIdType' => $extractedData['primary_id_type'] ?? $extractedData['primaryIdType'] ?? '',
+        'secondaryIdType' => $extractedData['secondary_id_type'] ?? $extractedData['secondaryIdType'] ?? '',
+        'email' => $extractedData['email'] ?? auth()->user()->email ?? '',
+    ];
+    
+    // Format birthdate if exists
+    if (!empty($extractedData['birthdate'])) {
+        try {
+            $date = Carbon::parse($extractedData['birthdate']);
+            $formattedData['birthdate'] = $date->format('Y-m-d');
+        } catch (\Exception $e) {
+            Log::error('Failed to parse birthdate', [
+                'birthdate' => $extractedData['birthdate'],
+                'error' => $e->getMessage()
             ]);
+            $formattedData['birthdate'] = '';
         }
+    }
+    
+    return response()->json($formattedData);
+
         
         // Ensure required fields exist even if empty
         $requiredFields = ['firstName', 'middleName', 'lastName', 'birthdate', 
