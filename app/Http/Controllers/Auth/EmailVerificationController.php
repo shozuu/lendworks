@@ -18,6 +18,21 @@ class EmailVerificationController extends Controller
     public function handler(EmailVerificationRequest $request) {
         $request->fulfill();
      
+        // Check if the user has verified their ID yet
+        $user = $request->user();
+        if (!$user->hasVerifiedId()) {
+            // Redirect to ID verification with a success message about email
+            return redirect()->route('home')
+                ->with('status', 'Your email has been verified! Please complete your ID verification.');
+        }
+        
+        // If ID is verified but profile isn't complete
+        if (!$user->hasProfile()) {
+            return redirect()->route('verification.form')
+                ->with('status', 'Your email has been verified! Please complete your profile.');
+        }
+        
+        // If everything is verified, go to home
         return redirect()->route('home')->with('status', 'Your email has been verified!');
     }
 

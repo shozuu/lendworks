@@ -87,7 +87,7 @@ const formSchema = toTypedSchema(
 			location_name: z.string().max(100).optional().nullable(),
 			address: z.string().max(255).optional().nullable(),
 			city: z.string().max(100).optional().nullable(),
-			province: z.string().max(100).optional().nullable(),
+			barangay: z.string().max(100).optional().nullable(),
 			postal_code: z.string().max(20).optional().nullable(),
 		})
 		.superRefine((data, ctx) => {
@@ -113,11 +113,11 @@ const formSchema = toTypedSchema(
 						path: ["city"],
 					});
 				}
-				if (!data.province?.trim()) {
+				if (!data.barangay?.trim()) {
 					ctx.addIssue({
 						code: z.ZodIssueCode.custom,
-						message: "Province is required when adding a new location",
-						path: ["province"],
+						message: "Barangay is required when adding a new location",
+						path: ["barangay"],
 					});
 				}
 				if (!data.postal_code?.trim()) {
@@ -167,7 +167,7 @@ const inertiaForm = useInertiaForm({
 	location_name: "",
 	address: "",
 	city: "",
-	province: "",
+	barangay: "",
 	postal_code: "",
 });
 
@@ -186,7 +186,7 @@ const onSubmit = form.handleSubmit((values) => {
 		inertiaForm.location_name = values.location_name;
 		inertiaForm.address = values.address;
 		inertiaForm.city = values.city;
-		inertiaForm.province = values.province;
+		inertiaForm.barangay = values.barangay;
 		inertiaForm.postal_code = values.postal_code;
 		inertiaForm.location_id = null;
 	} else {
@@ -414,9 +414,9 @@ watchEffect(() => {
 					</FormItem>
 				</FormField>
 
-				<FormField v-slot="{ componentField }" name="province">
+				<FormField v-slot="{ componentField }" name="barangay">
 					<FormItem v-auto-animate>
-						<FormLabel>Province</FormLabel>
+						<FormLabel>Barangay</FormLabel>
 						<FormControl>
 							<Input type="text" v-bind="componentField" />
 						</FormControl>
