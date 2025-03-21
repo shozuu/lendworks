@@ -5,11 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Profile;
-use App\Models\User;
 use Illuminate\Support\Facades\Session;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
+
 
 class VerificationFormController extends Controller
 {
@@ -25,79 +24,36 @@ class VerificationFormController extends Controller
     }
     
     public function extractData()
-    {
-        $extractedData = Session::get('verification_extracted_data', []);
+{
+    $extractedData = Session::get('verification_extracted_data', []);
+    
+    // Retain only ID types, nationality, and email
+    $filteredData = [
+        // Keep these fields from extracted data if they exist
+        'primaryIdType' => $extractedData['primaryIdType'] ?? '',
+        'secondaryIdType' => $extractedData['secondaryIdType'] ?? '',
+        'nationality' => $extractedData['nationality'] ?? 'Filipino', // Default to Filipino
+        'email' => $extractedData['email'] ?? auth()->user()->email ?? '',
         
-        // Add fallbacks for missing data
-        if (empty($extractedData)) {
-            Log::warning('No extracted data found in session');
-        } else {
-            Log::info('Retrieved extracted data from session', $extractedData);
-        }
-        
-        // Format birthdate if exists
-        if (!empty($extractedData['birthdate'])) {
-            try {
-                // Parse the date using Carbon for flexible date handling
-                $date = Carbon::parse($extractedData['birthdate']);
-                $extractedData['birthdate'] = $date->format('Y-m-d');
-                
-                Log::info('Formatted birthdate', [
-                    'original' => $extractedData['birthdate'],
-                    'formatted' => $date->format('Y-m-d')
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Failed to parse birthdate', [
-                    'birthdate' => $extractedData['birthdate'],
-                    'error' => $e->getMessage()
-                ]);
-                $extractedData['birthdate'] = '';
-            }
-        }
+        // Empty all other fields
+        'firstName' => '',
+        'middleName' => '',
+        'lastName' => '',
+        'birthdate' => '',
+        'gender' => '',
+        'mobileNumber' => '',
+        'streetAddress' => '',
+        'barangay' => '',
+        'city' => '',
+        'province' => '',
+        'postalCode' => '',
+        'civilStatus' => '',
+    ];
 
-        // Normalize gender
-        if (!empty($extractedData['gender'])) {
-            $gender = strtolower(trim($extractedData['gender']));
-            
-            // Enhanced gender mapping
-            $genderMap = [
-                'male' => ['m', 'male', 'lalaki'],
-                'female' => ['f', 'female', 'babae']
-            ];
-
-            foreach ($genderMap as $normalizedGender => $variants) {
-                if (in_array($gender, $variants) || str_contains($gender, $normalizedGender)) {
-                    $extractedData['gender'] = $normalizedGender;
-                    break;
-                }
-            }
-
-            // If no match found, set to 'other'
-            if (!in_array($extractedData['gender'], ['male', 'female'])) {
-                $extractedData['gender'] = 'other';
-            }
-
-            Log::info('Normalized gender', [
-                'original' => $gender,
-                'normalized' => $extractedData['gender']
-            ]);
-        }
-        
-        // Ensure required fields exist even if empty
-        $requiredFields = ['firstName', 'middleName', 'lastName', 'birthdate', 
-                        'gender', 'mobileNumber', 'streetAddress', 'nationality',
-                        'primaryIdType', 'secondaryIdType', 'email'];
-                        
-        foreach ($requiredFields as $field) {
-            if (!isset($extractedData[$field])) {
-                $extractedData[$field] = '';
-            }
-        }
-
-        Log::info('Returning extracted data', $extractedData);
-        
-        return response()->json($extractedData);
-    }
+    Log::info('Returning filtered data with only ID types, nationality, and email', $filteredData);
+    
+    return response()->json($filteredData);
+}
 
     public function submit(Request $request)
     {

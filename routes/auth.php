@@ -36,12 +36,33 @@ Route::middleware('auth')->group(function() {
     Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'handler'])->middleware('signed')->name('verification.verify');
     Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])->middleware('throttle:6,1')->name('verification.send');
 
-    // ID verification
-    Route::get('/verify-id', [FaceMatchController::class, 'show'])->name('verify-id.show');
-    Route::post('/verify-id', [FaceMatchController::class, 'matchFace'])->name('verify-id.match');
-    Route::post('/api/validate-id-type', [FaceMatchController::class, 'validateIdType'])->name('verify-id.validate');
-    Route::get('/api/valid-id-types', [FaceMatchController::class, 'getValidIdTypes'])->name('verify-id.types');
-    Route::post('/verify-liveness', [FaceMatchController::class, 'verifyLiveness']);
+   // Step 1: ID Document Verification
+Route::get('/verify-id', [FaceMatchController::class, 'showIdVerification'])
+    ->name('verify-id.show');
+    
+Route::post('/store-id-data', [FaceMatchController::class, 'storeIdData'])
+    ->name('verify-id.store');
+    
+Route::post('/api/validate-id-type', [FaceMatchController::class, 'validateIdType'])
+    ->name('verify-id.validate');
+
+// Step 2: Liveness Verification
+Route::get('/verify-liveness', [FaceMatchController::class, 'showLivenessVerification'])
+    ->middleware('ensure.verification.order')
+    ->name('verify-liveness.show');
+    
+Route::post('/verify-liveness', [FaceMatchController::class, 'verifyLiveness'])
+    ->name('verify-liveness');
+    
+Route::get('/check-id-data', [FaceMatchController::class, 'checkIdData'])
+    ->name('check-id-data');
+    
+Route::post('/complete-verification', [FaceMatchController::class, 'completeVerification'])
+    ->name('complete-verification');
+
+// Support legacy route
+Route::get('/verify-identity', [FaceMatchController::class, 'showIdVerification'])
+    ->name('verify-identity');
 
     // Consolidated password confirmation routes
     Route::prefix('confirm-password')->group(function() {
@@ -54,8 +75,10 @@ Route::middleware('auth')->group(function() {
     // Profile verification routes
     Route::get('/verification-form', [VerificationFormController::class, 'show'])
         ->name('verification.form');
+
     Route::get('/verify-id/extracted-data', [VerificationFormController::class, 'extractData'])
-        ->name('verification.extracted-data');
+    ->name('verify-id.extracted-data');
+    
     Route::post('/verification-form', [VerificationFormController::class, 'submit'])
         ->name('verification.form.submit');
 });

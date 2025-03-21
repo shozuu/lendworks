@@ -10,8 +10,10 @@ import { useForm as useInertiaForm } from "@inertiajs/vue3";
 import { toTypedSchema } from "@vee-validate/zod";
 import { vAutoAnimate } from "@formkit/auto-animate";
 import * as z from "zod";
-import { defineProps, ref, watchEffect } from "vue";
-
+import { defineProps, ref, watchEffect, nextTick } from "vue";
+import axios from "axios";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import {
 	FormControl,
 	FormDescription,
@@ -88,7 +90,7 @@ const formSchema = toTypedSchema(
 			location_name: z.string().max(100).optional().nullable(),
 			address: z.string().max(255).optional().nullable(),
 			city: z.string().max(100).optional().nullable(),
-			province: z.string().max(100).optional().nullable(),
+			barangay: z.string().max(100).optional().nullable(),
 			postal_code: z.string().max(20).optional().nullable(),
 		})
 		.superRefine((data, ctx) => {
@@ -114,11 +116,11 @@ const formSchema = toTypedSchema(
 						path: ["city"],
 					});
 				}
-				if (!data.province?.trim()) {
+				if (!data.barangay?.trim()) {
 					ctx.addIssue({
 						code: z.ZodIssueCode.custom,
-						message: "Province is required when adding a new location",
-						path: ["province"],
+						message: "barangay is required when adding a new location",
+						path: ["barangay"],
 					});
 				}
 				if (!data.postal_code?.trim()) {
@@ -153,9 +155,85 @@ const inertiaForm = useInertiaForm({
 	location_name: "",
 	address: "",
 	city: "",
-	province: "",
+	barangay: "",
 	postal_code: "",
 });
+
+// Map-related logic
+const mapRef = ref(null);
+const showMap = ref(false);
+const mapLoaded = ref(false);
+const selectedMapLocation = ref(null);
+let map = null;
+let marker = null;
+
+const toggleMap = async () => {
+	showMap.value = !showMap.value;
+
+	if (showMap.value && !mapLoaded.value) {
+		await nextTick();
+		initMap();
+	}
+};
+
+const initMap = () => {
+	const defaultLat = 6.9214;
+	const defaultLng = 122.079;
+
+	map = L.map(mapRef.value).setView([defaultLat, defaultLng], 13);
+
+	L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+		maxZoom: 19,
+		attribution:
+			'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+	}).addTo(map);
+
+	marker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(map);
+
+	marker.on("dragend", (event) => {
+		const position = marker.getLatLng();
+		selectedMapLocation.value = { lat: position.lat, lon: position.lng };
+		getAddressFromCoordinates(position.lat, position.lng);
+	});
+
+	map.on("click", (e) => {
+		marker.setLatLng(e.latlng);
+		selectedMapLocation.value = { lat: e.latlng.lat, lon: e.latlng.lng };
+		getAddressFromCoordinates(e.latlng.lat, e.latlng.lng);
+	});
+
+	mapLoaded.value = true;
+};
+
+const getAddressFromCoordinates = async (lat, lon) => {
+	try {
+		const response = await axios.get("/api/location/reverse", {
+			params: { lat, lon },
+		});
+
+		if (response.data.success) {
+			const address = response.data.address;
+
+			inertiaForm.address = `${address.building || ""} ${address.street || ""}`.trim();
+			inertiaForm.city = address.city || address.town || "";
+			inertiaForm.barangay = address.barangay || "";
+			inertiaForm.postal_code = address.postal_code || "";
+
+			// Ensure form values are updated
+			form.setValues({
+				address: inertiaForm.address,
+				city: inertiaForm.city,
+				barangay: inertiaForm.barangay,
+				postal_code: inertiaForm.postal_code,
+			});
+
+			await nextTick(); // Wait for DOM update
+			form.validate();
+		}
+	} catch (error) {
+		console.error("Error getting address from coordinates:", error);
+	}
+};
 
 const onSubmit = form.handleSubmit((values) => {
 	inertiaForm.title = values.title;
@@ -171,7 +249,7 @@ const onSubmit = form.handleSubmit((values) => {
 		inertiaForm.location_name = values.location_name;
 		inertiaForm.address = values.address;
 		inertiaForm.city = values.city;
-		inertiaForm.province = values.province;
+		inertiaForm.barangay = values.barangay;
 		inertiaForm.postal_code = values.postal_code;
 		inertiaForm.location_id = null;
 	} else {
@@ -207,7 +285,7 @@ watchEffect(() => {
 			<FormItem v-auto-animate>
 				<FormLabel>Title</FormLabel>
 				<FormDescription>
-					A short, clear name for your listing (e.g., "Bosche Cordless 18v Drill ").
+					A short, clear name for your listing (e.g., "Bosche Cordless 18v Drill").
 				</FormDescription>
 				<FormControl>
 					<Input type="text" v-bind="componentField" />
@@ -232,7 +310,7 @@ watchEffect(() => {
 		<FormField v-slot="{ componentField }" name="category">
 			<FormItem v-auto-animate>
 				<FormLabel>Category</FormLabel>
-				<FormDescription> Choose the category that fits your listing. </FormDescription>
+				<FormDescription>Choose the category that fits your listing.</FormDescription>
 				<Select v-bind="componentField">
 					<FormControl>
 						<SelectTrigger>
@@ -258,7 +336,7 @@ watchEffect(() => {
 		<FormField v-slot="{ componentField }" name="value">
 			<FormItem v-auto-animate>
 				<FormLabel>Value</FormLabel>
-				<FormDescription> The estimated value of your tool. (In Php)</FormDescription>
+				<FormDescription>The estimated value of your tool. (In Php)</FormDescription>
 				<FormControl>
 					<Input type="number" v-bind="componentField" />
 				</FormControl>
@@ -269,7 +347,7 @@ watchEffect(() => {
 		<FormField v-slot="{ componentField }" name="price">
 			<FormItem v-auto-animate>
 				<FormLabel>Daily Rental Rate</FormLabel>
-				<FormDescription> Set your daily rental price. (In Php)</FormDescription>
+				<FormDescription>Set your daily rental price. (In Php)</FormDescription>
 				<FormControl>
 					<Input type="number" v-bind="componentField" />
 				</FormControl>
@@ -285,9 +363,9 @@ watchEffect(() => {
 		<FormField v-slot="{ componentField }" name="quantity">
 			<FormItem v-auto-animate>
 				<FormLabel>Quantity Available</FormLabel>
-				<FormDescription
-					>How many of this item do you have available for rent?</FormDescription
-				>
+				<FormDescription>
+					How many of this item do you have available for rent?
+				</FormDescription>
 				<FormControl>
 					<Input type="number" min="1" max="100" v-bind="componentField" />
 				</FormControl>
@@ -310,7 +388,7 @@ watchEffect(() => {
 					We suggest a security deposit between
 					{{ formatNumber(depositFee.minRate) }} and
 					{{ formatNumber(depositFee.maxRate) }}
-					based on your item's value
+					based on your item's value.
 				</FormDescription>
 			</FormItem>
 		</FormField>
@@ -381,11 +459,28 @@ watchEffect(() => {
 				</FormItem>
 			</FormField>
 
+			<!-- Map toggle button -->
+			<div class="flex justify-end">
+				<Button type="button" @click="toggleMap">
+					{{ showMap ? "Hide Map" : "Show Map" }}
+				</Button>
+			</div>
+
+			<!-- Map container -->
+			<div
+				v-show="showMap"
+				class="rounded-lg overflow-hidden border-2 border-primary mb-4"
+				style="height: 400px"
+			>
+				<div ref="mapRef" style="height: 100%"></div>
+			</div>
+
+			<!-- Address Fields -->
 			<FormField v-slot="{ componentField }" name="address">
-				<FormItem v-auto-animate>
+				<FormItem>
 					<FormLabel>Address</FormLabel>
 					<FormControl>
-						<Input type="text" v-bind="componentField" />
+						<Input type="text" v-model="inertiaForm.address" />
 					</FormControl>
 					<FormMessage />
 				</FormItem>
@@ -393,20 +488,20 @@ watchEffect(() => {
 
 			<div class="grid grid-cols-2 gap-4">
 				<FormField v-slot="{ componentField }" name="city">
-					<FormItem v-auto-animate>
+					<FormItem>
 						<FormLabel>City</FormLabel>
 						<FormControl>
-							<Input type="text" v-bind="componentField" />
+							<Input type="text" v-model="inertiaForm.city" />
 						</FormControl>
 						<FormMessage />
 					</FormItem>
 				</FormField>
 
-				<FormField v-slot="{ componentField }" name="province">
-					<FormItem v-auto-animate>
-						<FormLabel>Province</FormLabel>
+				<FormField v-slot="{ componentField }" name="barangay">
+					<FormItem>
+						<FormLabel>barangay</FormLabel>
 						<FormControl>
-							<Input type="text" v-bind="componentField" />
+							<Input type="text" v-model="inertiaForm.barangay" />
 						</FormControl>
 						<FormMessage />
 					</FormItem>
@@ -414,15 +509,16 @@ watchEffect(() => {
 			</div>
 
 			<FormField v-slot="{ componentField }" name="postal_code">
-				<FormItem v-auto-animate>
+				<FormItem>
 					<FormLabel>Postal Code</FormLabel>
 					<FormControl>
-						<Input type="text" v-bind="componentField" />
+						<Input type="text" v-model="inertiaForm.postal_code" />
 					</FormControl>
 					<FormMessage />
 				</FormItem>
 			</FormField>
 		</div>
+
 		<Button type="submit" :disabled="inertiaForm.processing">
 			{{ inertiaForm.processing ? "Submitting..." : "Submit" }}
 		</Button>

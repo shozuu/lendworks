@@ -8,21 +8,11 @@ defineOptions({ layout: AuthLayout });
 const videoRef = ref(null);
 const cameras = ref([]);
 const selectedCamera = ref("");
-const idCard = ref(null);
-const idPreview = ref(null);
-const selectedIdType = ref("");
 const matchScore = ref(null);
 const verified = ref(null);
 const error = ref(null);
 const isSubmitting = ref(false);
-const idValidationResult = ref(null);
 let stream = null;
-//
-const secondIdCard = ref(null);
-const secondIdPreview = ref(null);
-const secondSelectedIdType = ref("");
-const secondIdValidationResult = ref(null);
-const duplicateIdError = ref(null);
 
 // Liveness detection states
 const isLivenessActive = ref(false);
@@ -31,38 +21,12 @@ const livenessVerified = ref(false);
 const livenessProgress = ref(0);
 const livenessImage = ref(null);
 const livenessInstructions = ref("");
+const idDataValidated = ref(false);
 
 const livenessSteps = [
 	{ action: "smile", instruction: "Please smile naturally" },
 	{ action: "blink", instruction: "Please blink your eyes slowly" },
 ];
-
-watch([selectedIdType, secondSelectedIdType], ([newPrimaryType, newSecondaryType]) => {
-	if (newPrimaryType && newSecondaryType && newPrimaryType === newSecondaryType) {
-		duplicateIdError.value = "Primary and secondary ID must be different types";
-		// Reset the second ID if user selects the same as primary
-		secondIdCard.value = null;
-		secondIdPreview.value = null;
-		secondIdValidationResult.value = null;
-	} else {
-		duplicateIdError.value = null;
-	}
-});
-
-// Valid Philippine IDs mapping
-const validPhilippineIds = {
-	philsys: "Philippine Identification System (PhilSys) ID",
-	drivers: "Driver's License",
-	passport: "Philippine Passport",
-	sss: "SSS ID",
-	gsis: "GSIS ID",
-	postal: "Postal ID",
-	voters: "Voter's ID",
-	prc: "PRC ID",
-	philhealth: "PhilHealth ID",
-	tin: "TIN ID",
-	umid: "UMID",
-};
 
 // Configure axios defaults for CSRF
 axios.defaults.headers.common["X-Requested-With"] = "XMLHttpRequest";
@@ -184,120 +148,28 @@ const startLivenessDetection = async () => {
 	}
 };
 
-const handleIdUpload = async (event) => {
-	const file = event.target.files[0];
-	if (file) {
-		idCard.value = file;
-		idPreview.value = URL.createObjectURL(file);
-
-		if (selectedIdType.value) {
-			await validateIdType();
-		} else {
-			error.value = "Please select an ID type before uploading";
-		}
-	}
-};
-
-const handleSecondIdUpload = async (event) => {
-	const file = event.target.files[0];
-	if (file) {
-		// Check for duplicate ID types before proceeding
-		if (secondSelectedIdType.value === selectedIdType.value) {
-			error.value = "Primary and secondary ID must be different types.";
-			duplicateIdError.value = "Primary and secondary ID must be different types";
-			return;
-		}
-
-		secondIdCard.value = file;
-		secondIdPreview.value = URL.createObjectURL(file);
-
-		if (secondSelectedIdType.value && idCard.value && selectedIdType.value) {
-			await validateIdType();
-		} else if (!secondSelectedIdType.value) {
-			error.value = "Please select a second ID type before uploading";
-		}
-	}
-};
-
-const validateIdType = async () => {
-	if (!idCard.value || !selectedIdType.value) {
-		error.value = "Please select the primary ID type and upload ID card.";
-		return;
-	}
-
-	if (!secondIdCard.value || !secondSelectedIdType.value) {
-		error.value = "Please select the secondary ID type and upload ID card.";
-		return;
-	}
-
-	if (selectedIdType.value === secondSelectedIdType.value) {
-		error.value = "Primary and secondary ID must be different types.";
-		duplicateIdError.value = "Primary and secondary ID must be different types";
-		return;
-	}
-
-	error.value = null;
-	duplicateIdError.value = null;
-
+const checkIdDataValidity = async () => {
 	try {
-		const formData = new FormData();
-		formData.append("id_card_primary", idCard.value);
-		formData.append("id_type_primary", selectedIdType.value);
-		formData.append("id_card_secondary", secondIdCard.value);
-		formData.append("id_type_secondary", secondSelectedIdType.value);
+		const response = await axios.get("/check-id-data");
+		idDataValidated.value = response.data.valid;
 
-		const response = await axios.post("/api/validate-id-type", formData, {
-			headers: {
-				"Content-Type": "multipart/form-data",
-			},
-		});
-
-		idValidationResult.value = {
-			isValid: response.data.primary_id.is_valid,
-			message: response.data.primary_id.message,
-		};
-
-		secondIdValidationResult.value = {
-			isValid: response.data.secondary_id.is_valid,
-			message: response.data.secondary_id.message,
-		};
-
-		console.log("=== PRIMARY ID OCR TEXT ===");
-		console.log(response.data.primary_id.extracted_text);
-		console.log("=== PRIMARY ID MATCHED KEYWORDS ===");
-		console.log(response.data.primary_id.matched_keywords);
-
-		console.log("=== SECONDARY ID OCR TEXT ===");
-		console.log(response.data.secondary_id.extracted_text);
-		console.log("=== SECONDARY ID MATCHED KEYWORDS ===");
-		console.log(response.data.secondary_id.matched_keywords);
-
-		// Check if both IDs are valid
-		if (response.data.all_valid) {
-			// Both IDs are valid, proceed with verification
-		} else {
-			error.value = "One or both IDs could not be verified.";
+		if (!idDataValidated.value) {
+			// Redirect back to ID verification page if no valid ID data exists
+			window.location.href = "/verify-id";
 		}
 	} catch (err) {
-		console.error("ID validation error:", err);
-		error.value =
-			"Failed to validate IDs: " + (err.response?.data?.message || err.message);
+		console.error("Failed to check ID data:", err);
+		error.value = "Error verifying your session data. Please try again.";
+		// Redirect to ID verification
+		setTimeout(() => {
+			window.location.href = "/verify-id";
+		}, 2000);
 	}
 };
 
 const handleSubmit = async () => {
-	if (
-		!livenessVerified.value ||
-		!livenessImage.value ||
-		!idCard.value ||
-		!selectedIdType.value ||
-		!idValidationResult.value?.isValid ||
-		!secondIdCard.value ||
-		!secondSelectedIdType.value ||
-		!secondIdValidationResult.value?.isValid
-	) {
-		error.value =
-			"Please complete liveness verification and upload two valid Philippine IDs";
+	if (!livenessVerified.value || !livenessImage.value) {
+		error.value = "Please complete the liveness verification first";
 		return;
 	}
 
@@ -310,18 +182,11 @@ const handleSubmit = async () => {
 		// Convert base64 liveness image to blob
 		const livenessResponse = await fetch(livenessImage.value);
 		const livenessBlob = await livenessResponse.blob();
+
 		formData.append("selfie", livenessBlob, "liveness.jpg");
 
-		// Primary ID
-		formData.append("id_card", idCard.value);
-		formData.append("id_type", selectedIdType.value);
-
-		// Secondary ID
-		formData.append("id_card_secondary", secondIdCard.value);
-		formData.append("id_type_secondary", secondSelectedIdType.value);
-
 		try {
-			const result = await axios.post("/verify-id", formData, {
+			const result = await axios.post("/complete-verification", formData, {
 				headers: {
 					"Content-Type": "multipart/form-data",
 				},
@@ -333,11 +198,10 @@ const handleSubmit = async () => {
 
 			// Add redirect after successful verification
 			if (data.verified) {
-				console.log("Verification successful, redirecting to:", data.redirect);
-				setTimeout(() => {
-					console.log("Executing redirect to:", data.redirect);
-					window.location.href = data.redirect;
-				}, 2000);
+				console.log("Verification successful, session ID:", data.session_id);
+
+				// Remove the timeout to avoid session issues
+				window.location.href = data.redirect;
 			} else {
 				console.log("Verification failed, no redirect");
 			}
@@ -371,6 +235,7 @@ const handleSubmit = async () => {
 
 onMounted(() => {
 	initializeWebcam();
+	checkIdDataValidity();
 });
 
 onUnmounted(() => {
@@ -383,7 +248,7 @@ onUnmounted(() => {
 <template>
 	<div class="max-w-md mx-auto rounded-lg shadow-md p-6">
 		<div class="flex items-center justify-center mb-6">
-			<h2 class="text-2xl font-bold text-center text-primary">Verify your ID</h2>
+			<h2 class="text-2xl font-bold text-center text-primary">Face Verification</h2>
 		</div>
 
 		<!-- Add verification notice -->
@@ -404,10 +269,10 @@ onUnmounted(() => {
 					/>
 				</svg>
 				<div>
-					<p class="font-medium text-primary">Verification Required</p>
+					<p class="font-medium text-primary">Step 2 of 2: Face Verification</p>
 					<p class="text-sm text-muted-foreground mt-1">
-						You need to verify your identity to access rental and listing features. This
-						helps build trust in our community and keeps everyone safe.
+						We need to verify that you're really you! Please follow the instructions to
+						complete face verification.
 					</p>
 				</div>
 			</div>
@@ -480,7 +345,7 @@ onUnmounted(() => {
 
 					<div class="mt-4 space-y-2">
 						<!-- Liveness Instructions -->
-						<div v-if="livenessStep" class="bg-accent p-4 rounded-lg">
+						<div v-if="livenessStep !== null" class="bg-accent p-4 rounded-lg">
 							<p class="text-primary font-medium">{{ livenessInstructions }}</p>
 							<div class="mt-2">
 								<div class="w-full bg-primary/20 rounded-full h-2">
@@ -540,164 +405,15 @@ onUnmounted(() => {
 					</div>
 				</div>
 
-				<!-- ID upload section -->
-				<div class="border-2 border-primary rounded-lg p-4 bg-card">
-					<div class="flex items-center mb-2">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="text-primary mr-2"
-							width="20"
-							height="20"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						>
-							<rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-							<circle cx="9" cy="9" r="2" />
-							<path d="M15 8h.01" />
-							<path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-						</svg>
-						<h3 class="font-medium text-primary">Upload Valid ID</h3>
-					</div>
-
-					<!-- ID Type Selection -->
-					<div class="mb-4">
-						<label class="block text-sm font-medium text-foreground mb-2">
-							Select ID Type
-						</label>
-						<select
-							v-model="selectedIdType"
-							class="w-full border bg-muted rounded-md p-2 text-foreground mb-3 focus:border-primary focus:ring-ring"
-							@change="validateIdType"
-						>
-							<option value="">Select an ID type</option>
-							<option
-								v-for="(name, type) in validPhilippineIds"
-								:key="type"
-								:value="type"
-							>
-								{{ name }}
-							</option>
-						</select>
-					</div>
-
-					<input
-						type="file"
-						@change="handleIdUpload"
-						accept="image/*"
-						class="w-full border rounded-md p-2 text-foreground focus:border-primary focus:ring-ring"
-					/>
-
-					<div v-if="idPreview" class="mt-4">
-						<img
-							:src="idPreview"
-							alt="ID preview"
-							class="w-full h-48 object-cover rounded-lg"
-						/>
-
-						<div v-if="idValidationResult" class="mt-2">
-							<div
-								:class="`p-2 rounded text-sm ${
-									idValidationResult.isValid
-										? 'bg-accent text-emerald-400'
-										: 'bg-destructive/10 text-destructive'
-								}`"
-							>
-								{{ idValidationResult.message }}
-							</div>
-						</div>
-					</div>
-				</div>
+				<!-- Submit button -->
+				<button
+					type="submit"
+					:disabled="!livenessVerified || isSubmitting"
+					class="w-full bg-primary text-primary-foreground py-2 px-4 rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+				>
+					{{ isSubmitting ? "Verifying..." : "Complete Verification" }}
+				</button>
 			</div>
-
-			<!-- ID Type Selection 2 -->
-			<!-- Second ID upload section -->
-			<div class="border-2 border-primary rounded-lg p-4 bg-card">
-				<div class="flex items-center mb-2">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="text-primary mr-2"
-						width="20"
-						height="20"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					>
-						<rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-						<circle cx="9" cy="9" r="2" />
-						<path d="M15 8h.01" />
-						<path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-					</svg>
-					<h3 class="font-medium text-primary">Upload Second ID</h3>
-				</div>
-
-				<div class="mb-4">
-					<label class="block text-sm font-medium text-foreground mb-2">
-						Select ID Type
-					</label>
-					<select
-						v-model="secondSelectedIdType"
-						class="w-full bg-muted border rounded-md p-2 text-foreground mb-3 focus:border-primary focus:ring-ring"
-						@change="validateIdType"
-					>
-						<option value="">Select an ID type</option>
-						<option v-for="(name, type) in validPhilippineIds" :key="type" :value="type">
-							{{ name }}
-						</option>
-					</select>
-				</div>
-
-				<input
-					type="file"
-					@change="handleSecondIdUpload"
-					accept="image/*"
-					class="w-full border rounded-md p-2 text-foreground focus:border-primary focus:ring-ring"
-				/>
-
-				<div v-if="secondIdPreview" class="mt-4">
-					<img
-						:src="secondIdPreview"
-						alt="Second ID preview"
-						class="w-full h-48 object-cover rounded-lg"
-					/>
-
-					<div v-if="secondIdValidationResult" class="mt-2">
-						<div
-							:class="`p-2 rounded text-sm ${
-								secondIdValidationResult.isValid
-									? 'bg-accent text-emerald-400'
-									: 'bg-destructive/10 text-destructive'
-							}`"
-						>
-							{{ secondIdValidationResult.message }}
-						</div>
-					</div>
-				</div>
-			</div>
-
-			<!-- Submit button -->
-			<button
-				type="submit"
-				:disabled="
-					!livenessVerified ||
-					!idCard ||
-					!selectedIdType ||
-					!idValidationResult?.isValid ||
-					!secondIdCard ||
-					!secondSelectedIdType ||
-					!secondIdValidationResult?.isValid ||
-					isSubmitting
-				"
-				class="w-full bg-primary text-primary-foreground py-2 px-4 rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-			>
-				{{ isSubmitting ? "Verifying..." : "Complete Verification" }}
-			</button>
 		</form>
 
 		<!-- Results section -->

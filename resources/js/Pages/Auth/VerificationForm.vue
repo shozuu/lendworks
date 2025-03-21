@@ -1,11 +1,145 @@
 <script setup>
-import { ref, reactive, onMounted, watch, computed } from "vue";
+import { ref, onMounted, watch, computed, nextTick } from "vue";
 import { useForm } from "@inertiajs/vue3";
 import AuthLayout from "../../Layouts/AuthLayout.vue";
 import axios from "axios";
 import debounce from "lodash/debounce";
 
 defineOptions({ layout: AuthLayout });
+
+const mapRef = ref(null);
+const showMap = ref(false);
+const mapLoaded = ref(false);
+const selectedMapLocation = ref(null);
+let map = null;
+let marker = null;
+
+const toggleMap = async () => {
+	showMap.value = !showMap.value;
+
+	if (showMap.value && !mapLoaded.value) {
+		await nextTick();
+		initMap();
+	}
+};
+
+const initMap = () => {
+	// Default to Philippines (center of Manila)
+	const defaultLat = 6.9214;
+	const defaultLng = 122.079;
+
+	// Create the map
+	map = L.map(mapRef.value).setView([defaultLat, defaultLng], 13);
+
+	// Add the OpenStreetMap tiles
+	L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+		maxZoom: 19,
+		attribution:
+			'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+	}).addTo(map);
+
+	// Add a marker that users can drag
+	marker = L.marker([defaultLat, defaultLng], {
+		draggable: true,
+	}).addTo(map);
+
+	// When the marker is moved, update the location data
+	marker.on("dragend", function (event) {
+		const position = marker.getLatLng();
+		selectedMapLocation.value = {
+			lat: position.lat,
+			lon: position.lng,
+		};
+		getAddressFromCoordinates(position.lat, position.lng);
+	});
+
+	// When users click on the map, move the marker and update the location
+	map.on("click", function (e) {
+		marker.setLatLng(e.latlng);
+		selectedMapLocation.value = {
+			lat: e.latlng.lat,
+			lon: e.latlng.lng,
+		};
+		getAddressFromCoordinates(e.latlng.lat, e.latlng.lng);
+	});
+
+	mapLoaded.value = true;
+};
+
+// Add a function to get address information from coordinates
+const getAddressFromCoordinates = async (lat, lon) => {
+	isSearchingAddress.value = true;
+
+	try {
+		const response = await axios.get("/api/location/reverse", {
+			params: {
+				lat: lat,
+				lon: lon,
+			},
+		});
+
+		if (response.data.success) {
+			const address = response.data.address;
+
+			// Update the address query with the display name
+			addressQuery.value = response.data.display_name;
+
+			// Extract zone information (if available)
+			const zone = address.neighbourhood || address.suburb || "";
+			const zonePrefix = zone ? `Zone ${zone}, ` : "";
+
+			// Enhance street address to include building number, zone, and street name
+			const building = address.building || address.house_number || "";
+			const street = address.street || address.road || "";
+			form.streetAddress = `${building} ${zonePrefix}${street}`.trim();
+
+			// Set barangay
+			form.barangay = address.barangay || address.village || address.suburb || "";
+
+			// Set city and province separately
+			form.city = address.city || address.town || address.municipality || "";
+			form.province =
+				address.province || address.state || address.county || "Zamboanga Peninsula"; // Default province
+
+			// Set postal code
+			form.postalCode = address.postal_code || "";
+
+			console.log("Address data from map:", address);
+		}
+	} catch (error) {
+		console.error("Error getting address from coordinates:", error);
+	} finally {
+		isSearchingAddress.value = false;
+	}
+};
+
+function getReadableIdName(idType) {
+	const idTypeMap = {
+		philsys: "Philippine Identification System (PhilSys) ID",
+		drivers: "Driver's License",
+		passport: "Philippine Passport",
+		sss: "SSS ID",
+		gsis: "GSIS ID",
+		postal: "Postal ID",
+		voters: "Voter's ID",
+		prc: "PRC ID",
+		philhealth: "PhilHealth ID",
+		tin: "TIN ID",
+		umid: "UMID",
+	};
+
+	return idTypeMap[idType] || idType;
+}
+
+const displayPrimaryIdType = computed(() => {
+	return getReadableIdName(form.primaryIdType);
+});
+// Loading states
+const isLoading = ref(false);
+const loadingMessage = ref("");
+const displaySecondaryIdType = computed(() => {
+	return getReadableIdName(form.secondaryIdType);
+});
 // Form state
 const form = useForm({
 	// Personal information
@@ -31,35 +165,6 @@ const form = useForm({
 	primaryIdType: "",
 	secondaryIdType: "",
 	nationality: "",
-});
-
-// Loading states
-const isLoading = ref(false);
-const loadingMessage = ref("");
-
-function getReadableIdName(idType) {
-	const idTypes = {
-		philsys: "PhilSys ID (National ID)",
-		drivers: "Driver's License",
-		passport: "Philippine Passport",
-		voters: "Voter's ID",
-		postal: "Postal ID",
-		tin: "TIN ID",
-		umid: "UMID",
-		sss: "SSS ID",
-		prc: "PRC ID",
-		philhealth: "PhilHealth ID",
-	};
-
-	return idTypes[idType] || idType || "Not specified";
-}
-
-const displayPrimaryIdType = computed(() => {
-	return getReadableIdName(form.primaryIdType);
-});
-
-const displaySecondaryIdType = computed(() => {
-	return getReadableIdName(form.secondaryIdType);
 });
 
 // Address search
@@ -101,91 +206,45 @@ const searchAddress = debounce(async () => {
 
 // Handle address selection
 const selectAddress = (address) => {
-	// Extract address components from OSM data
-	const addressDetails = address.address;
-
-	// Map OSM address fields to our form fields
-	if (addressDetails) {
-		form.streetAddress = [
-			addressDetails.house_number,
-			addressDetails.road,
-			addressDetails.suburb,
-		]
-			.filter(Boolean)
-			.join(", ");
-
-		form.city =
-			addressDetails.city || addressDetails.town || addressDetails.municipality || "";
-		form.province = addressDetails.state || addressDetails.province || "";
-		form.barangay = addressDetails.neighbourhood || addressDetails.suburb || "";
-		form.postalCode = addressDetails.postcode || "";
-	}
-
 	// Close suggestions
 	showSuggestions.value = false;
 	addressQuery.value = address.display_name;
-};
 
-// Get pre-filled data from ID verification
-const loadExtractedData = async () => {
-	isLoading.value = true;
-	loadingMessage.value = "Loading your information from verified IDs...";
+	// If the map is loaded, update the marker position
+	if (mapLoaded.value && map && marker) {
+		const lat = parseFloat(address.lat);
+		const lon = parseFloat(address.lon);
 
-	try {
-		const response = await axios.get("/verify-id/extracted-data");
-		console.log("Received extracted data:", response.data);
+		marker.setLatLng([lat, lon]);
+		map.setView([lat, lon], 16);
 
-		// Pre-fill form with data from OCR if available
-		if (response.data) {
-			// Fix the birthdate format for HTML date input (requires YYYY-MM-DD)
-			let birthdate = response.data.birthdate || "";
-			if (birthdate) {
-				// Make sure it's in the YYYY-MM-DD format required by HTML date inputs
-				try {
-					// Parse the date string and format it properly
-					const date = new Date(birthdate);
-					if (!isNaN(date.getTime())) {
-						birthdate = date.toISOString().split("T")[0]; // Format as YYYY-MM-DD
-					}
-				} catch (e) {
-					console.error("Failed to parse birthdate:", birthdate, e);
-					birthdate = "";
-				}
-			}
+		selectedMapLocation.value = { lat, lon };
+	}
 
-			// Fix the typo in your code - you were setting birthdate to lastName!
-			console.log("Setting normalized values:", {
-				birthdate: birthdate,
-			});
+	// Update form fields from address object
+	if (address.address) {
+		const addr = address.address;
 
-			// Now set the values with proper formatting
-			form.firstName = response.data.firstName || "";
-			form.middleName = response.data.middleName || "";
-			form.lastName = response.data.lastName || "";
-			form.birthdate = birthdate; // FIXED: Use the formatted birthdate
-			form.nationality = response.data.nationality || "Filipino";
-			form.primaryIdType = response.data.primaryIdType || "";
-			form.secondaryIdType = response.data.secondaryIdType || "";
-			form.mobileNumber = response.data.mobileNumber || "";
-			form.email = response.data.email || "";
+		// Extract zone information (if available)
+		const zone = addr.neighbourhood || addr.suburb || "";
+		const zonePrefix = zone ? `Zone ${zone}, ` : "";
 
-			// Set civil status if empty
-			if (!form.civilStatus) {
-				form.civilStatus = "single"; // Default value
-			}
-		}
-	} catch (error) {
-		console.error("Failed to get extracted data:", error);
-		console.error("Error details:", {
-			message: error.message,
-			response: error.response?.data,
-		});
-	} finally {
-		isLoading.value = false;
-		loadingMessage.value = "";
+		// Enhanced street address with building number and zone
+		const building = addr.house_number || "";
+		const street = addr.road || addr.street || "";
+		form.streetAddress = `${building} ${zonePrefix}${street}`.trim();
+
+		// Set barangay
+		form.barangay = addr.suburb || addr.neighbourhood || addr.village || "";
+
+		// Set city and province separately
+		form.city = addr.city || addr.town || addr.municipality || "";
+		form.province = addr.state || addr.province || addr.county || "";
+
+		// Set postal code
+		form.postalCode = addr.postcode || "";
 	}
 };
-
 // Watch for address query changes
 watch(addressQuery, (newValue) => {
 	if (newValue) {
@@ -203,16 +262,46 @@ const submit = () => {
 		},
 	});
 };
+const loadBasicData = async () => {
+	isLoading.value = true;
+	loadingMessage.value = "Loading your ID information...";
 
+	try {
+		const response = await axios.get("/verify-id/extracted-data");
+
+		if (response.data) {
+			// Only set these specific fields
+			form.primaryIdType = response.data.primaryIdType || "";
+			form.secondaryIdType = response.data.secondaryIdType || "";
+			form.nationality = response.data.nationality || "Filipino";
+			form.email = response.data.email || "";
+		}
+	} catch (error) {
+		console.error("Error loading basic data:", error);
+	} finally {
+		isLoading.value = false;
+		loadingMessage.value = "";
+	}
+};
 onMounted(() => {
-	loadExtractedData();
+	loadBasicData();
 
-	// Close address suggestions on click outside
 	document.addEventListener("click", (e) => {
 		if (!e.target.closest(".address-search-container")) {
 			showSuggestions.value = false;
 		}
 	});
+
+	// Load Leaflet CSS
+	const link = document.createElement("link");
+	link.rel = "stylesheet";
+	link.href = "https://unpkg.com/leaflet@1.7.1/dist/leaflet.css";
+	document.head.appendChild(link);
+
+	// Load Leaflet JS
+	const script = document.createElement("script");
+	script.src = "https://unpkg.com/leaflet@1.7.1/dist/leaflet.js";
+	document.head.appendChild(script);
 });
 </script>
 
@@ -476,6 +565,39 @@ onMounted(() => {
 				<h2 class="text-xl font-semibold mb-4 text-primary">Address Information</h2>
 
 				<div class="space-y-4">
+					<!-- Map toggle button -->
+					<div class="flex justify-end">
+						<button
+							type="button"
+							@click="toggleMap"
+							class="px-4 py-2 bg-primary text-primary-foreground rounded-md flex items-center"
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								class="w-5 h-5 mr-2"
+							>
+								<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+								<circle cx="12" cy="10" r="3"></circle>
+							</svg>
+							{{ showMap ? "Hide Map" : "Show Map" }}
+						</button>
+					</div>
+					<div
+						v-show="showMap"
+						class="rounded-lg overflow-hidden border-2 border-primary mb-4"
+						style="height: 400px"
+					>
+						<div ref="mapRef" style="height: 100%"></div>
+					</div>
+				</div>
+
+				<div class="space-y-4">
 					<!-- OpenStreetMap Address Search -->
 					<div class="address-search-container relative">
 						<label class="block text-foreground text-sm font-medium mb-1"
@@ -688,3 +810,11 @@ onMounted(() => {
 		</form>
 	</div>
 </template>
+
+<style>
+/* Add these styles for the map */
+.leaflet-container {
+	height: 100%;
+	width: 100%;
+}
+</style>
