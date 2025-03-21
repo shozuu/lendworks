@@ -369,10 +369,12 @@ class RentalRequest extends Model
             return 0;
         }
         
+        // Get daily rate per unit and multiply by quantity
         $dailyRate = abs((float) $this->listing->price);
+        $quantity = $this->quantity_approved ?: $this->quantity_requested;
         $overdueDays = abs($this->overdue_days);
         
-        return $dailyRate * $overdueDays;
+        return $dailyRate * $overdueDays * $quantity;
     }
 
     // Add these new methods
