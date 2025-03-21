@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onUnmounted } from 'vue';
 import {
   Dialog,
   DialogContent,
@@ -43,6 +43,7 @@ const MAX_ADDITIONAL_IMAGES = 4;
 const showAdditionalUpload = ref(false);
 const mainProofImage = ref([]);
 const additionalImages = ref([]);
+const imageUrls = ref([]);
 
 const mainImageError = ref('');
 const additionalImagesError = ref('');
@@ -87,12 +88,34 @@ const handleMainImageUpload = (files) => {
 };
 
 const handleAdditionalImagesUpload = (files) => {
+  // Clean up previous URLs
+  imageUrls.value.forEach(url => URL.revokeObjectURL(url));
+  imageUrls.value = [];
+
   if (validateAdditionalImages(files)) {
     additionalImages.value = files;
+    // Create and store new URLs
+    imageUrls.value = files.map(file => URL.createObjectURL(file));
   } else {
-    additionalImages.value = files.slice(0, MAX_ADDITIONAL_IMAGES);
+    const slicedFiles = files.slice(0, MAX_ADDITIONAL_IMAGES);
+    additionalImages.value = slicedFiles;
+    // Create and store new URLs for sliced files
+    imageUrls.value = slicedFiles.map(file => URL.createObjectURL(file));
   }
 };
+
+// Add cleanup on unmount
+onUnmounted(() => {
+  imageUrls.value.forEach(url => URL.revokeObjectURL(url));
+});
+
+const canSubmitForm = computed(() => {
+  const hasMainImage = mainProofImage.value.length > 0;
+  const hasReason = !!disputeForm.reason;
+  const hasDescription = !!disputeForm.issue_description;
+
+  return hasMainImage && hasReason && hasDescription;
+});
 
 const handleDisputeSubmit = () => {
   console.log('Starting dispute submission...', {
@@ -144,6 +167,10 @@ const handleDisputeSubmit = () => {
       showAdditionalUpload.value = false;
     },
     onError: (errors) => {
+      // Don't show error for empty description unless it's "other" reason
+      if (errors.issue_description && !isOtherReason.value) {
+        delete errors.issue_description;
+      }
       console.error('Dispute submission failed:', errors);
     },
     onStart: () => {
@@ -251,8 +278,9 @@ const handleDisputeSubmit = () => {
                     >
                       <div class="w-12 h-12 shrink-0 rounded overflow-hidden">
                         <img 
-                          :src="URL.createObjectURL(image)" 
+                          :src="imageUrls[index]" 
                           class="w-full h-full object-cover"
+                          alt="Additional photo preview"
                         />
                       </div>
                       <span class="text-xs text-muted-foreground">Additional Photo {{ index + 1 }}</span>
@@ -265,18 +293,21 @@ const handleDisputeSubmit = () => {
 
           <!-- Issue Description -->
           <div class="space-y-2">
-            <label class="text-sm font-medium">
+            <label class="text-sm font-medium flex items-center gap-2">
               {{ isOtherReason ? 'Describe Your Issue' : 'Additional Details' }}
             </label>
             <Textarea
               v-model="disputeForm.issue_description"
               :placeholder="isOtherReason ? 
                 'Please provide specific details about your dispute...' : 
-                'Add any additional information about the selected issue...'
-              "
+                'Add information about the selected issue...'"
               :error="disputeForm.errors.issue_description"
               rows="4"
+              required
             />
+            <p v-if="disputeForm.errors.issue_description" class="text-sm text-destructive mt-1">
+              {{ disputeForm.errors.issue_description }}
+            </p>
           </div>
         </div>
       </form>
@@ -293,10 +324,7 @@ const handleDisputeSubmit = () => {
         <Button
           type="submit"
           variant="destructive"
-          :disabled="!disputeForm.reason || 
-                    !disputeForm.issue_description || 
-                    mainProofImage.length === 0 || 
-                    disputeForm.processing"
+          :disabled="!canSubmitForm || disputeForm.processing"
           @click="handleDisputeSubmit"
         >
           {{ disputeForm.processing ? "Submitting..." : "Submit Dispute" }}
