@@ -192,19 +192,13 @@ const totalWithDeposit = computed(() => {
 
 // Add a computed property for showing overdue sections
 const showOverdueSection = computed(() => {
-	// Show section if any of these conditions are true:
-	// 1. Has overdue days recorded
-	// 2. Currently overdue
-	// 3. Has overdue payment (verified)
-	// 4. Has pending/rejected overdue payment request
-	// 5. Transaction was overdue during return process
-	return (
-		props.rental.overdue_days > 0 ||
-		props.rental.is_overdue ||
-		props.rental.overdue_payment ||
-		props.rental.payment_request?.type === "overdue" ||
-		props.rental.status.includes("return")
-	);
+  // Only show if there are actual overdue days or an overdue payment
+  return (
+    props.rental.overdue_days > 0 ||
+    props.rental.is_overdue ||
+    props.rental.overdue_payment ||
+    props.rental.payment_request?.type === "overdue"
+  );
 });
 
 // Add computed for max allowed quantity
@@ -509,8 +503,13 @@ const selectedPickupSchedule = computed(() =>
 										</p>
 									</div>
 									<div>
-										<p class="text-muted-foreground text-sm">Days Overdue</p>
-										<p class="text-destructive font-medium">
+										<p class="text-muted-foreground text-sm">
+											{{ rental.overdue_payment ? 'Status' : 'Days Overdue' }}
+										</p>
+										<p v-if="rental.overdue_payment" class="text-emerald-500 font-medium">
+											Overdue Paid
+										</p>
+										<p v-else class="text-destructive font-medium">
 											{{ rental.overdue_days }} days
 										</p>
 									</div>
