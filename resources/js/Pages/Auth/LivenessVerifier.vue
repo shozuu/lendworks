@@ -182,6 +182,7 @@ const handleSubmit = async () => {
 		// Convert base64 liveness image to blob
 		const livenessResponse = await fetch(livenessImage.value);
 		const livenessBlob = await livenessResponse.blob();
+
 		formData.append("selfie", livenessBlob, "liveness.jpg");
 
 		try {
@@ -197,11 +198,10 @@ const handleSubmit = async () => {
 
 			// Add redirect after successful verification
 			if (data.verified) {
-				console.log("Verification successful, redirecting to:", data.redirect);
-				setTimeout(() => {
-					console.log("Executing redirect to:", data.redirect);
-					window.location.href = data.redirect;
-				}, 2000);
+				console.log("Verification successful, session ID:", data.session_id);
+
+				// Remove the timeout to avoid session issues
+				window.location.href = data.redirect;
 			} else {
 				console.log("Verification failed, no redirect");
 			}

@@ -611,8 +611,7 @@ private function runOcr($file, $isPath = false)
         $base64Image = '';
         $mimeType = '';
 
-        if ($isPath) {
-            // Handle file path
+       if ($isPath) {
             if (!file_exists($file)) {
                 return [
                     'text' => '',
@@ -641,10 +640,11 @@ private function runOcr($file, $isPath = false)
 
         // Make API request
         Log::info('Sending OCR request', ['url' => $url]);
-        $response = Http::timeout(30)->post($url, $data);
-        
-        // Process response
-        $result = $response->json();
+        $response = Http::withoutVerifying()  // Chain methods properly
+            ->timeout(30)
+            ->post($url, $data);
+                // Process response
+                $result = $response->json();
         
         if ($response->successful() && isset($result['ParsedResults'][0]['ParsedText'])) {
             $text = $result['ParsedResults'][0]['ParsedText'];
@@ -681,174 +681,7 @@ private function runOcr($file, $isPath = false)
     }
 }
 
-
-  private function extractBirthdate($text)
-{
-    $lines = preg_split('/\r\n|\r|\n/', $text);
-    $lines = array_map('trim', $lines);
-    
-    // Enhanced birthdate phrases with more variations
-    $birthdatePhrases = [
-        'date of birth', 'birth date', 'birthday', 'birth', 'dob', 'born',
-        'petsa ng kapanganakan', 'birth day', 'birthdate', 'date/birth', 'b-day'
-    ];
-    
-    // First try direct phrase approach
-    foreach ($lines as $i => $line) {
-        $lineLower = strtolower($line);
-        
-        foreach ($birthdatePhrases as $phrase) {
-            if (stripos($lineLower, $phrase) !== false) {
-                // Try to extract date from current line
-                $parts = preg_split('/[:\-]/', $line, 2);
-                if (count($parts) > 1) {
-                    $dateStr = trim($parts[1]);
-                    $date = $this->parseFlexibleDate($dateStr);
-                    if ($date) {
-                        Log::info("Successfully extracted birthdate", [
-                            'line' => $line,
-                            'extracted_date' => $date
-                        ]);
-                        return $date;
-                    }
-                }
-                
-                // Check next line if current line only contains the label
-                if (isset($lines[$i + 1])) {
-                    $nextLine = trim($lines[$i + 1]);
-                    $date = $this->parseFlexibleDate($nextLine);
-                    if ($date) {
-                        Log::info("Successfully extracted birthdate from next line", [
-                            'current_line' => $line,
-                            'next_line' => $nextLine,
-                            'extracted_date' => $date
-                        ]);
-                        return $date;
-                    }
-                }
-            }
-        }
-    }
-    
-    // If no birthdate found, look for any date in the text that looks like a birthdate
-    // (should be between 18-80 years old)
-    $currentYear = (int)date('Y');
-    $minYear = $currentYear - 80;
-    $maxYear = $currentYear - 18;
-    
-    // Scan for standalone dates in the text
-    foreach ($lines as $line) {
-        $date = $this->parseFlexibleDate($line);
-        if ($date) {
-            $year = (int)$date->format('Y');
-            if ($year >= $minYear && $year <= $maxYear) {
-                Log::info("Found potential birthdate based on reasonable age range", [
-                    'line' => $line,
-                    'extracted_date' => $date,
-                    'year' => $year
-                ]);
-                return $date;
-            }
-        }
-    }
-    
-    return null;
-}
  
-  /**
- * Extract user data from OCR results
- * 
- * @param array $primaryIdResult
- * @param array $secondaryIdResult 
- * @return array
- */
-private function extractUserDataFromOCR($primaryIdResult, $secondaryIdResult)
-{
-    // Use the consolidated extraction method for each ID
-    $primaryData = $this->extractAllUserData($primaryIdResult);
-    $secondaryData = $this->extractAllUserData($secondaryIdResult);
-    
-      $nationality = 'Filipino';
-
-    // Combine results, preferring primary ID data when available
-    return [
-        'firstName' => $primaryData['firstName'] ?: $secondaryData['firstName'],
-        'middleName' => $primaryData['middleName'] ?: $secondaryData['middleName'],
-        'lastName' => $primaryData['lastName'] ?: $secondaryData['lastName'],
-        'birthdate' => $primaryData['birthdate'] ?: $secondaryData['birthdate'],
-        'streetAddress' => $primaryData['streetAddress'] ?: $secondaryData['streetAddress'],
-        'mobileNumber' => $primaryData['mobileNumber'] ?: $secondaryData['mobileNumber'],
-        'nationality' => $nationality,
-        'primaryIdType' => $primaryIdResult['id_type'] ?? null,
-        'secondaryIdType' => $secondaryIdResult['id_type'] ?? null,
-        'email' => auth()->user()->email,
-    ];
-}
-
-/**
- * Extract all user data from OCR text using enhanced keyword detection
- * 
- * @param array $idData
- * @return array
- */
-private function extractAllUserData($idData)
-    {
-        $text = $idData['text'] ?? '';
-        $idType = $idData['id_type'] ?? '';
-        
-        // Initialize results
-        $results = [
-            'firstName' => '',
-            'middleName' => '',
-            'lastName' => '',
-            'birthdate' => '',
-            'gender' => '',
-            'civilStatus' => '',
-            'nationality' => 'Filipino',
-            'mobileNumber' => '',
-            'streetAddress' => ''
-        ];
-        
-        // Extract birthdate
-        $birthdate = $this->extractBirthdate($text);
-        if ($birthdate) {
-            $results['birthdate'] = $birthdate;
-        }
-        
-        // Special handling for Voter's ID format
-        if ($idType === 'voters') {
-            $nameIndex = -1;
-            $lines = preg_split('/\r\n|\r|\n/', $text);
-            $lines = array_map('trim', $lines);
-            
-            foreach ($lines as $i => $line) {
-                if (preg_match('/^[A-Z]+$/', trim($line))) {
-                    if ($nameIndex === -1) {
-                        $results['lastName'] = trim($line);
-                        $nameIndex = $i;
-                    } else if ($i === $nameIndex + 1) {
-                        $results['firstName'] = trim($line);
-                    } else if ($i === $nameIndex + 2) {
-                        $results['middleName'] = trim($line);
-                    }
-                }
-            }
-        }
-        
-        // Process each line for other fields
-        foreach ($this->getFieldKeywordsForIdType($idType) as $field => $keywords) {
-            foreach ($keywords as $keyword) {
-                if ($field === 'birthdate' || ($idType === 'voters' && in_array($field, ['firstName', 'lastName', 'middleName']))) {
-                    continue;
-                }
-                
-                $this->extractFieldFromText($text, $field, $keyword, $results);
-            }
-        }
-        
-        return $results;
-    }
-
     private function extractFieldFromText($text, $field, $keyword, &$results)
 {
     $lines = preg_split('/\r\n|\r|\n/', $text);
@@ -954,146 +787,6 @@ private function normalizeGender($value)
 }
 
 
-/**
- * Get keywords for fields by ID type, with defaults plus ID-specific patterns
- */
-private function getFieldKeywordsForIdType($idType)
-{
-    // Common keywords for all ID types
-     $common = [
-        'firstName' => ['first name:', 'given name:', 'first:', 'given:'],
-        'middleName' => ['middle name:', 'middle:', 'mi:'],
-        'lastName' => ['last name:', 'surname:', 'family name:', 'last:'],
-        'birthdate' => ['date of birth:', 'birth date:', 'birthday:', 'birth:', 'dob:'],
-        'gender' => ['sex:', 'gender:'],
-        'civilStatus' => ['civil status:', 'marital status:'],
-        'nationality' => ['nationality:', 'citizenship:', 'citizen:']
-    ];
-    
-    // ID-specific keywords
-   $specific = [
-        'philsys' => [
-            'firstName' => ['pangalan', 'given name', 'first name'],
-            'middleName' => ['gitnang pangalan', 'middle name'],
-            'lastName' => ['apelyido', 'surname', 'last name'],
-            'birthdate' => ['petsa ng kapanganakan', 'date of birth', 'birth date'],
-            'gender' => ['kasarian', 'sex'],
-            'nationality' => ['nasyonalidad', 'nationality'],
-            'idNumber' => ['philsys number', 'pcn', 'phn']
-        ],
-        
-        'drivers' => [
-            'firstName' => ['given name', 'first name'],
-            'lastName' => ['surname', 'last name'],
-            'birthdate' => ['birth date', 'date of birth'],
-            'address' => ['address', 'residence'],
-            'licenseNumber' => ['license no', 'dl number', 'license number'],
-            'restrictions' => ['restrictions', 'condition'],
-            'expiryDate' => ['expiry', 'valid until', 'expiration']
-        ],
-        
-        'passport' => [
-            'firstName' => ['given names', 'first name'],
-            'lastName' => ['surname', 'last name'],
-            'birthdate' => ['date of birth', 'birth date'],
-            'birthPlace' => ['place of birth'],
-            'passportNumber' => ['passport no', 'passport number'],
-            'nationality' => ['nationality', 'citizenship'],
-            'expiryDate' => ['date of expiry', 'expiry date', 'valid until']
-        ],
-        
-        'sss' => [
-            'firstName' => ['given name', 'first name'],
-            'lastName' => ['surname', 'last name'],
-            'birthdate' => ['date of birth', 'birth date'],
-            'sssNumber' => ['ss number', 'sss no', 'social security number'],
-            'issuedDate' => ['date issued', 'date of issue']
-        ],
-        
-        'gsis' => [
-            'firstName' => ['given name', 'first name'],
-            'lastName' => ['surname', 'last name'],
-            'birthdate' => ['date of birth', 'birth date'],
-            'gsisNumber' => ['bp number', 'gsis number', 'id no'],
-            'issuedDate' => ['date issued', 'date of issue']
-        ],
-        
-        'postal' => [
-            'firstName' => ['given name', 'first name'],
-            'lastName' => ['surname', 'last name'],
-            'birthdate' => ['date of birth', 'birth date'],
-            'address' => ['present address', 'address'],
-            'postalIdNumber' => ['id number', 'postal id no'],
-            'expiryDate' => ['valid until', 'expiry date']
-        ],
-        
-        'voters' => [
-            'firstName' => [], // Handled by special case for all-caps format
-            'lastName' => [], // Handled by special case for all-caps format
-            'middleName' => [], // Handled by special case for all-caps format
-            'birthdate' => ['date of birth', 'birth date'],
-            'civilStatus' => ['civil status', 'marital status'],
-            'nationality' => ['citizenship'],
-            'votersId' => ['vin', 'voters id number', 'precinct no']
-        ],
-        
-        'prc' => [
-            'firstName' => ['given name', 'first name'],
-            'lastName' => ['surname', 'last name'],
-            'birthdate' => ['date of birth', 'birth date'],
-            'prcNumber' => ['registration number', 'license no', 'prc no'],
-            'profession' => ['profession', 'occupation'],
-            'expiryDate' => ['valid until', 'expiry date']
-        ],
-        
-        'philhealth' => [
-            'firstName' => ['given name', 'first name'],
-            'lastName' => ['surname', 'last name'],
-            'birthdate' => ['date of birth', 'birth date'],
-            'philhealthNumber' => ['pin', 'philhealth number', 'philhealth id'],
-            'category' => ['membership category', 'category'],
-            'expiryDate' => ['valid until', 'expiry date']
-        ],
-        
-        'tin' => [
-            'firstName' => ['given name', 'first name'],
-            'lastName' => ['surname', 'last name'],
-            'birthdate' => ['date of birth', 'birth date'],
-            'tinNumber' => ['tin', 'tax identification number'],
-            'address' => ['address', 'residence'],
-            'issuedDate' => ['date issued', 'date of issue']
-        ],
-        
-        'umid' => [
-            'firstName' => ['given name', 'first name'],
-            'lastName' => ['surname', 'last name'],
-            'birthdate' => ['date of birth', 'birth date'],
-            'address' => ['address', 'residence'],
-            'umidNumber' => ['cca no', 'umid number', 'crn'],
-            'issuedDate' => ['date issued', 'date of issue'],
-            'cardNumber' => ['card number', 'card no']
-        ]
-    ];
-
-    
-    // Merge the common keywords with ID-specific ones if available
-     $keywords = $common;
-    if (isset($specific[$idType])) {
-        foreach ($specific[$idType] as $field => $fieldKeywords) {
-            // Check if the field exists in common keywords first,
-            // if not, initialize it as an empty array
-            if (!isset($keywords[$field])) {
-                $keywords[$field] = [];
-            }
-            $keywords[$field] = array_merge($keywords[$field], $fieldKeywords);
-        }
-    }
-    
-    return $keywords;
-}
-
-
-
     /**
      * Compare two face images and return the confidence score
      *
@@ -1128,6 +821,14 @@ private function getFieldKeywordsForIdType($idType)
 
         $matchScore = $response['confidence'];
         $threshold = 75; // Your confidence threshold
+
+        // Add detailed logging of the match score
+        Log::info('Face comparison score', [
+            'score' => $matchScore,
+            'threshold' => $threshold,
+            'verified' => $matchScore > $threshold,
+            'difference_from_threshold' => $matchScore - $threshold
+        ]);
         
         return [
             'score' => $matchScore,
@@ -1834,6 +1535,19 @@ public function completeVerification(Request $request)
         // Calculate metrics
         $averageScore = ($primaryResult['score'] + $secondaryResult['score']) / 2;
         
+        // Add detailed logging of all scores
+        Log::info('Face verification scores', [
+            'primary_match_score' => $primaryResult['score'],
+            'primary_verified' => $primaryResult['verified'],
+            'secondary_match_score' => $secondaryResult['score'],
+            'secondary_verified' => $secondaryResult['verified'],
+            'average_score' => $averageScore,
+            'both_verified' => $primaryResult['verified'] && $secondaryResult['verified'],
+            'user_id' => $request->user()->id,
+            'primary_id_type' => $idData['primary_id_type'],
+            'secondary_id_type' => $idData['secondary_id_type']
+        ]);
+        
         // Determine verification status - both must pass the threshold
         $bothVerified = $primaryResult['verified'] && $secondaryResult['verified'];
         
@@ -1888,15 +1602,21 @@ public function completeVerification(Request $request)
             
             // Run OCR on ID card images
             $primaryIdOcrResult = $this->runOcr(storage_path('app/'.$idData['primary_id_path']), true);
-            $secondaryIdOcrResult = $this->runOcr(storage_path('app/'.$idData['secondary_id_path']), true);
-            
-            // Extract user data using the OCR results
-            $extractedData = $this->extractUserDataFromOCR(
-                ['text' => $primaryIdOcrResult['text'], 'id_type' => $request->input('id_type')],
-                ['text' => $secondaryIdOcrResult['text'], 'id_type' => $request->input('id_type_secondary')]
-            );
-            
-            Session::put('verification_extracted_data', $extractedData);
+            $secondaryIdOcrResult = $this->runOcr(storage_path('app/'.$idData['secondary_id_path']), true); 
+         
+           $formattedData = [
+                // Only include the fields you want
+                'primaryIdType' => $idData['primary_id_type'] ?? '',
+                'secondaryIdType' => $idData['secondary_id_type'] ?? '',
+                'nationality' => 'Filipino',
+                'email' => auth()->user()->email ?? '',
+            ];
+
+            Session::put('verification_extracted_data', $formattedData);
+            Session::save();
+            Log::info('Final data stored in session', [
+                'formatted_data' => $formattedData
+            ]);
             
             // Clean up temp files
             \Storage::delete($idData['primary_id_path']);
@@ -1917,7 +1637,8 @@ public function completeVerification(Request $request)
                 'average_match_score' => $averageScore,
                 'verified' => true,
                 'message' => 'Face verification successful',
-                'redirect' => $redirectUrl
+                'redirect' => $redirectUrl,
+                'session_preserved' => true,
             ]);
         }
         

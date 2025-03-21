@@ -5,11 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Profile;
-use App\Models\User;
 use Illuminate\Support\Facades\Session;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
+
 
 class VerificationFormController extends Controller
 {
@@ -24,64 +23,37 @@ class VerificationFormController extends Controller
         return Inertia::render('Auth/VerificationForm');
     }
     
-public function extractData()
+    public function extractData()
 {
     $extractedData = Session::get('verification_extracted_data', []);
     
-    // Debug the data being retrieved
-    Log::info('Extracted data from session', $extractedData);
-    
-    // Ensure consistent camelCase naming for frontend
-    $formattedData = [
-        'firstName' => $extractedData['first_name'] ?? $extractedData['firstName'] ?? '',
-        'middleName' => $extractedData['middle_name'] ?? $extractedData['middleName'] ?? '',
-        'lastName' => $extractedData['last_name'] ?? $extractedData['lastName'] ?? '',
-        'birthdate' => '', // Format this below
-        'gender' => $extractedData['gender'] ?? '',
-        'mobileNumber' => $extractedData['mobile_number'] ?? $extractedData['mobileNumber'] ?? '',
-        'streetAddress' => $extractedData['street_address'] ?? $extractedData['streetAddress'] ?? '',
-        'barangay' => $extractedData['barangay'] ?? '',
-        'city' => $extractedData['city'] ?? '',
-        'province' => $extractedData['province'] ?? '',
-        'postalCode' => $extractedData['postal_code'] ?? $extractedData['postalCode'] ?? '',
-        'nationality' => $extractedData['nationality'] ?? 'Filipino',
-        'primaryIdType' => $extractedData['primary_id_type'] ?? $extractedData['primaryIdType'] ?? '',
-        'secondaryIdType' => $extractedData['secondary_id_type'] ?? $extractedData['secondaryIdType'] ?? '',
+    // Retain only ID types, nationality, and email
+    $filteredData = [
+        // Keep these fields from extracted data if they exist
+        'primaryIdType' => $extractedData['primaryIdType'] ?? '',
+        'secondaryIdType' => $extractedData['secondaryIdType'] ?? '',
+        'nationality' => $extractedData['nationality'] ?? 'Filipino', // Default to Filipino
         'email' => $extractedData['email'] ?? auth()->user()->email ?? '',
+        
+        // Empty all other fields
+        'firstName' => '',
+        'middleName' => '',
+        'lastName' => '',
+        'birthdate' => '',
+        'gender' => '',
+        'mobileNumber' => '',
+        'streetAddress' => '',
+        'barangay' => '',
+        'city' => '',
+        'province' => '',
+        'postalCode' => '',
+        'civilStatus' => '',
     ];
-    
-    // Format birthdate if exists
-    if (!empty($extractedData['birthdate'])) {
-        try {
-            $date = Carbon::parse($extractedData['birthdate']);
-            $formattedData['birthdate'] = $date->format('Y-m-d');
-        } catch (\Exception $e) {
-            Log::error('Failed to parse birthdate', [
-                'birthdate' => $extractedData['birthdate'],
-                'error' => $e->getMessage()
-            ]);
-            $formattedData['birthdate'] = '';
-        }
-    }
-    
-    return response()->json($formattedData);
 
-        
-        // Ensure required fields exist even if empty
-        $requiredFields = ['firstName', 'middleName', 'lastName', 'birthdate', 
-                        'gender', 'mobileNumber', 'streetAddress', 'nationality',
-                        'primaryIdType', 'secondaryIdType', 'email'];
-                        
-        foreach ($requiredFields as $field) {
-            if (!isset($extractedData[$field])) {
-                $extractedData[$field] = '';
-            }
-        }
-
-        Log::info('Returning extracted data', $extractedData);
-        
-        return response()->json($extractedData);
-    }
+    Log::info('Returning filtered data with only ID types, nationality, and email', $filteredData);
+    
+    return response()->json($filteredData);
+}
 
     public function submit(Request $request)
     {

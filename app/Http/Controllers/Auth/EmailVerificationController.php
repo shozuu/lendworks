@@ -22,7 +22,7 @@ class EmailVerificationController extends Controller
         $user = $request->user();
         if (!$user->hasVerifiedId()) {
             // Redirect to ID verification with a success message about email
-            return redirect()->route('verify-id.show')
+            return redirect()->route('home')
                 ->with('status', 'Your email has been verified! Please complete your ID verification.');
         }
         

@@ -224,6 +224,7 @@ Route::middleware(['web', CheckMaintenanceMode::class])->group(function() {
     Route::get('/users/{user}', [UserProfileController::class, 'show'])->name('users.profile');
     Route::get('/api/location/search', [App\Http\Controllers\OpenStreetMapController::class, 'search'])
     ->name('api.location.search');
+    Route::get('/api/location/reverse', [App\Http\Controllers\OpenStreetMapController::class, 'reverseGeocode']);
 
     
     // Move other public routes here
