@@ -16,6 +16,12 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @inertiaHead
         @routes
+
+         <script>
+        if (window.performance && window.performance.navigation.type === 2) {
+            window.location.href = '/'; 
+        }
+    </script>
     </head>
 
     <body class="font-Poppins">

@@ -6,7 +6,6 @@ import { createInertiaApp, Head, Link } from "@inertiajs/vue3";
 import { ZiggyVue } from "../../vendor/tightenco/ziggy";
 
 import Main from "./Layouts/Main.vue";
-import FaceMatcher from "./Pages/Auth/FaceMatcher.vue";
 import { setThemeOnLoad } from "./theme";
 
 createInertiaApp({
@@ -39,7 +38,6 @@ createInertiaApp({
             .use(ZiggyVue)
             .component("Head", Head)
             .component("Link", Link)
-            .component("face-matcher", FaceMatcher)
             .mount(el);
     },
     progress: {

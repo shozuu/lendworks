@@ -112,7 +112,8 @@ class VerificationFormController extends Controller
         // Clear the session data
         Session::forget('verification_extracted_data');
         
-        return redirect()->route('home')
-            ->with('success', 'Your profile has been successfully completed!');
+       return redirect('/')
+        ->with('status', 'Verification completed successfully!')
+        ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     }
 }
