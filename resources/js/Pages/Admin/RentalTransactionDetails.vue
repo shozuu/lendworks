@@ -878,7 +878,7 @@ const showOverdueSection = computed(() => {
 					</CardContent>
 				</Card>
 
-				<!-- Replace the existing lender earnings card with this simpler version -->
+				<!-- Replace the lender earnings card content -->
 				<Card class="shadow-sm">
 					<CardHeader class="bg-card border-b">
 						<CardTitle> Total Lender Earnings </CardTitle>
@@ -900,6 +900,14 @@ const showOverdueSection = computed(() => {
 								<span class="font-medium">Overdue Fee:</span>
 								<span>+ {{ formatNumber(rental.overdue_fee) }}</span>
 							</div>
+							<!-- Add deposit deduction section -->
+							<div
+								v-if="rental.dispute?.resolution_type === 'deposit_deducted'"
+								class="text-emerald-500 flex items-center justify-between"
+							>
+								<span class="font-medium">Deposit Deduction:</span>
+								<span>+ {{ formatNumber(rental.dispute.deposit_deduction) }}</span>
+							</div>
 							<Separator />
 							<div class="flex items-center justify-between">
 								<span class="font-medium">Total Earnings:</span>
@@ -907,17 +915,18 @@ const showOverdueSection = computed(() => {
 									{{
 										formatNumber(
 											rental.base_price -
-												rental.discount -
-												rental.service_fee +
-												(showOverdueSection ? rental.overdue_fee : 0)
+											rental.discount -
+											rental.service_fee +
+											(showOverdueSection ? rental.overdue_fee : 0) +
+											(rental.dispute?.resolution_type === 'deposit_deducted' ? rental.dispute.deposit_deduction : 0)
 										)
 									}}
 								</span>
 							</div>
 							<p class="text-muted-foreground text-xs">
 								{{
-									showOverdueSection
-										? "Total earnings including overdue fees"
+									showOverdueSection || rental.dispute?.resolution_type === 'deposit_deducted'
+										? "Total earnings including additional fees and deductions"
 										: "Total earnings after discounts and fees"
 								}}
 							</p>

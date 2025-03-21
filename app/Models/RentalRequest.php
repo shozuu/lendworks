@@ -448,18 +448,13 @@ class RentalRequest extends Model
     // Add this new method
     public function getTotalLenderEarningsAttribute()
     {
-        // Get base earnings
         $baseEarnings = $this->base_price - $this->discount - $this->service_fee;
-        
-        // Add overdue fees if any
         $overdueFee = $this->overdue_payment ? $this->overdue_payment->amount : 0;
-        
-        // Add deposit deductions
-        $depositDeductions = $this->depositDeductions()->sum('amount');
-        
+        $depositDeduction = $this->dispute && $this->dispute->resolution_type === 'deposit_deducted'
+            ? $this->dispute->deposit_deduction
+            : 0;
 
-
-        return $baseEarnings + $overdueFee + $depositDeductions;
+        return $baseEarnings + $overdueFee + $depositDeduction;
     }
 
     public function getRemainingDepositAttribute()
