@@ -257,8 +257,23 @@ class ReturnController extends Controller
         ]);
 
         try {
-            DB::transaction(function () use ($rental, $request) {
+            $validationRules = [
+                'reason' => 'required|string',
+                'issue_description' => 'required|string', // Always required now
+                'proof_image' => 'required|image|max:5120',
+                'additional_images.*' => 'sometimes|image|max:5120',
+            ];
+
+            $validated = $request->validate($validationRules);
+
+            DB::transaction(function () use ($rental, $request, $validated) {
                 $proofPath = $request->file('proof_image')->store('dispute-proofs', 'public');
+
+                // Set default description if not provided and not "other" reason
+                $description = $validated['issue_description'] ?? 'No additional information.';
+                if ($validated['reason'] !== 'other' && empty($description)) {
+                    $description = 'No additional information.';
+                }
 
                 // Clear any existing dispute first if it was rejected
                 if ($rental->dispute && $rental->dispute->resolution_type === 'rejected') {
@@ -267,8 +282,8 @@ class ReturnController extends Controller
 
                 // Create new dispute record
                 $dispute = $rental->dispute()->create([
-                    'reason' => $request->reason,
-                    'description' => $request->issue_description,
+                    'reason' => $validated['reason'],
+                    'description' => $validated['issue_description'], // Always use provided description
                     'proof_path' => $proofPath,
                     'status' => 'pending',
                     'raised_by' => auth()->id()
@@ -279,8 +294,8 @@ class ReturnController extends Controller
 
                 // Record timeline event
                 $rental->recordTimelineEvent('dispute_raised', auth()->id(), [
-                    'reason' => $request->reason,
-                    'description' => $request->issue_description,
+                    'reason' => $validated['reason'],
+                    'description' => $description,
                     'is_new_dispute' => true,
                     'after_rejection' => (bool) $rental->dispute
                 ]);
