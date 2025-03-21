@@ -47,7 +47,8 @@ class RentalRequest extends Model
         'overdue_days',
         'is_overdue',
         'overdue_fee',
-        'total_lender_earnings'  
+        'total_lender_earnings',
+        'deposit_status'  // Add this line
     ];
 
     // Define core rental status constants
@@ -463,14 +464,35 @@ class RentalRequest extends Model
 
     public function getRemainingDepositAttribute()
     {
-        // Use DB facade for direct query to ensure accurate calculation
-        $totalDeductions = DB::table('deposit_deductions')
-            ->where('rental_request_id', $this->id)
-            ->sum('amount') ?? 0;
+        $depositFee = $this->deposit_fee;
+        $deduction = $this->dispute && $this->dispute->resolution_type === 'deposit_deducted' 
+            ? $this->dispute->deposit_deduction 
+            : 0;
+            
+        return max(0, $depositFee - $deduction);
+    }
 
-        $remainingDeposit = $this->deposit_fee - $totalDeductions;
+    public function getDepositStatusAttribute()
+    {
+        $originalAmount = $this->deposit_fee;
+        $deductionAmount = $this->dispute && $this->dispute->resolution_type === 'deposit_deducted' 
+            ? $this->dispute->deposit_deduction 
+            : 0;
+            
+        $perUnitDeposit = $this->quantity_approved 
+            ? ($this->deposit_fee / $this->quantity_approved)
+            : ($this->deposit_fee / $this->quantity_requested);
 
-        return max(0, $remainingDeposit);
+        return [
+            'original_amount' => $originalAmount,
+            'per_unit_amount' => $perUnitDeposit,
+            'deducted_amount' => $deductionAmount,
+            'remaining_amount' => max(0, $originalAmount - $deductionAmount),
+            'has_deductions' => $this->dispute && $this->dispute->resolution_type === 'deposit_deducted',
+            'deduction_reason' => $this->dispute?->deposit_deduction_reason,
+            'is_refunded' => $this->completion_payments()->where('type', 'deposit_refund')->exists(),
+            'quantity' => $this->quantity_approved ?: $this->quantity_requested
+        ];
     }
 
     // Scopes

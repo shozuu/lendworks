@@ -31,7 +31,9 @@ const earnings = computed(() => {
   
   const baseEarnings = props.rental.base_price - props.rental.discount - props.rental.service_fee;
   const overdueFee = props.rental.overdue_fee || 0;
-  const disputeDeduction = props.rental.dispute?.deposit_deduction || 0;
+  const disputeDeduction = props.rental.dispute?.resolution_type === 'deposit_deducted' 
+    ? (props.rental.dispute?.deposit_deduction || 0) 
+    : 0;
   
   return {
     base: baseEarnings,
@@ -47,8 +49,8 @@ const form = useForm({
   reference_number: '',
   notes: '',
   amount: props.type === 'lender_payment' 
-    ? (earnings.value.total)
-    : (props.rental?.deposit_fee - (props.rental?.dispute?.deposit_deduction || 0)) || 0
+    ? earnings.value.total
+    : (props.rental?.deposit_fee - (props.rental?.dispute?.resolution_type === 'deposit_deducted' ? props.rental?.dispute?.deposit_deduction : 0)) || 0
 });
 
 // Add watch to update amount when dispute status changes
@@ -58,7 +60,10 @@ watch(
     if (props.type === 'lender_payment') {
       form.amount = earnings.value.total;
     } else {
-      form.amount = props.rental?.deposit_fee - (newDispute?.deposit_deduction || 0);
+      const depositDeduction = newDispute?.resolution_type === 'deposit_deducted' 
+        ? (newDispute?.deposit_deduction || 0) 
+        : 0;
+      form.amount = props.rental?.deposit_fee - depositDeduction;
     }
   },
   { immediate: true }
