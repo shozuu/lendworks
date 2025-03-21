@@ -349,8 +349,8 @@ onMounted(() => {
 					/>
 				</svg>
 				<p class="text-primary">
-					<strong>Important:</strong> We've pre-filled some information from your IDs.
-					Please review and correct if needed.
+					<strong>Important:</strong> Please Fill out this form to complete setting up
+					your profile.
 				</p>
 			</div>
 		</div>
@@ -540,6 +540,27 @@ onMounted(() => {
 						<p v-if="form.errors.mobileNumber" class="text-destructive text-xs mt-1">
 							{{ form.errors.mobileNumber }}
 						</p>
+
+						<!-- Icon and Disclaimer -->
+						<div class="flex items-start mt-2">
+							<svg
+								class="text-primary mr-2 w-5 h-5 flex-shrink-0"
+								xmlns="http://www.w3.org/2000/svg"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<circle cx="12" cy="12" r="10"></circle>
+								<line x1="12" y1="8" x2="12" y2="12"></line>
+								<line x1="12" y1="16" x2="12.01" y2="16"></line>
+							</svg>
+							<p class="text-sm text-primary">
+								We need your mobile number to process payments and send important updates.
+							</p>
+						</div>
 					</div>
 
 					<!-- Email Address -->
