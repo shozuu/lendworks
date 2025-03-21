@@ -12,7 +12,7 @@ class LocationFactory extends Factory
             'name' => fake()->randomElement(['Home', 'Office', 'Workshop', 'Storage']),
             'address' => fake()->streetAddress(),
             'city' => fake()->city(),
-            'province' => fake()->state(),
+            'barangay' => fake()->state(),
             'postal_code' => fake()->postcode(),
             'is_default' => false
         ];

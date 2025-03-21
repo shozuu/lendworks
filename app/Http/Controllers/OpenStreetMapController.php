@@ -73,4 +73,83 @@ class OpenStreetMapController extends Controller
             ], 500);
         }
     }
+    public function reverseGeocode(Request $request)
+{
+    try {
+        // Validate input
+        $request->validate([
+            'lat' => 'required|numeric',
+            'lon' => 'required|numeric',
+        ]);
+        
+        $lat = $request->input('lat');
+        $lon = $request->input('lon');
+        
+        Log::info('OpenStreetMap reverse geocode request', [
+            'lat' => $lat,
+            'lon' => $lon,
+            'user' => \Illuminate\Support\Facades\Auth::check() ? \Illuminate\Support\Facades\Auth::id() : 'guest'
+        ]);
+        
+        // Skip SSL verification temporarily for testing
+        $response = Http::withoutVerifying()
+            ->timeout(15)
+            ->withHeaders([
+                'User-Agent' => 'LendworksApp/1.0 (contact@example.com)', 
+                'Accept-Language' => 'en-US,en;q=0.9',
+                'Referer' => config('app.url', 'http://localhost')
+            ])
+            ->get('https://nominatim.openstreetmap.org/reverse', [
+                'lat' => $lat,
+                'lon' => $lon,
+                'format' => 'json',
+                'addressdetails' => 1,
+                'zoom' => 18
+            ]);
+        
+         if ($response->successful()) {
+            // Process the address data into a more usable format
+            $data = $response->json();
+            $address = $data['address'] ?? [];
+            
+            return response()->json([
+                'success' => true,
+                'display_name' => $data['display_name'] ?? '',
+                'address' => [
+                    'street' => $address['road'] ?? $address['street'] ?? '',
+                    'building' => $address['house_number'] ?? $address['building'] ?? '',
+                    'neighbourhood' => $address['neighbourhood'] ?? '',
+                    'zone' => $address['zone'] ?? $address['quarter'] ?? '',
+                    'barangay' => $address['suburb'] ?? $address['village'] ?? $address['hamlet'] ?? '',
+                    'city' => $address['city'] ?? $address['town'] ?? $address['municipality'] ?? '',
+                    'province' => $address['state'] ?? $address['province'] ?? $address['county'] ?? '',
+                    'postal_code' => $address['postcode'] ?? '',
+                    'country' => $address['country'] ?? ''
+                ],
+                'raw_response' => $data
+            ]);
+        } else {
+            Log::error('OpenStreetMap reverse geocode API error', [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Error from address service: ' . $response->status()
+            ], 500);
+        }
+    } catch (\Exception $e) {
+        Log::error('OpenStreetMap reverse geocode exception', [
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine()
+        ]);
+        
+        return response()->json([
+            'success' => false,
+            'error' => 'Server error processing your request'
+        ], 500);
+    }
+}
 }
