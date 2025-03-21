@@ -306,16 +306,18 @@ const formatEventMessage = (event) => {
 		case "return_schedule_confirmed":
 			if (isLatest) {
 				const metadata = event.metadata || {};
-				const scheduleText = `${metadata.day_of_week}, ${metadata.date} from ${formatTime(metadata.start_time)} to ${formatTime(metadata.end_time)}`;
-				
+				const scheduleText = `${metadata.day_of_week}, ${metadata.date} from ${formatTime(
+					metadata.start_time
+				)} to ${formatTime(metadata.end_time)}`;
+
 				if (performedByViewer) {
 					return `You confirmed the return schedule for ${scheduleText}`;
 				}
-				
+
 				if (performedByLender) {
 					return `The owner confirmed the return schedule for ${scheduleText}`;
 				}
-				
+
 				return `${actorLabel} confirmed the return schedule for ${scheduleText}`;
 			}
 			return `${actorLabel} confirmed the return schedule`;
@@ -801,7 +803,7 @@ const isConnectionHighlighted = (phase) => {
 							</p>
 
 							<!-- Additional Details -->
-							<div v-if="event.metadata" class="bg-muted p-3 mt-2 text-sm rounded-md">
+							<div v-if="event.metadata">
 								<!-- Payment Details -->
 								<template
 									v-if="
@@ -1006,7 +1008,7 @@ const isConnectionHighlighted = (phase) => {
 			:type="selectedHandoverProof?.type"
 			:performer="selectedHandoverProof?.performer"
 			:timestamp="selectedHandoverProof?.timestamp"
-			@onClose="handleHandoverProofClose"
+			@update:show="handleHandoverProofClose"
 		/>
 	</div>
 </template>

@@ -37,6 +37,15 @@ const props = defineProps({
 		type: Boolean,
 		default: false,
 	},
+	// Add explicit timestamp props with defaults
+	submittedAt: {
+		type: String,
+		default: null,
+	},
+	verifiedAt: {
+		type: String,
+		default: null,
+	},
 });
 
 const emit = defineEmits(["update:show"]);
@@ -108,16 +117,30 @@ const getPaymentProofUrl = (path) => {
 	return `/storage/${path.replace(/^\//, "")}`;
 };
 
-// Add computed property for submission date
+// Update the formatDate function to prioritize ISO format strings
 const formatDate = (dateString) => {
-	if (!dateString) return "";
-	return new Date(dateString).toLocaleDateString("en-US", {
-		year: "numeric",
-		month: "long",
-		day: "numeric",
-		hour: "2-digit",
-		minute: "2-digit",
-	});
+	// Early return if no date string
+	if (!dateString) return "N/A";
+
+	try {
+		// Parse the date string
+		const date = new Date(dateString);
+
+		// Validate the date is valid
+		if (isNaN(date.getTime())) return "N/A";
+
+		return new Intl.DateTimeFormat("en-US", {
+			year: "numeric",
+			month: "long",
+			day: "numeric",
+			hour: "2-digit",
+			minute: "2-digit",
+			hour12: true,
+		}).format(date);
+	} catch (e) {
+		console.error("Date parsing error:", e);
+		return "N/A";
+	}
 };
 
 // Add computed for admin route check
@@ -131,6 +154,25 @@ const transactionRoute = computed(() => {
 	return isAdminRoute.value
 		? route("admin.rental-transactions.show", props.rental.id)
 		: route("rental.show", props.rental.id);
+});
+
+const paymentStatus = computed(() => {
+	if (!props.payment) return null;
+	return {
+		verified: props.payment.verified_at ? "Verified" : null,
+		rejected: props.payment.admin_feedback ? "Rejected" : null,
+		pending:
+			!props.payment.verified_at && !props.payment.admin_feedback
+				? "Pending Verification"
+				: null,
+	};
+});
+
+const paymentStatusColor = computed(() => {
+	if (!props.payment) return "";
+	if (props.payment.verified_at) return "text-emerald-500";
+	if (props.payment.admin_feedback) return "text-destructive";
+	return "text-amber-500";
 });
 </script>
 
@@ -153,61 +195,31 @@ const transactionRoute = computed(() => {
 			<ScrollArea class="flex-1 pr-2 overflow-y-auto">
 				<!-- Show existing payment if it exists and we're in view-only mode -->
 				<div v-if="payment && viewOnly" class="space-y-6">
-					<!-- listing card -->
-					<div class="bg-muted p-4 space-y-3 rounded-lg">
-						<div class="flex items-start gap-4">
-							<!-- Listing Image -->
-							<img
-								:src="
-									rental.listing.images[0]?.image_path
-										? `/storage/${rental.listing.images[0].image_path}`
-										: '/storage/images/listing/default.png'
-								"
-								class="object-cover w-20 h-20 rounded-md"
-								:alt="rental.listing.title"
-							/>
-							<div class="flex-1 min-w-0">
-								<h4 class="font-medium truncate">
-									{{ rental?.listing?.title }}
-								</h4>
-								<div class="text-muted-foreground space-y-1 text-sm">
-									<p>
-										<span class="font-medium">Lender:</span>
-										{{ rental?.listing?.user?.name }}
-									</p>
-									<p>
-										<span class="font-medium">Renter:</span> {{ rental?.renter?.name }}
-									</p>
-								</div>
-							</div>
-						</div>
-						<Link
-							v-if="transactionRoute"
-							:href="transactionRoute"
-							class="text-primary hover:underline inline-flex items-center gap-1 text-sm"
-						>
-							View Rental Transaction Details
-							<ChevronRight class="w-4 h-4" />
-						</Link>
-					</div>
-
 					<!-- Payment Summary with Status Badge -->
 					<div class="bg-muted p-4 space-y-4 rounded-lg">
 						<div class="flex items-center justify-between">
 							<span class="text-sm font-medium">Amount Paid:</span>
-							<span class="text-lg font-medium">{{
+							<span class="text-sm font-medium">{{
 								formatNumber(payment.total_price || rental.total_price)
 							}}</span>
 						</div>
 						<div class="flex items-center justify-between">
 							<span class="text-muted-foreground text-sm">Status:</span>
-							<RentalStatusBadge :status="payment.status" />
+							<span :class="[paymentStatusColor]" class="text-sm font-medium">
+								{{
+									paymentStatus.verified ||
+									paymentStatus.rejected ||
+									paymentStatus.pending
+								}}
+							</span>
 						</div>
-						<div class="text-muted-foreground pt-3 space-y-1 text-sm border-t">
-							<div class="flex justify-between">
-								<span>Submitted:</span>
-								<span>{{ formatDate(payment.created_at) }}</span>
-							</div>
+						<div
+							v-if="verifiedAt || payment?.verified_at"
+							class="flex justify-between text-muted-foreground text-sm"
+						>
+							<span>Verified:</span>
+							<!-- Use explicit prop with fallback to payment object -->
+							<span>{{ formatDate(verifiedAt || payment?.verified_at) }}</span>
 						</div>
 					</div>
 
