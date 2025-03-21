@@ -71,7 +71,7 @@ class ListingController extends Controller
                 'name' => $request->location_name,
                 'address' => $request->address,
                 'city' => $request->city,
-                'province' => $request->province,
+                'barangay' => $request->barangay,
                 'postal_code' => $request->postal_code,
             ]);
             $fields['location_id'] = $location->id;
@@ -268,7 +268,7 @@ class ListingController extends Controller
                 'name' => $request->location_name,
                 'address' => $request->address,
                 'city' => $request->city,
-                'province' => $request->province,
+                'barangay' => $request->barangay,
                 'postal_code' => $request->postal_code,
             ]);
             $fields['location_id'] = $location->id;
@@ -353,7 +353,7 @@ class ListingController extends Controller
             'location_name' => ['required_if:new_location,true', 'nullable', 'string', 'max:100'],
             'address' => ['required_if:new_location,true', 'nullable', 'string', 'max:255'],
             'city' => ['required_if:new_location,true', 'nullable', 'string', 'max:100'],
-            'province' => ['required_if:new_location,true', 'nullable', 'string', 'max:100'],
+            'barangay' => ['required_if:new_location,true', 'nullable', 'string', 'max:100'],
             'postal_code' => ['required_if:new_location,true', 'nullable', 'string', 'max:20'],
             'deposit_fee' => ['required', 'numeric', 'min:0', 'integer'],
         ]);
