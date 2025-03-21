@@ -16,21 +16,20 @@ class ListingApproved extends Notification
 
     public function via($notifiable)
     {
-        return ['database'];
-        // return ['mail', 'database'];
+        return ['mail', 'database'];
     }
 
-    // public function toMail($notifiable)
-    // {
-    //     return (new MailMessage)
-    //         ->subject('🎉 Your listing has been approved!')
-    //         ->greeting('Hi ' . $notifiable->name . '!')
-    //         ->line('Great news! Your listing "' . $this->listing->title . '" has been approved and is now live on LendWorks. 🚀')
-    //         ->line('Your item is now visible to all users in your area who might be interested in renting it.')
-    //         ->action('View Your Listing', route('listing.show', $this->listing))
-    //         ->line('Keep an eye on your notifications for any rental requests!')
-    //         ->salutation('Happy lending! 🎊');
-    // }
+    public function toMail($notifiable)
+    {
+        return (new MailMessage)
+            ->subject('🎉 Your listing has been approved!')
+            ->greeting('Hi ' . $notifiable->name . '!')
+            ->line('Great news! Your listing "' . $this->listing->title . '" has been approved and is now live on LendWorks. 🚀')
+            ->line('Your item is now visible to all users in your area who might be interested in renting it.')
+            ->action('View Your Listing', route('listing.show', $this->listing))
+            ->line('Keep an eye on your notifications for any rental requests!')
+            ->salutation('Happy lending! 🎊');
+    }
 
     public function toArray($notifiable)
     {

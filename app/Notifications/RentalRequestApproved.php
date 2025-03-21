@@ -21,22 +21,23 @@ class RentalRequestApproved extends Notification implements ShouldQueue
 
     public function via($notifiable)
     {
-        return ['database'];
+        return ['mail', 'database'];
     }
 
-    // public function toMail($notifiable)
-    // {
-    //     $quantityMessage = $this->rentalRequest->quantity_approved < $this->rentalRequest->quantity_requested
-    //         ? " (Note: {$this->rentalRequest->quantity_approved} out of {$this->rentalRequest->quantity_requested} requested units approved)"
-    //         : "";
+    public function toMail($notifiable)
+    {
+        $quantityMessage = $this->rentalRequest->quantity_approved < $this->rentalRequest->quantity_requested
+            ? " (Note: {$this->rentalRequest->quantity_approved} out of {$this->rentalRequest->quantity_requested} requested units approved)"
+            : "";
 
-    //     return (new MailMessage)
-    //         ->subject('Rental Request Approved')
-    //         ->line("Your rental request has been approved{$quantityMessage}!")
-    //         ->line("Total amount to pay: " . number_format($this->rentalRequest->total_price, 2))
-    //         ->action('View Details', route('rental.show', $this->rentalRequest->id))
-    //         ->line('Please proceed with the payment to confirm your rental.');
-    // }
+        return (new MailMessage)
+            ->subject('Rental Request Approved')
+            ->greeting('Hi ' . $notifiable->name . '!')
+            ->line("Your rental request has been approved{$quantityMessage}!")
+            ->line("Total amount to pay: ₱" . number_format($this->rentalRequest->total_price, 2))
+            ->action('View Details', route('rental.show', $this->rentalRequest->id))
+            ->line('Please proceed with the payment to confirm your rental.');
+    }
 
     public function toArray($notifiable)
     {

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\RentalRequest;
 use App\Models\PickupSchedule;
 use App\Models\LenderPickupSchedule;
+use App\Notifications\ScheduleActionNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -189,6 +190,17 @@ class PickupScheduleController extends Controller
                 
                 // Update rental status to proceed with handover
                 $rental->update(['status' => 'to_handover']);
+
+                // Add notification here
+                $schedule->rental->renter->notify(new ScheduleActionNotification(
+                    $rental,
+                    'pickup_confirmed',
+                    [
+                        'datetime' => $schedule->pickup_datetime,
+                        'start_time' => $schedule->start_time,
+                        'end_time' => $schedule->end_time
+                    ]
+                ));
 
                 // Update the timeline event type based on whether it was a suggestion
                 $eventType = $schedule->is_suggested 

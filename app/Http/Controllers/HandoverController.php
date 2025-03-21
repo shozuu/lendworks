@@ -7,6 +7,8 @@ use App\Models\HandoverProof;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use App\Notifications\HandoverActionNotification;
 
 class HandoverController extends Controller
 {
@@ -31,24 +33,35 @@ class HandoverController extends Controller
             'proof_image' => ['required', 'image', 'max:5120'], // 5MB max
         ]);
 
-        // Store the image
-        $path = $request->file('proof_image')->store('handover-proofs', 'public');
+        try {
+            DB::transaction(function () use ($request, $rental) {
+                // Store the image
+                $path = $request->file('proof_image')->store('handover-proofs', 'public');
 
-        // Create handover proof
-        HandoverProof::create([
-            'rental_request_id' => $rental->id,
-            'type' => 'handover',
-            'proof_path' => $path,
-            'submitted_by' => Auth::id(),
-        ]);
+                // Create handover proof
+                HandoverProof::create([
+                    'rental_request_id' => $rental->id,
+                    'type' => 'handover',
+                    'proof_path' => $path,
+                    'submitted_by' => Auth::id(),
+                ]);
 
-        // Update rental status to pending_proof and keep it visible in To Receive tab
-        $rental->update(['status' => 'pending_proof']);
+                // Update rental status to pending_proof and keep it visible in To Receive tab
+                $rental->update(['status' => 'pending_proof']);
 
-        // Record timeline event
-        $rental->recordTimelineEvent('handover', Auth::id(), ['proof_path' => $path]);
+                // Record timeline event
+                $rental->recordTimelineEvent('handover', Auth::id(), ['proof_path' => $path]);
 
-        return back()->with('success', 'Handover proof submitted successfully.');
+                // Add notification here
+                $rental->lender->notify(new HandoverActionNotification($rental, 'handover_submitted'));
+                $rental->renter->notify(new HandoverActionNotification($rental, 'handover_submitted'));
+            });
+
+            return back()->with('success', 'Handover proof submitted successfully.');
+        } catch (\Exception $e) {
+            report($e);
+            return back()->with('error', 'Failed to submit handover proof.');
+        }
     }
 
     public function submitReceive(Request $request, RentalRequest $rental)
@@ -86,6 +99,8 @@ class HandoverController extends Controller
 
         // Record timeline event
         $rental->recordTimelineEvent('receive', Auth::id(), ['proof_path' => $path]);
+
+        $rental->listing->user->notify(new HandoverActionNotification($rental, 'receive_confirmed'));
 
         return back()->with('success', 'Receive proof submitted successfully.');
     }

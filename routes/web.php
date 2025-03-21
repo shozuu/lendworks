@@ -57,6 +57,7 @@ Route::middleware(['auth', 'fully-verified'])->group(function () {
     // notification 
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/{id}/mark-as-read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/mark-all-as-read', [NotificationController::class, 'markAllAsRead']); // Add this line
 
     // rental request
     Route::post('/rentals', [RentalRequestController::class, 'store'])->name('rentals.store');

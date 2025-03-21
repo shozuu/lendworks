@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from "vue";
-import { usePage } from "@inertiajs/vue3";
+import { usePage, router } from "@inertiajs/vue3";
 import axios from "axios";
 import {
 	DropdownMenu,
@@ -53,6 +53,51 @@ const markAsRead = async (notificationId) => {
 	}
 };
 
+const markAllAsRead = async () => {
+	try {
+		await axios.post("/notifications/mark-all-as-read");
+		await fetchNotifications();
+	} catch (e) {
+		console.error("Error marking all notifications as read:", e);
+	}
+};
+
+const handleNotificationClick = (notification) => {
+	// Mark as read first
+	markAsRead(notification.id);
+
+	// Get route data from notification
+	const data = notification.data;
+	let routeName;
+	let params = {};
+
+	switch (data.type) {
+		case "rental":
+		case "payment":
+		case "handover":
+		case "schedule":
+			routeName = "rental.show";
+			params.rental = data.rental_id;
+			break;
+		case "rental_request":
+			routeName = "lender-dashboard";
+			break;
+		case "listing_rejected":
+		case "listing_taken_down":
+		case "listing_approved":
+		case "error": // Add this case to handle error type notifications
+			routeName = "my-listings";
+			break;
+		default:
+			return; // No routing for other types
+	}
+
+	// Navigate using Inertia router with properly constructed route
+	if (routeName) {
+		router.visit(route(routeName, params));
+	}
+};
+
 // Add helper to get notification icon
 const getNotificationIcon = (type) => {
 	switch (type) {
@@ -62,8 +107,14 @@ const getNotificationIcon = (type) => {
 			return CreditCard;
 		case "schedule":
 			return Calendar;
+		case "listing_rejected":
+		case "listing_taken_down":
+		case "listing_approved":
+			return PackageIcon; // Added cases for listing notifications
 		case "alert":
 			return ShieldAlert;
+		case "handover":
+			return PackageIcon;
 		default:
 			return Dot;
 	}
@@ -91,9 +142,20 @@ onMounted(() => {
 		<DropdownMenuContent align="end" class="w-[380px]">
 			<div class="flex items-center justify-between px-4 py-3 border-b">
 				<h3 class="font-semibold">Notifications</h3>
-				<span v-if="unreadCount > 0" class="text-xs text-muted-foreground">
-					{{ unreadCount }} unread
-				</span>
+				<div class="flex items-center gap-2">
+					<Button
+						v-if="unreadCount > 0"
+						variant="ghost"
+						size="sm"
+						class="h-8 text-xs"
+						@click="markAllAsRead"
+					>
+						Mark all as read
+					</Button>
+					<span v-if="unreadCount > 0" class="text-xs text-muted-foreground">
+						{{ unreadCount }} unread
+					</span>
+				</div>
 			</div>
 
 			<!-- Content Area -->
@@ -132,7 +194,7 @@ onMounted(() => {
 						class="group relative px-4 py-3 hover:bg-muted transition-colors cursor-pointer"
 						:class="{ 'bg-muted/50': !notification.read_at }"
 						role="button"
-						@click="markAsRead(notification.id)"
+						@click="handleNotificationClick(notification)"
 					>
 						<!-- Unread Indicator -->
 						<div

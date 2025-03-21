@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\RentalRequest;
 use App\Models\CompletionPayment;
+use App\Notifications\PaymentProcessedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -121,6 +122,13 @@ class CompletionPaymentController extends Controller
                     'admin_id' => Auth::id(),
                     'processed_at' => now(),
                 ]);
+
+                // Add notification here
+                $rental->renter->notify(new PaymentProcessedNotification(
+                    $rental,
+                    'deposit_refund',
+                    $rental->deposit_fee
+                ));
 
                 // Add timeline event
                 $rental->recordTimelineEvent('deposit_refund_processed', Auth::id(), [

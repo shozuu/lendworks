@@ -28,4 +28,14 @@ class NotificationController extends Controller
             return response()->json(['error' => 'Failed to mark notification as read'], 500);
         }
     }
+
+    public function markAllAsRead(Request $request)
+    {
+        try {
+            $request->user()->unreadNotifications()->update(['read_at' => now()]);
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to mark notifications as read'], 500);
+        }
+    }
 }

@@ -16,35 +16,32 @@ class ListingTakenDown extends Notification
 
     public function via($notifiable)
     {
-        return ['database'];
+        return ['mail', 'database'];
     }
 
-//     public function toMail($notifiable)
-//     {
-//         $takedown = $this->listing->latestTakedown;
-//         $reason = $takedown->takedownReason;
+    public function toMail($notifiable)
+    {
+        $takedown = $this->listing->latestTakedown;
+        $reason = $takedown->takedownReason;
         
-//         return (new MailMessage)
-//             ->subject('Important: Your Listing Has Been Taken Down')
-//             ->greeting('Hi ' . $notifiable->name)
-//             ->line('We need to inform you that your listing "' . $this->listing->title . '" has been taken down from LendWorks.')
-//             ->line('Here\'s why this action was taken:')
-//             ->line($reason->description)
-//             ->when($takedown->custom_feedback, fn ($mail) => 
-//                 $mail->line('Specific feedback:')
-//                      ->line($takedown->custom_feedback)
-//             )
-//             ->line('What this means:')
-//             ->line('• Your listing is no longer visible to other users')
-//             ->line('• The listing has been marked as unavailable')
-//             ->line('Next steps:')
-//             ->line('• Review our listing guidelines')
-//             ->line('• Consider creating a new listing that follows our policies')
-//             ->action('View Listing Details', route('listing.show', $this->listing))
-//             ->line('If you believe this was done in error, please contact our support team for assistance.')
-//             ->salutation('Best regards,
-// The LendWorks Team');
-//     }
+        return (new MailMessage)
+            ->subject('Important: Your Listing Has Been Taken Down')
+            ->greeting('Hi ' . $notifiable->name)
+            ->line('We need to inform you that your listing "' . $this->listing->title . '" has been taken down from LendWorks.')
+            ->line('Here\'s why this action was taken:')
+            ->line($reason->description)
+            ->when($takedown->custom_feedback, fn ($mail) => 
+                $mail->line('Specific feedback:')
+                     ->line($takedown->custom_feedback)
+            )
+            ->line('What this means:')
+            ->line('• Your listing is no longer visible to other users')
+            ->line('• The listing has been marked as unavailable')
+            ->line('Next steps:')
+            ->line('• Review our listing guidelines')
+            ->line('• Consider creating a new listing that follows our policies')
+            ->action('View Listing Details', route('listing.show', $this->listing));
+    }
 
     public function toArray($notifiable)
     {

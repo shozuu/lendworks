@@ -21,28 +21,28 @@ class NewRentalRequest extends Notification
 
     public function via($notifiable)
     {
-        return ['database'];
+        return ['mail', 'database'];
     }
 
-    // public function toMail($notifiable)
-    // {
-    //     $renter = $this->rentalRequest->renter;
-    //     $listing = $this->rentalRequest->listing;
-    //     $startDate = $this->rentalRequest->start_date->format('M d, Y');
-    //     $endDate = $this->rentalRequest->end_date->format('M d, Y');
-        
-    //     return (new MailMessage)
-    //         ->subject('📋 New Rental Request Received')
-    //         ->greeting('Hello ' . $notifiable->name . '!')
-    //         ->line("You have received a new rental request for your listing \"{$listing->title}\"")
-    //         ->line("Request Details:")
-    //         ->line("• Renter: {$renter->name}")
-    //         ->line("• Duration: {$startDate} to {$endDate}")
-    //         ->line("• Total Amount: ₱" . number_format($this->rentalRequest->total_price, 2))
-    //         ->action('Review Request', route('lender-dashboard'))
-    //         ->line('Please review and respond to this request as soon as possible.')
-    //         ->salutation('Thank you for using LendWorks! 🛠️');
-    // }
+    public function toMail($notifiable)
+    {
+        $renter = $this->rentalRequest->renter;
+        $listing = $this->rentalRequest->listing;
+        $startDate = $this->rentalRequest->start_date->format('M d, Y');
+        $endDate = $this->rentalRequest->end_date->format('M d, Y');
+
+        return (new MailMessage)
+            ->subject('📋 New Rental Request Received')
+            ->greeting('Hello ' . $notifiable->name . '!')
+            ->line("You have received a new rental request for your listing \"{$listing->title}\"")
+            ->line("Request Details:")
+            ->line("• Renter: {$renter->name}")
+            ->line("• Duration: {$startDate} to {$endDate}")
+            ->line("• Total Amount: ₱" . number_format($this->rentalRequest->total_price, 2))
+            ->action('Review Request', route('lender-dashboard'))
+            ->line('Please review and respond to this request as soon as possible.')
+            ->salutation('Thank you for using LendWorks! 🛠️');
+    }
 
     public function toArray($notifiable)
     {
