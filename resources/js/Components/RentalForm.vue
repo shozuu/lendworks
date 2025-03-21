@@ -10,6 +10,7 @@ import { useForm as useInertiaForm } from "@inertiajs/vue3";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { XCircle, Clock } from "lucide-vue-next";
 import TermsAndConditionsDialog from "../Pages/TermsAndConditionsDialog .vue";
+import { Checkbox } from "@/Components/ui/checkbox"; 
 
 const props = defineProps({
 	listing: {
@@ -180,15 +181,15 @@ onMounted(() => {
 			<div v-if="listing.is_rented && currentRental" class="mb-6">
 				<Alert class="bg-muted">
 					<AlertDescription>
-						<div class="flex gap-2 items-center">
-							<Clock class="h-4 w-4 shrink-0" />
+						<div class="flex items-center gap-2">
+							<Clock class="shrink-0 w-4 h-4" />
 							<p class="font-medium">Currently Rented</p>
 						</div>
-						<p class="text-muted-foreground text-sm mt-1">
+						<p class="text-muted-foreground mt-1 text-sm">
 							This item is being rented until
 							{{ currentRental?.end_date ? formatDate(currentRental.end_date) : "N/A" }}.
 						</p>
-						<p class="text-muted-foreground text-sm mt-2">
+						<p class="text-muted-foreground mt-2 text-sm">
 							You can still calculate rental costs below, but rental requests are
 							temporarily disabled.
 							<!-- Future feature hint -->
@@ -341,26 +342,22 @@ onMounted(() => {
 						<p v-for="error in errors" :key="error">{{ error }}</p>
 					</div>
 
-					<div class="mt-4 mb-4" v-if="selectedDates.start && selectedDates.end">
-						<div class="flex items-start gap-3 p-4 rounded-lg border bg-muted/20">
-							<Checkbox
-								id="rental-terms"
-								v-model:checked="termsAccepted"
-								class="mt-0.5"
-							/>
-							<div>
-								<label for="rental-terms" class="text-sm cursor-pointer">
-									I have read and agree to the
-									<button
-										type="button"
-										@click="showTerms = true"
-										class="text-primary hover:underline inline-flex"
-									>
-										Terms and Conditions
-									</button>
-								</label>
-							</div>
-						</div>
+					<div class="flex items-start gap-2 mt-4 mb-4" v-if="selectedDates.start && selectedDates.end">
+						<Checkbox 
+							id="rental-terms"
+							v-model:checked="termsAccepted" 
+							class="mt-1"
+						/>
+						<label for="rental-terms" class="text-sm cursor-pointer">
+							By renting, I have read and agree to the 
+							<button
+								type="button"
+								@click="showTerms = true"
+								class="text-primary hover:underline inline-flex font-medium"
+							>
+								Terms and Conditions
+							</button>
+						</label>
 					</div>
 
 					<Button

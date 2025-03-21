@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { useForm } from "@inertiajs/vue3";
 import AuthLayout from "../../Layouts/AuthLayout.vue";
 import TermsAndConditionsDialog from "../TermsAndConditionsDialog .vue";
-import { ref } from "vue";
+import { ref, computed } from "vue";
+import { Checkbox } from "@/Components/ui/checkbox";
 
 defineOptions({ layout: AuthLayout });
 
@@ -19,6 +20,17 @@ const form = useForm({
 const showTerms = ref(false);
 const termsAccepted = ref(false);
 
+const isDisabled = computed(() => {
+	return (
+		!form.name ||
+		!form.email ||
+		!form.password ||
+		!form.password_confirmation ||
+		!termsAccepted.value ||
+		form.processing
+	);
+});
+
 const submit = () => {
 	form.post(route("register"), {
 		onSuccess: () => form.reset("password", "password_confirmation"),
@@ -28,9 +40,9 @@ const submit = () => {
 
 <template>
 	<Head title="| Register" />
-	<div class="mx-auto max-w-md mt-20">
+	<div class="max-w-md mx-auto mt-20">
 		<div class="mb-8 text-center">
-			<h1 class="text-3xl font-bold mb-2">Register a new account</h1>
+			<h1 class="mb-2 text-3xl font-bold">Register a new account</h1>
 			<p>
 				Already have an account?
 				<TextLink routeName="login" label="Login" />
@@ -72,39 +84,21 @@ const submit = () => {
 				:error="form.errors.password"
 			/>
 
-			<p class="text-text text-sm flex items-center gap-1">
-				By creating an account, you agree to our
-				<button
-					type="button"
-					@click="showTerms = true"
-					class="text-primary hover:underline inline-flex"
-				>
-					Terms and Conditions
-				</button>
-			</p>
-
-			<div
-				class="flex items-center gap-2 bg-muted/50 p-3 rounded-lg"
-				:class="{ 'bg-emerald-100/50': termsAccepted }"
-			>
-				<div
-					class="w-2 h-2 rounded-full"
-					:class="termsAccepted ? 'bg-emerald-500' : 'bg-muted-foreground'"
-				></div>
-				<span class="text-sm" :class="termsAccepted ? 'text-emerald-700' : 'bg-muted/50'">
-					{{
-						termsAccepted
-							? "Terms and conditions accepted"
-							: "Please accept the terms and conditions"
-					}}
-				</span>
+			<div class="flex items-start gap-2 mt-4 mb-4">
+				<Checkbox id="rental-terms" v-model:checked="termsAccepted" class="mt-1" />
+				<label for="rental-terms" class="text-sm cursor-pointer">
+					By renting, I have read and agree to the
+					<button
+						type="button"
+						@click="showTerms = true"
+						class="text-primary hover:underline inline-flex font-medium"
+					>
+						Terms and Conditions
+					</button>
+				</label>
 			</div>
 
-			<Button
-				:disabled="form.processing || !termsAccepted"
-				class="w-full rounded-lg"
-				size="lg"
-			>
+			<Button :disabled="isDisabled" class="w-full rounded-lg" size="lg">
 				Register
 			</Button>
 		</form>
