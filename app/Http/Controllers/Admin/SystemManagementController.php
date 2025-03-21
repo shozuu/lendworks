@@ -72,6 +72,7 @@ class SystemManagementController extends Controller
             ->map(fn($category) => [
                 'id' => $category->id,
                 'name' => $category->name,
+                'description' => $category->description,
                 'slug' => $category->slug,
                 'listings_count' => $category->listings_count
             ]);
@@ -118,12 +119,13 @@ class SystemManagementController extends Controller
     public function storeCategory(Request $request)
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:categories,name']
+            'name' => ['required', 'string', 'max:255', 'unique:categories,name'],
+            'description' => ['required', 'string', 'max:1000']
         ]);
 
         Category::create([
             'name' => $validated['name'],
-            'slug' => Str::slug($validated['name'])
+            'description' => $validated['description']
         ]);
 
         return back()->with('success', 'Category created successfully');
@@ -132,12 +134,13 @@ class SystemManagementController extends Controller
     public function updateCategory(Request $request, Category $category)
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:categories,name,' . $category->id]
+            'name' => ['required', 'string', 'max:255', 'unique:categories,name,' . $category->id],
+            'description' => ['required', 'string', 'max:1000']
         ]);
 
         $category->update([
             'name' => $validated['name'],
-            'slug' => Str::slug($validated['name'])
+            'description' => $validated['description']
         ]);
 
         return back()->with('success', 'Category updated successfully');

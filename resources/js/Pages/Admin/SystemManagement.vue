@@ -1,6 +1,7 @@
+<script setup>
 /**
  * SystemManagement Vue Component
- * 
+ *
  * Purpose:
  * Provides interface for admin system management including:
  * - System information display
@@ -9,10 +10,10 @@
  * - Cache management
  * - Storage permissions
  * - Maintenance mode controls
- * 
+ *
  * Features:
  * - status indicators
- * 
+ *
  * Change Log:
  * 1. Added tab system to switch between System and Platform management
  * 2. Integrated category management UI into platform tab
@@ -25,30 +26,49 @@
  * 9. Added disable logic for categories with listings
  */
 
-<script setup>
 import AdminLayout from "../../Layouts/AdminLayout.vue";
 import { Head, router } from "@inertiajs/vue3";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+	CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle2, Download } from "lucide-vue-next";
-import { ref } from 'vue';
+import { ref } from "vue";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { usePage } from '@inertiajs/vue3';
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogDescription,
+	DialogFooter,
+} from "@/components/ui/dialog";
+import { usePage } from "@inertiajs/vue3";
 
 defineOptions({ layout: AdminLayout });
 
 const props = defineProps({
-    systemInfo: Object,
-    categories: Array
+	systemInfo: Object,
+	categories: Array,
 });
 
-const activeTab = ref('system');
+const activeTab = ref("system");
 
 const performAction = (action) => {
-    router.post(route(`admin.system.${action}`));
+	router.post(route(`admin.system.${action}`));
 };
 
 // Category management state
@@ -56,382 +76,408 @@ const showAddDialog = ref(false);
 const showEditDialog = ref(false);
 const showDeleteDialog = ref(false);
 const selectedCategory = ref(null);
-const newCategoryName = ref('');
-const editCategoryName = ref('');
+const newCategoryName = ref("");
+const editCategoryName = ref("");
 
-// Category management methods
+// Add new ref for descriptions
+const newCategoryDescription = ref("");
+const editCategoryDescription = ref("");
+
 const openAddDialog = () => {
-    newCategoryName.value = '';
-    showAddDialog.value = true;
+	newCategoryName.value = "";
+	newCategoryDescription.value = "";
+	showAddDialog.value = true;
 };
 
 const openEditDialog = (category) => {
-    selectedCategory.value = category;
-    editCategoryName.value = category.name;
-    showEditDialog.value = true;
+	selectedCategory.value = category;
+	editCategoryName.value = category.name;
+	editCategoryDescription.value = category.description || ""; // Add fallback empty string
+	showEditDialog.value = true;
 };
 
 const openDeleteDialog = (category) => {
-    selectedCategory.value = category;
-    showDeleteDialog.value = true;
+	selectedCategory.value = category;
+	showDeleteDialog.value = true;
 };
 
 const handleAdd = () => {
-    router.post(route('admin.system.categories.store'), {
-        name: newCategoryName.value
-    }, {
-        onSuccess: () => {
-            showAddDialog.value = false;
-            newCategoryName.value = '';
-        }
-    });
+	router.post(
+		route("admin.system.categories.store"),
+		{
+			name: newCategoryName.value,
+			description: newCategoryDescription.value,
+		},
+		{
+			onSuccess: () => {
+				showAddDialog.value = false;
+				newCategoryName.value = "";
+				newCategoryDescription.value = "";
+			},
+		}
+	);
 };
 
 const handleEdit = () => {
-    router.patch(route('admin.system.categories.update', selectedCategory.value.id), {
-        name: editCategoryName.value
-    }, {
-        onSuccess: () => {
-            showEditDialog.value = false;
-            selectedCategory.value = null;
-            editCategoryName.value = '';
-        }
-    });
+	router.patch(
+		route("admin.system.categories.update", selectedCategory.value.id),
+		{
+			name: editCategoryName.value,
+			description: editCategoryDescription.value,
+		},
+		{
+			onSuccess: () => {
+				showEditDialog.value = false;
+				selectedCategory.value = null;
+				editCategoryName.value = "";
+				editCategoryDescription.value = "";
+			},
+		}
+	);
 };
 
 const handleDelete = () => {
-    router.delete(route('admin.system.categories.delete', selectedCategory.value.id), {
-        onSuccess: () => {
-            showDeleteDialog.value = false;
-            selectedCategory.value = null;
-        }
-    });
+	router.delete(route("admin.system.categories.delete", selectedCategory.value.id), {
+		onSuccess: () => {
+			showDeleteDialog.value = false;
+			selectedCategory.value = null;
+		},
+	});
 };
 
 // Maintenance mode dialog state and methods
 const showMaintenanceDialog = ref(false);
 
 const toggleMaintenance = () => {
-    if (!props.systemInfo.maintenance_mode) {
-        // Show confirmation dialog when enabling maintenance mode
-        showMaintenanceDialog.value = true;
-    } else {
-        // Directly disable maintenance mode
-        performAction('maintenance');
-    }
+	if (!props.systemInfo.maintenance_mode) {
+		// Show confirmation dialog when enabling maintenance mode
+		showMaintenanceDialog.value = true;
+	} else {
+		// Directly disable maintenance mode
+		performAction("maintenance");
+	}
 };
 
 const confirmMaintenance = () => {
-    performAction('maintenance');
-    showMaintenanceDialog.value = false;
+	performAction("maintenance");
+	showMaintenanceDialog.value = false;
 };
 
 const exportDatabase = async () => {
-    try {
-        const response = await fetch(route('admin.system.export-database'), {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': usePage().props.csrf_token
-            }
-        });
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `database_export_${new Date().toISOString().slice(0,10)}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-    } catch (error) {
-        console.error('Export failed:', error);
-    }
+	try {
+		const response = await fetch(route("admin.system.export-database"), {
+			method: "POST",
+			headers: {
+				"X-CSRF-TOKEN": usePage().props.csrf_token,
+			},
+		});
+		const blob = await response.blob();
+		const url = window.URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `database_export_${new Date().toISOString().slice(0, 10)}.csv`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		window.URL.revokeObjectURL(url);
+	} catch (error) {
+		console.error("Export failed:", error);
+	}
 };
 
 const backupDatabase = () => {
-    window.location.href = route('admin.system.backup-database');
+	window.location.href = route("admin.system.backup-database");
 };
 </script>
 
 <template>
-    <Head title="| System Management" />
+	<Head title="| System Management" />
 
-    <div class="space-y-6">
-        <div class="flex items-center justify-between">
-            <h2 class="text-2xl font-semibold tracking-tight">System Management</h2>
-        </div>
+	<div class="space-y-6">
+		<div class="flex items-center justify-between">
+			<h2 class="text-2xl font-semibold tracking-tight">System Management</h2>
+		</div>
 
-        <Tabs v-model="activeTab" class="space-y-4">
-            <TabsList>
-                <TabsTrigger value="system">System Information</TabsTrigger>
-                <TabsTrigger value="platform">Platform Management</TabsTrigger>
-            </TabsList>
+		<Tabs v-model="activeTab" class="space-y-4">
+			<TabsList>
+				<TabsTrigger value="system">System Information</TabsTrigger>
+				<TabsTrigger value="platform">Platform Management</TabsTrigger>
+			</TabsList>
 
-            <TabsContent value="system" class="space-y-4">
-                <!-- Add this section before or after existing system buttons -->
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Database Management</CardTitle>
-                        <CardDescription>Export and manage database backups</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="space-y-4">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <h4 class="font-medium">Database Backup</h4>
-                                    <p class="text-sm text-muted-foreground">
-                                        Export a complete SQL dump of the database
-                                    </p>
-                                </div>
-                                <div class="space-x-2">
-                                    <Button @click="backupDatabase" class="gap-2">
-                                        <Download class="h-4 w-4" />
-                                        Export SQL Backup
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                
-                <!-- Existing System Management Content -->
-                <div class="space-x-2">
-                    <Button @click="performAction('clear-cache')">Clear Cache</Button>
-                    <Button 
-                        :variant="systemInfo.maintenance_mode ? 'default' : 'destructive'"
-                        @click="toggleMaintenance"
-                    >
-                        {{ systemInfo.maintenance_mode ? 'Disable' : 'Enable' }} Maintenance Mode
-                    </Button>
-                </div>
+			<TabsContent value="system" class="space-y-4">
+				<!-- Add this section before or after existing system buttons -->
+				<Card>
+					<CardHeader>
+						<CardTitle>Database Management</CardTitle>
+						<CardDescription>Export and manage database backups</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div class="space-y-4">
+							<div class="flex items-center justify-between">
+								<div>
+									<h4 class="font-medium">Database Backup</h4>
+									<p class="text-sm text-muted-foreground">
+										Export a complete SQL dump of the database
+									</p>
+								</div>
+								<div class="space-x-2">
+									<Button @click="backupDatabase" class="gap-2">
+										<Download class="h-4 w-4" />
+										Export SQL Backup
+									</Button>
+								</div>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
 
-                <!-- System Information Grid -->
-                <div class="grid gap-4 md:grid-cols-2">
-                    <!-- Server Info -->
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Server Information</CardTitle>
-                        </CardHeader>
-                        <CardContent class="space-y-2">
-                            <div class="flex justify-between">
-                                <span class="text-muted-foreground">PHP Version</span>
-                                <span>{{ systemInfo.php_version }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-muted-foreground">Laravel Version</span>
-                                <span>{{ systemInfo.laravel_version }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-muted-foreground">Server Software</span>
-                                <span>{{ systemInfo.server_info }}</span>
-                            </div>
-                        </CardContent>
-                    </Card>
+				<!-- Existing System Management Content -->
+				<div class="space-x-2">
+					<Button @click="performAction('clear-cache')">Clear Cache</Button>
+					<Button
+						:variant="systemInfo.maintenance_mode ? 'default' : 'destructive'"
+						@click="toggleMaintenance"
+					>
+						{{ systemInfo.maintenance_mode ? "Disable" : "Enable" }} Maintenance Mode
+					</Button>
+				</div>
 
-                    <!-- Database Info -->
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Database Information</CardTitle>
-                        </CardHeader>
-                        <CardContent class="space-y-2">
-                            <div class="flex justify-between">
-                                <span class="text-muted-foreground">Database Name</span>
-                                <span>{{ systemInfo.database.name }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-muted-foreground">Database Version</span>
-                                <span>{{ systemInfo.database.version }}</span>
-                            </div>
-                        </CardContent>
-                    </Card>
+				<!-- System Information Grid -->
+				<div class="grid gap-4 md:grid-cols-2">
+					<!-- Server Info -->
+					<Card>
+						<CardHeader>
+							<CardTitle>Server Information</CardTitle>
+						</CardHeader>
+						<CardContent class="space-y-2">
+							<div class="flex justify-between">
+								<span class="text-muted-foreground">PHP Version</span>
+								<span>{{ systemInfo.php_version }}</span>
+							</div>
+							<div class="flex justify-between">
+								<span class="text-muted-foreground">Laravel Version</span>
+								<span>{{ systemInfo.laravel_version }}</span>
+							</div>
+							<div class="flex justify-between">
+								<span class="text-muted-foreground">Server Software</span>
+								<span>{{ systemInfo.server_info }}</span>
+							</div>
+						</CardContent>
+					</Card>
 
-                    <!-- Cache Info -->
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Cache Status</CardTitle>
-                        </CardHeader>
-                        <CardContent class="space-y-2">
-                            <div class="flex justify-between">
-                                <span class="text-muted-foreground">Cache Driver</span>
-                                <span>{{ systemInfo.cache.driver }}</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-muted-foreground">Cache Status</span>
-                                <div class="flex items-center gap-2">
-                                    <CheckCircle2 v-if="systemInfo.cache.status !== 'Not Connected'" 
-                                                class="w-5 h-5 text-green-500" />
-                                    <AlertCircle v-else class="w-5 h-5 text-red-500" />
-                                    {{ systemInfo.cache.status }}
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+					<!-- Database Info -->
+					<Card>
+						<CardHeader>
+							<CardTitle>Database Information</CardTitle>
+						</CardHeader>
+						<CardContent class="space-y-2">
+							<div class="flex justify-between">
+								<span class="text-muted-foreground">Database Name</span>
+								<span>{{ systemInfo.database.name }}</span>
+							</div>
+							<div class="flex justify-between">
+								<span class="text-muted-foreground">Database Version</span>
+								<span>{{ systemInfo.database.version }}</span>
+							</div>
+						</CardContent>
+					</Card>
 
-                    <!-- Storage Info -->
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Storage Permissions</CardTitle>
-                        </CardHeader>
-                        <CardContent class="space-y-2">
-                            <div class="flex items-center justify-between">
-                                <span class="text-muted-foreground">Uploads Directory</span>
-                                <div class="flex items-center gap-2">
-                                    <CheckCircle2 v-if="systemInfo.storage.uploads_dir" 
-                                                class="w-5 h-5 text-green-500" />
-                                    <AlertCircle v-else class="w-5 h-5 text-red-500" />
-                                    {{ systemInfo.storage.uploads_dir ? 'Writable' : 'Not Writable' }}
-                                </div>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-muted-foreground">Logs Directory</span>
-                                <div class="flex items-center gap-2">
-                                    <CheckCircle2 v-if="systemInfo.storage.logs_dir" 
-                                                class="w-5 h-5 text-green-500" />
-                                    <AlertCircle v-else class="w-5 h-5 text-red-500" />
-                                    {{ systemInfo.storage.logs_dir ? 'Writable' : 'Not Writable' }}
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            </TabsContent>
+					<!-- Cache Info -->
+					<Card>
+						<CardHeader>
+							<CardTitle>Cache Status</CardTitle>
+						</CardHeader>
+						<CardContent class="space-y-2">
+							<div class="flex justify-between">
+								<span class="text-muted-foreground">Cache Driver</span>
+								<span>{{ systemInfo.cache.driver }}</span>
+							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-muted-foreground">Cache Status</span>
+								<div class="flex items-center gap-2">
+									<CheckCircle2
+										v-if="systemInfo.cache.status !== 'Not Connected'"
+										class="w-5 h-5 text-green-500"
+									/>
+									<AlertCircle v-else class="w-5 h-5 text-red-500" />
+									{{ systemInfo.cache.status }}
+								</div>
+							</div>
+						</CardContent>
+					</Card>
 
-            <TabsContent value="platform" class="space-y-4">
-                <!-- Category Management Content -->
-                <div class="flex items-center justify-between">
-                    <h3 class="text-lg font-medium">Manage Categories</h3>
-                    <Button @click="openAddDialog">Add Category</Button>
-                </div>
+					<!-- Storage Info -->
+					<Card>
+						<CardHeader>
+							<CardTitle>Storage Permissions</CardTitle>
+						</CardHeader>
+						<CardContent class="space-y-2">
+							<div class="flex items-center justify-between">
+								<span class="text-muted-foreground">Uploads Directory</span>
+								<div class="flex items-center gap-2">
+									<CheckCircle2
+										v-if="systemInfo.storage.uploads_dir"
+										class="w-5 h-5 text-green-500"
+									/>
+									<AlertCircle v-else class="w-5 h-5 text-red-500" />
+									{{ systemInfo.storage.uploads_dir ? "Writable" : "Not Writable" }}
+								</div>
+							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-muted-foreground">Logs Directory</span>
+								<div class="flex items-center gap-2">
+									<CheckCircle2
+										v-if="systemInfo.storage.logs_dir"
+										class="w-5 h-5 text-green-500"
+									/>
+									<AlertCircle v-else class="w-5 h-5 text-red-500" />
+									{{ systemInfo.storage.logs_dir ? "Writable" : "Not Writable" }}
+								</div>
+							</div>
+						</CardContent>
+					</Card>
+				</div>
+			</TabsContent>
 
-                <Card>
-                    <CardContent class="pt-6">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Name</TableHead>
-                                    <!--<TableHead>Slug</TableHead>-->
-                                    <TableHead>Total Listings</TableHead>
-                                    <TableHead class="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                <TableRow v-for="category in categories" :key="category.id">
-                                    <TableCell>{{ category.name }}</TableCell>
-                                    <!--<TableCell>{{ category.slug }}</TableCell>-->
-                                    <TableCell>{{ category.listings_count }}</TableCell>
-                                    <TableCell class="text-right space-x-2">
-                                        <Button 
-                                            variant="outline" 
-                                            size="sm"
-                                            @click="openEditDialog(category)"
-                                        >
-                                            Edit
-                                        </Button>
-                                        <Button 
-                                            variant="destructive" 
-                                            size="sm"
-                                            :disabled="category.listings_count > 0"
-                                            @click="openDeleteDialog(category)"
-                                        >
-                                            Delete
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
+			<TabsContent value="platform" class="space-y-4">
+				<!-- Category Management Content -->
+				<div class="flex items-center justify-between">
+					<h3 class="text-lg font-medium">Manage Categories</h3>
+					<Button @click="openAddDialog">Add Category</Button>
+				</div>
 
-                <!-- Add Category Dialog -->
-                <Dialog v-model:open="showAddDialog">
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Add New Category</DialogTitle>
-                        </DialogHeader>
-                        <div class="py-4">
-                            <Input 
-                                v-model="newCategoryName" 
-                                placeholder="Category name"
-                                @keyup.enter="handleAdd"
-                            />
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" @click="showAddDialog = false">
-                                Cancel
-                            </Button>
-                            <Button @click="handleAdd">Add Category</Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+				<Card>
+					<CardContent class="pt-6">
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead>Name</TableHead>
+									<TableHead>Description</TableHead>
+									<TableHead>Total Listings</TableHead>
+									<TableHead class="text-right">Actions</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								<TableRow v-for="category in categories" :key="category.id">
+									<TableCell>{{ category.name }}</TableCell>
+									<TableCell class="max-w-md truncate">{{
+										category.description
+									}}</TableCell>
+									<TableCell>{{ category.listings_count }}</TableCell>
+									<TableCell class="text-right space-x-2">
+										<Button variant="outline" size="sm" @click="openEditDialog(category)">
+											Edit
+										</Button>
+										<Button
+											variant="destructive"
+											size="sm"
+											:disabled="category.listings_count > 0"
+											@click="openDeleteDialog(category)"
+										>
+											Delete
+										</Button>
+									</TableCell>
+								</TableRow>
+							</TableBody>
+						</Table>
+					</CardContent>
+				</Card>
 
-                <!-- Edit Category Dialog -->
-                <Dialog v-model:open="showEditDialog">
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Edit Category</DialogTitle>
-                        </DialogHeader>
-                        <div class="py-4">
-                            <Input 
-                                v-model="editCategoryName" 
-                                placeholder="Category name"
-                                @keyup.enter="handleEdit"
-                            />
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" @click="showEditDialog = false">
-                                Cancel
-                            </Button>
-                            <Button @click="handleEdit">Save Changes</Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+				<!-- Add Category Dialog -->
+				<Dialog v-model:open="showAddDialog">
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Add New Category</DialogTitle>
+						</DialogHeader>
+						<div class="py-4 space-y-4">
+							<div class="space-y-2">
+								<label class="text-sm font-medium">Name</label>
+								<Input v-model="newCategoryName" placeholder="Category name" />
+							</div>
+							<div class="space-y-2">
+								<label class="text-sm font-medium">Description</label>
+								<Input
+									v-model="newCategoryDescription"
+									placeholder="Category description"
+								/>
+							</div>
+						</div>
+						<DialogFooter>
+							<Button variant="outline" @click="showAddDialog = false"> Cancel </Button>
+							<Button @click="handleAdd">Add Category</Button>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
 
-                <!-- Delete Category Dialog -->
-                <Dialog v-model:open="showDeleteDialog">
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Delete Category</DialogTitle>
-                            <DialogDescription>
-                                Are you sure you want to delete this category? This action cannot be undone.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <DialogFooter>
-                            <Button variant="outline" @click="showDeleteDialog = false">
-                                Cancel
-                            </Button>
-                            <Button variant="destructive" @click="handleDelete">
-                                Delete
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-            </TabsContent>
-        </Tabs>
-    </div>
+				<!-- Edit Category Dialog -->
+				<Dialog v-model:open="showEditDialog">
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Edit Category</DialogTitle>
+						</DialogHeader>
+						<div class="py-4 space-y-4">
+							<div class="space-y-2">
+								<label class="text-sm font-medium">Name</label>
+								<Input v-model="editCategoryName" placeholder="Category name" />
+							</div>
+							<div class="space-y-2">
+								<label class="text-sm font-medium">Description</label>
+								<Input
+									v-model="editCategoryDescription"
+									placeholder="Category description"
+								/>
+							</div>
+						</div>
+						<DialogFooter>
+							<Button variant="outline" @click="showEditDialog = false"> Cancel </Button>
+							<Button @click="handleEdit">Save Changes</Button>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
 
-    <!-- Add Maintenance Mode Confirmation Dialog -->
-    <Dialog v-model:open="showMaintenanceDialog">
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Enable Maintenance Mode</DialogTitle>
-                <DialogDescription>
-                    Are you sure you want to enable maintenance mode? This will:
-                    <ul class="list-disc pl-4 mt-2 space-y-1">
-                        <li>Make the site inaccessible to regular users</li>
-                        <li>Show a maintenance page to all visitors</li>
-                        <li>Only administrators can access the site</li>
-                        <li>All ongoing user sessions will be interrupted</li>
-                    </ul>
-                </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-                <Button variant="outline" @click="showMaintenanceDialog = false">
-                    Cancel
-                </Button>
-                <Button variant="destructive" @click="confirmMaintenance">
-                    Enable Maintenance Mode
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
+				<!-- Delete Category Dialog -->
+				<Dialog v-model:open="showDeleteDialog">
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Delete Category</DialogTitle>
+							<DialogDescription>
+								Are you sure you want to delete this category? This action cannot be
+								undone.
+							</DialogDescription>
+						</DialogHeader>
+						<DialogFooter>
+							<Button variant="outline" @click="showDeleteDialog = false">
+								Cancel
+							</Button>
+							<Button variant="destructive" @click="handleDelete"> Delete </Button>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
+			</TabsContent>
+		</Tabs>
+	</div>
+
+	<!-- Add Maintenance Mode Confirmation Dialog -->
+	<Dialog v-model:open="showMaintenanceDialog">
+		<DialogContent>
+			<DialogHeader>
+				<DialogTitle>Enable Maintenance Mode</DialogTitle>
+				<DialogDescription>
+					Are you sure you want to enable maintenance mode? This will:
+					<ul class="list-disc pl-4 mt-2 space-y-1">
+						<li>Make the site inaccessible to regular users</li>
+						<li>Show a maintenance page to all visitors</li>
+						<li>Only administrators can access the site</li>
+						<li>All ongoing user sessions will be interrupted</li>
+					</ul>
+				</DialogDescription>
+			</DialogHeader>
+			<DialogFooter>
+				<Button variant="outline" @click="showMaintenanceDialog = false"> Cancel </Button>
+				<Button variant="destructive" @click="confirmMaintenance">
+					Enable Maintenance Mode
+				</Button>
+			</DialogFooter>
+		</DialogContent>
+	</Dialog>
 </template>
