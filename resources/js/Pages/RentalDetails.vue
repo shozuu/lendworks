@@ -498,24 +498,38 @@ const showReturnScheduleButton = computed(() =>
 
 							<Separator />
 
-							<!-- Fee Breakdown -->
+							 <!-- Enhanced Fee Breakdown -->
 							<div class="space-y-4">
 								<h4 class="font-medium">Fee Breakdown</h4>
-								<div class="space-y-2">
+								<div class="space-y-4">
+									<!-- Daily Rate and Quantity -->
 									<div class="flex justify-between text-sm">
-										<span class="text-muted-foreground">Daily Rate</span>
-										<span>{{ formatNumber(rental.listing.price) }}</span>
+										<div class="space-y-1">
+											<span class="text-muted-foreground">Daily Rate</span>
+											<p class="text-xs text-muted-foreground">
+												{{ rental.quantity_approved || rental.quantity_requested }} unit(s) × {{ formatNumber(rental.listing.price) }}/day
+											</p>
+										</div>
+										<span>{{ formatNumber(rental.listing.price * (rental.quantity_approved || rental.quantity_requested)) }}</span>
 									</div>
+
+									<!-- Overdue Days -->
 									<div class="flex justify-between text-sm">
-										<span class="text-muted-foreground">Total Days Overdue</span>
+										<span class="text-muted-foreground">Days Overdue</span>
 										<span>× {{ rental.overdue_days }}</span>
 									</div>
-									<Separator class="my-2" />
+
+									<Separator />
+
+									<!-- Total Fee -->
 									<div class="flex justify-between font-medium">
-										<span>Total Overdue Fee</span>
-										<span class="text-destructive">{{
-											formatNumber(rental.overdue_fee)
-										}}</span>
+										<div class="space-y-1">
+											<span>Total Overdue Fee</span>
+											<p class="text-xs text-muted-foreground">
+												Fee per day × Days overdue
+											</p>
+										</div>
+										<span class="text-destructive">{{ formatNumber(rental.overdue_fee) }}</span>
 									</div>
 								</div>
 							</div>
@@ -540,13 +554,12 @@ const showReturnScheduleButton = computed(() =>
 							</div>
 
 							<!-- Warning for unpaid overdue -->
-							<div
-								v-else-if="!rental.overdue_payment"
-								class="bg-destructive/10 p-4 mt-4 rounded-lg"
-							>
+							 <div v-else-if="!rental.overdue_payment" class="bg-destructive/10 p-4 mt-4 rounded-lg">
 								<p class="text-destructive text-sm">
-									 ⚠️ Overdue payment must be settled before proceeding with the return
-									process
+								⚠️ Overdue payment must be settled before proceeding with the return process
+								</p>
+								<p class="text-muted-foreground mt-2 text-xs">
+								The total overdue fee is calculated based on your daily rental rate multiplied by the number of overdue days.
 								</p>
 							</div>
 						</div>
