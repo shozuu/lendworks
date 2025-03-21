@@ -14,7 +14,7 @@ class Location extends Model
         'name',
         'address',
         'city',
-        'province',
+        'barangay',
         'postal_code',
         'is_default'
     ];
@@ -38,7 +38,7 @@ class Location extends Model
         return implode(', ', array_filter([
             $this->address,
             $this->city,
-            $this->province,
+            $this->barangay,
             $this->postal_code
         ]));
     }
