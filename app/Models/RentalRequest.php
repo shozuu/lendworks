@@ -183,11 +183,12 @@ class RentalRequest extends Model
         return $this->hasMany(CompletionPayment::class);
     }
 
-    // Add this relationship method
+    // Replace the dispute relationship to always get the latest one
     public function dispute()
     {
         return $this->hasOne(RentalDispute::class, 'rental_request_id')
-            ->with(['resolvedBy']);  // Always eager load resolvedBy
+            ->with(['resolvedBy', 'raisedBy'])  // Always eager load these relationships
+            ->latest();  // Get the most recent dispute
     }
 
     public function depositDeductions()
@@ -255,12 +256,11 @@ class RentalRequest extends Model
                 ($this->status === 'disputed' && $this->dispute && $this->dispute->status === 'resolved')
             ),
             'canRaiseDispute' => $isLender && (
-                // Can raise dispute on pending_final_confirmation if no dispute exists
-                ($this->status === 'pending_final_confirmation' && !$this->dispute) ||
-                // Or after previous dispute was rejected
-                ($this->status === 'pending_final_confirmation' && 
-                 $this->dispute && 
-                 $this->dispute->resolution_type === 'rejected')
+                // Can raise dispute if in pending_final_confirmation AND
+                // either no active dispute exists OR last dispute was rejected
+                $this->status === 'pending_final_confirmation' && 
+                (!$this->hasActiveDispute() || 
+                 ($this->dispute && $this->dispute->resolution_type === 'rejected'))
             ),
             'canChoosePickupSchedule' => $isRenter && 
                 $this->status === 'to_handover' && 
@@ -736,5 +736,35 @@ class RentalRequest extends Model
             $endTime = Carbon::createFromTimeString($schedule->end_time);
             return Carbon::now()->greaterThan($endTime);
         });
+    }
+
+    // Update the disputes relationship to ensure proper ordering
+    public function disputes()
+    {
+        return $this->hasMany(RentalDispute::class, 'rental_request_id')
+            ->with(['resolvedBy', 'raisedBy'])
+            ->orderBy('created_at', 'desc');  // Most recent first
+    }
+
+    public function latestDispute()
+    {
+        return $this->hasOne(RentalDispute::class, 'rental_request_id')->latest();
+    }
+
+    // Add this helper method after other helper methods
+    public function hasActiveDispute(): bool
+    {
+        return $this->disputes()
+            ->where('status', '!=', 'resolved')
+            ->exists();
+    }
+
+    // Add a method to get dispute history
+    public function getDisputeHistory()
+    {
+        return $this->disputes()
+            ->whereIn('status', ['resolved'])
+            ->where('id', '!=', $this->dispute?->id)
+            ->get();
     }
 }

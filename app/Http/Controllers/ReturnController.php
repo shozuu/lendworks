@@ -300,42 +300,125 @@ class ReturnController extends Controller
 
     public function selectSchedule(Request $request, RentalRequest $rental, LenderPickupSchedule $lender_schedule)
     {
-        if ($rental->renter_id !== Auth::id()) {
-            abort(403);
+        try {
+            if ($rental->renter_id !== Auth::id()) {
+                abort(403);
+            }
+
+            // Add validation for the schedule data
+            $validated = $request->validate([
+                'return_datetime' => 'required|date',
+                'start_time' => 'required|string',
+                'end_time' => 'required|string'
+            ]);
+
+            DB::transaction(function () use ($rental, $lender_schedule, $validated) {
+                // Reset existing selections
+                $rental->return_schedules()->update(['is_selected' => false]);
+
+                // Create new schedule with all required fields
+                $schedule = ReturnSchedule::create([
+                    'rental_request_id' => $rental->id,
+                    'lender_pickup_schedule_id' => $lender_schedule->id,
+                    'return_datetime' => $validated['return_datetime'],
+                    'start_time' => $validated['start_time'],
+                    'end_time' => $validated['end_time'],
+                    'is_selected' => true,
+                    'is_suggested' => false // Explicitly set this
+                ]);
+
+                // Log the created schedule for debugging
+                \Log::info('Return schedule created:', $schedule->toArray());
+
+                $rental->recordTimelineEvent('return_schedule_selected', Auth::id(), [
+                    'datetime' => $schedule->return_datetime,
+                    'start_time' => $schedule->start_time,
+                    'end_time' => $schedule->end_time,
+                    'day_of_week' => Carbon::parse($schedule->return_datetime)->format('l'),
+                    'schedule_id' => $schedule->id
+                ]);
+            });
+
+            return back()->with('success', 'Return schedule selected successfully.');
+        } catch (\Exception $e) {
+            \Log::error('Error selecting return schedule:', [
+                'error' => $e->getMessage(),
+                'rental_id' => $rental->id,
+                'schedule_id' => $lender_schedule->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return back()->withErrors(['error' => 'Failed to select return schedule.']);
         }
+    }
 
-        // Add validation for the schedule data
-        $validated = $request->validate([
-            'return_datetime' => 'required|date',
-            'start_time' => 'required|string',
-            'end_time' => 'required|string'
-        ]);
+    public function suggestSchedule(Request $request, RentalRequest $rental)
+    {
+        try {
+            if ($rental->renter_id !== Auth::id()) {
+                abort(403);
+            }
 
-        DB::transaction(function () use ($rental, $lender_schedule, $validated) {
-            // Reset existing selections
-            $rental->return_schedules()->update(['is_selected' => false]);
-
-            // Create new schedule with all required fields
-            $schedule = ReturnSchedule::create([
-                'rental_request_id' => $rental->id,
-                'lender_pickup_schedule_id' => $lender_schedule->id,
-                'return_datetime' => $validated['return_datetime'],
-                'start_time' => $validated['start_time'],
-                'end_time' => $validated['end_time'],
-                'is_selected' => true
+            \Log::info('Suggesting return schedule - Request:', [
+                'rental_id' => $rental->id,
+                'request_data' => $request->all(),
+                'user_id' => Auth::id()
             ]);
 
-            // Log the created schedule for debugging
-            \Log::info('Return schedule created:', $schedule->toArray());
-
-            $rental->recordTimelineEvent('return_schedule_selected', Auth::id(), [
-                'datetime' => $schedule->return_datetime,
-                'start_time' => $schedule->start_time,
-                'end_time' => $schedule->end_time,
-                'day_of_week' => Carbon::parse($schedule->return_datetime)->format('l')
+            $validated = $request->validate([
+                'return_datetime' => ['required', 'date'],
+                'start_time' => ['required', 'string'],
+                'end_time' => ['required', 'string']
             ]);
-        });
 
-        return back()->with('success', 'Return schedule selected successfully.');
+            DB::beginTransaction();
+            try {
+                // Deselect any existing schedules
+                $rental->return_schedules()->update(['is_selected' => false]);
+                
+                // Create new suggested schedule
+                $schedule = ReturnSchedule::create([
+                    'rental_request_id' => $rental->id,
+                    'return_datetime' => $validated['return_datetime'],
+                    'start_time' => $validated['start_time'],
+                    'end_time' => $validated['end_time'],
+                    'is_selected' => true,
+                    'is_suggested' => true
+                ]);
+
+                \Log::info('Created suggested return schedule:', [
+                    'schedule_id' => $schedule->id,
+                    'rental_id' => $rental->id,
+                    'data' => $schedule->toArray()
+                ]);
+
+                $rental->recordTimelineEvent('return_schedule_suggested', Auth::id(), [
+                    'datetime' => $validated['return_datetime'],
+                    'start_time' => $validated['start_time'],
+                    'end_time' => $validated['end_time'],
+                    'day_of_week' => Carbon::parse($validated['return_datetime'])->format('l'),
+                    'is_suggested' => true
+                ]);
+
+                DB::commit();
+                return back()->with('success', 'Return schedule suggested successfully.');
+            } catch (\Exception $e) {
+                DB::rollBack();
+                \Log::error('Database transaction failed:', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                throw $e;
+            }
+        } catch (\Exception $e) {
+            \Log::error('Failed to suggest return schedule:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'rental_id' => $rental->id,
+                'user_id' => Auth::id()
+            ]);
+            
+            return back()->withErrors(['error' => 'Failed to suggest return schedule: ' . $e->getMessage()]);
+        }
     }
 }

@@ -14,7 +14,9 @@ import {
     DollarSign,
     AlertCircle,
     FileText,
-    Settings
+    Settings,
+    CreditCard,
+    AlertTriangle
 } from "lucide-vue-next";
 
 const theme = ref(document.body.getAttribute("data-theme"));
@@ -44,9 +46,9 @@ const navigationGroups = {
     ],
     transactions: [
         { name: "Rental Transactions", href: route("admin.rental-transactions"), component: "Admin/RentalTransactions", icon: ClipboardList },
-        { name: "Revenue", href: route("admin.revenue"), component: "Admin/Revenue", icon: DollarSign },
-        { name: "Payments", href: route("admin.payments"), component: "Admin/PaymentRequests", icon: Receipt },
-        { name: "Disputes", href: route("admin.disputes"), component: "Admin/Disputes", icon: AlertCircle },
+        { name: "Revenue", href: route("admin.revenue"), component: "Admin/Revenue", icon: CreditCard },
+        { name: "Payments", href: route("admin.payments"), component: "Admin/Payments/Index", icon: Receipt },
+        { name: "Disputes", href: route("admin.disputes.index"), component: "Admin/Disputes", icon: AlertTriangle },
     ],
     system: [
         { name: "System", href: route("admin.system"), component: "Admin/System", icon: Settings },

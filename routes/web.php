@@ -129,7 +129,13 @@ Route::middleware(['auth'])->group(function () {
             ->name('rentals.finalize-return');
         Route::post('/rentals/{rental}/raise-dispute', 'raiseDispute')
             ->name('rentals.raise-dispute');
+        Route::post('/rentals/{rental}/return-schedules/suggest', 'suggestSchedule')
+            ->name('return-schedules.suggest');
     });
+
+    // Add dispute routes
+    Route::post('/rentals/{rental}/raise-dispute', [RentalRequestController::class, 'raiseDispute'])
+        ->name('rentals.raise-dispute');
 });
 
 // Admin routes with auth and admin middleware
@@ -179,10 +185,12 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
         ->name('completion-payments.store-deposit-refund');
 
     // Use consolidated dispute routes instead of separate ones
-    Route::get('/disputes', [DisputeController::class, 'index'])->name('disputes');
-    Route::get('/disputes/{dispute}', [DisputeController::class, 'show'])->name('disputes.show');
-    Route::post('/disputes/{dispute}/update-status', [DisputeController::class, 'updateStatus'])->name('disputes.update-status');
-    Route::post('/disputes/{dispute}/resolve', [DisputeController::class, 'resolve'])->name('disputes.resolve');
+    Route::controller(DisputeController::class)->prefix('disputes')->name('disputes.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/{dispute}', 'show')->name('show');
+        Route::post('/{dispute}/status', 'updateStatus')->name('update-status'); // Change patch to post
+        Route::post('/{dispute}/resolve', 'resolve')->name('resolve');
+    });
 
     /**
      * System Management Routes

@@ -80,8 +80,10 @@ class DisputeController extends Controller
             'rental.renter',       // Add renter info
             'rental.depositDeductions',
             'rental.overdue_payment',
+            'rental.disputes',  // Add this line to load all disputes
             'raisedBy',
-            'resolvedBy'  // Ensure resolvedBy relationship is loaded
+            'resolvedBy',  // Ensure resolvedBy relationship is loaded
+            'images'  // Add this line to load additional images
         ]);
 
         // Simplify the dispute data structure
@@ -90,7 +92,10 @@ class DisputeController extends Controller
             'status' => $dispute->status,
             'reason' => $dispute->reason,
             'description' => $dispute->description,
-            'proof_path' => $dispute->proof_path,
+            'old_proof_path' => $dispute->old_proof_path,  // Changed from proof_path
+            'additional_images' => $dispute->images->map(function($image) {
+                return ['image_path' => $image->image_path];
+            }),
             'created_at' => $dispute->created_at,
             'resolution_type' => $dispute->resolution_type,
             'verdict' => $dispute->verdict,
@@ -188,25 +193,19 @@ class DisputeController extends Controller
                 'resolved_by' => auth()->id()
             ];
 
-            // Update dispute record with correct handling for rejection
             if ($validated['resolution_type'] === 'rejected') {
-                $resolutionData['deposit_deduction'] = 0;  // Ensure no deduction
-                $resolutionData['deposit_deduction_reason'] = null;  // No reason needed
+                $resolutionData['deposit_deduction'] = 0;
+                $resolutionData['deposit_deduction_reason'] = null;
                 
-                // Update rental status
+                // Update rental status but don't delete disputes
                 $dispute->rental->update([
-                    'status' => 'disputed'  // Keep as disputed to allow new dispute
+                    'status' => 'pending_final_confirmation'
                 ]);
             } elseif ($validated['resolution_type'] === 'deposit_deducted') {
                 $resolutionData['deposit_deduction'] = $validated['deposit_deduction'];
                 $resolutionData['deposit_deduction_reason'] = $validated['deposit_deduction_reason'];
-            }
-
-            // Update dispute record
-            $dispute->update($resolutionData);
-
-            // Process deductions only for deposit_deducted type
-            if ($validated['resolution_type'] === 'deposit_deducted') {
+                
+                // Process deductions...
                 // Create deposit deduction record with eager loading
                 $deduction = $dispute->rental->depositDeductions()->create([
                     'amount' => $validated['deposit_deduction'],
@@ -264,10 +263,10 @@ class DisputeController extends Controller
                 ]);
             }
 
-            // Always update rental status for both rejection and deduction
-            $dispute->rental->update(['status' => 'pending_final_confirmation']);
+            // Update dispute record without affecting others
+            $dispute->update($resolutionData);
 
-            // Record timeline event with appropriate data
+            // Record timeline event
             $timelineData = [
                 'verdict' => $validated['verdict'],
                 'verdict_notes' => $validated['verdict_notes'],
@@ -277,7 +276,6 @@ class DisputeController extends Controller
                 'is_rejected' => $validated['resolution_type'] === 'rejected'
             ];
 
-            // Add deduction data only if it's a deduction case
             if ($validated['resolution_type'] === 'deposit_deducted') {
                 $timelineData['deposit_deduction'] = $validated['deposit_deduction'];
                 $timelineData['deposit_deduction_reason'] = $validated['deposit_deduction_reason'];
@@ -290,10 +288,8 @@ class DisputeController extends Controller
             $dispute->rental->listing->user->notify(new DisputeResolved($dispute, true));
         });
 
-        $message = $validated['resolution_type'] === 'rejected' 
-            ? 'Dispute rejected successfully.'
-            : 'Dispute resolved with deduction successfully.';
-
-        return back()->with('success', $message);
+        return back()->with('success', $validated['resolution_type'] === 'rejected' 
+            ? 'Dispute rejected successfully.' 
+            : 'Dispute resolved with deduction successfully.');
     }
 }

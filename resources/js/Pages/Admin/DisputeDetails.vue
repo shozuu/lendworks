@@ -42,11 +42,15 @@ const updateForm = useForm({
 
 const handleUpdateStatus = (newStatus) => {
 	updateForm.status = newStatus;
+	// Change from post to submit to match the route
 	updateForm.post(route("admin.disputes.update-status", props.dispute.id), {
 		preserveScroll: true,
 		onSuccess: () => {
 			updateForm.reset();
 		},
+		onError: (errors) => {
+			console.error('Status update failed:', errors);
+		}
 	});
 };
 
@@ -224,6 +228,27 @@ const formattedNumbers = computed(() => {
 
 const showCustomVerdict = computed(() => selectedVerdict.value === "custom");
 const showCustomReason = computed(() => selectedReason.value === "custom");
+
+// Add state for image gallery
+const currentImageIndex = ref(0);
+const showGallery = ref(false);
+
+const allImages = computed(() => {
+  if (!props.dispute) return [];
+  const mainImage = { image_path: props.dispute.old_proof_path };
+  const additionalImages = props.dispute.additional_images || [];
+  return [mainImage, ...additionalImages];
+});
+
+const navigateImage = (direction) => {
+  if (direction === 'next') {
+    currentImageIndex.value = (currentImageIndex.value + 1) % allImages.value.length;
+  } else {
+    currentImageIndex.value = currentImageIndex.value === 0 
+      ? allImages.value.length - 1 
+      : currentImageIndex.value - 1;
+  }
+};
 </script>
 
 <template>
@@ -274,9 +299,26 @@ const showCustomReason = computed(() => selectedReason.value === "custom");
 						<p class="text-sm">{{ dispute.description }}</p>
 					</div>
 
+					<!-- Replace the evidence photos section in template -->
 					<div class="space-y-2">
-						<h4 class="font-medium">Evidence Photo</h4>
-						<ProofImageViewer :image-path="dispute.proof_path" />
+					  <h4 class="font-medium">Evidence Photos</h4>
+					  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+					    <div 
+					      v-for="(image, index) in allImages" 
+					      :key="index"
+					      class="relative aspect-square rounded-lg overflow-hidden border bg-muted cursor-pointer hover:opacity-90 transition-opacity"
+					    >
+					      <ProofImageViewer 
+					        :image-path="image.image_path" 
+					        class="w-full h-full object-cover"
+					      />
+					      <div class="absolute inset-x-0 bottom-0 bg-black/50 p-2">
+					        <p class="text-white text-xs text-center">
+					          {{ index === 0 ? 'Main Evidence' : `Additional ${index}` }}
+					        </p>
+					      </div>
+					    </div>
+					  </div>
 					</div>
 
 					<div class="space-y-2">

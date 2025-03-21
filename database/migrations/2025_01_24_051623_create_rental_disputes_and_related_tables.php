@@ -14,7 +14,7 @@ return new class extends Migration
             $table->unsignedBigInteger('rental_request_id');
             $table->string('reason');
             $table->text('description');
-            $table->string('proof_path');
+            $table->string('old_proof_path');  // Changed from proof_path
             $table->enum('status', ['pending', 'reviewed', 'resolved'])->default('pending');
             $table->unsignedBigInteger('raised_by');
             $table->text('verdict')->nullable();
@@ -25,6 +25,7 @@ return new class extends Migration
             $table->integer('deposit_deduction')->nullable();
             $table->string('deposit_deduction_reason')->nullable();
             $table->timestamps();
+            $table->longText('proof_photos')->nullable();  // Add this new field
 
             // Add foreign key constraints after defining columns
             $table->foreign('rental_request_id')
