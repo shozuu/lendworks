@@ -18,7 +18,8 @@ class CompletionPaymentController extends Controller
         $validated = $request->validate([
             'reference_number' => ['required', 'string'],
             'proof_image' => ['required', 'image', 'max:2048'],
-            'notes' => ['nullable', 'string']
+            'notes' => ['nullable', 'string'],
+            'amount' => ['required', 'numeric'] // Add amount validation
         ]);
 
         try {
@@ -34,7 +35,7 @@ class CompletionPaymentController extends Controller
                 'rental_request_id' => $rental->id,
                 'type' => 'lender_payment',
                 'amount' => $baseAmount,
-                'total_amount' => $baseAmount + $overdueAmount,
+                'total_amount' => $validated['amount'], // Use the amount from form
                 'includes_overdue_fee' => $overdueAmount > 0,
                 'reference_number' => $validated['reference_number'],
                 'proof_path' => $path,

@@ -45,11 +45,10 @@ const form = useForm({
   notes: '',
   amount: computed(() => {
     if (props.type === 'lender_payment') {
-      return earnings.value.total;
+      return earnings.value.total; // This will be used as total_amount
     }
     return props.rental?.deposit_fee || 0;
-  }),
-  total_amount: computed(() => earnings.value.total) // Add this line
+  })
 });
 
 const selectedImage = ref([]);
