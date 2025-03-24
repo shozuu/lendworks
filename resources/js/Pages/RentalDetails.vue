@@ -198,6 +198,7 @@ const showOverdueSection = computed(() => {
 	// 3. Has overdue payment (verified)
 	// 4. Has pending/rejected overdue payment request
 	// 5. Transaction was overdue during return process
+
 	return (
 		props.rental.overdue_days > 0 ||
 		props.rental.is_overdue ||

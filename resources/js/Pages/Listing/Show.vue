@@ -197,23 +197,7 @@ const handleDelete = () => {
 
 			<Separator class="my-4" />
 
-			<!-- pricing information -->
-			<div class="space-y-1">
-				<h2 class="text-lg font-semibold tracking-tight">Pricing Information</h2>
-				<div class="text-muted-foreground space-y-2">
-					<p>
-						Daily Rate: <span class="font-medium">{{ formatNumber(listing.price) }}</span>
-					</p>
-					<p>
-						Security Deposit (Refundable):
-						<span class="font-medium">{{ formatNumber(listing.deposit_fee) }}</span>
-					</p>
-					<p class="text-xs">
-						* The security deposit will be refunded after the rental period, subject to
-						item condition
-					</p>
-				</div>
-			</div>
+			
 			<!-- pricing information -->
 			<div class="space-y-1">
 				<h2 class="text-lg font-semibold tracking-tight">Pricing Information</h2>
@@ -248,7 +232,7 @@ const handleDelete = () => {
 
 			<Separator class="my-4" />
 
-			<!-- cancellation terms -->
+			<!-- cancellation terms 
 			<div class="space-y-1">
 				<h2 class="text-lg font-semibold tracking-tight">Cancellation Terms</h2>
 
@@ -267,9 +251,9 @@ const handleDelete = () => {
 						rental period has begun.
 					</div>
 				</div>
-			</div>
+			</div>-->
 
-			<Separator class="my-4" />
+			
 
 			<!-- location -->
 			<div class="space-y-1">
