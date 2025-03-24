@@ -503,8 +503,13 @@ const selectedPickupSchedule = computed(() =>
 										</p>
 									</div>
 									<div>
-										<p class="text-muted-foreground text-sm">Days Overdue</p>
-										<p class="text-destructive font-medium">
+										<p class="text-muted-foreground text-sm">
+											{{ rental.overdue_payment ? 'Status' : 'Days Overdue' }}
+										</p>
+										<p v-if="rental.overdue_payment" class="text-emerald-500 font-medium">
+											Overdue Paid
+										</p>
+										<p v-else class="text-destructive font-medium">
 											{{ rental.overdue_days }} days
 										</p>
 									</div>
