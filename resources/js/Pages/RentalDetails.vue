@@ -192,20 +192,13 @@ const totalWithDeposit = computed(() => {
 
 // Add a computed property for showing overdue sections
 const showOverdueSection = computed(() => {
-	// Show section if any of these conditions are true:
-	// 1. Has overdue days recorded
-	// 2. Currently overdue
-	// 3. Has overdue payment (verified)
-	// 4. Has pending/rejected overdue payment request
-	// 5. Transaction was overdue during return process
-
-	return (
-		props.rental.overdue_days > 0 ||
-		props.rental.is_overdue ||
-		props.rental.overdue_payment ||
-		props.rental.payment_request?.type === "overdue" ||
-		props.rental.status.includes("return")
-	);
+  // Only show if there are actual overdue days or an overdue payment
+  return (
+    props.rental.overdue_days > 0 ||
+    props.rental.is_overdue ||
+    props.rental.overdue_payment ||
+    props.rental.payment_request?.type === "overdue"
+  );
 });
 
 // Add computed for max allowed quantity
