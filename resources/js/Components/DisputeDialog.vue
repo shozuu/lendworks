@@ -38,10 +38,14 @@ const props = defineProps({
 
 const emit = defineEmits(['update:show']);
 
+const MAX_MAIN_IMAGES = 1;
 const MAX_ADDITIONAL_IMAGES = 4;
 const showAdditionalUpload = ref(false);
 const mainProofImage = ref([]);
 const additionalImages = ref([]);
+
+const mainImageError = ref('');
+const additionalImagesError = ref('');
 
 const selectedDisputeImage = computed(() => {
   return [...mainProofImage.value, ...additionalImages.value];
@@ -55,6 +59,40 @@ const disputeForm = useForm({
 });
 
 const isOtherReason = computed(() => disputeForm.reason === 'other');
+
+const validateMainImage = (files) => {
+  if (files.length > MAX_MAIN_IMAGES) {
+    mainImageError.value = `You can only upload ${MAX_MAIN_IMAGES} main image`;
+    return false;
+  }
+  mainImageError.value = '';
+  return true;
+};
+
+const validateAdditionalImages = (files) => {
+  if (files.length > MAX_ADDITIONAL_IMAGES) {
+    additionalImagesError.value = `You can only upload up to ${MAX_ADDITIONAL_IMAGES} additional images`;
+    return false;
+  }
+  additionalImagesError.value = '';
+  return true;
+};
+
+const handleMainImageUpload = (files) => {
+  if (validateMainImage(files)) {
+    mainProofImage.value = files;
+  } else {
+    mainProofImage.value = files.slice(0, MAX_MAIN_IMAGES);
+  }
+};
+
+const handleAdditionalImagesUpload = (files) => {
+  if (validateAdditionalImages(files)) {
+    additionalImages.value = files;
+  } else {
+    additionalImages.value = files.slice(0, MAX_ADDITIONAL_IMAGES);
+  }
+};
 
 const handleDisputeSubmit = () => {
   console.log('Starting dispute submission...', {
@@ -154,14 +192,17 @@ const handleDisputeSubmit = () => {
             <label class="text-sm font-medium">Upload Main Proof Photo</label>
             <div class="max-h-[300px] overflow-hidden rounded-lg">
               <ImageUpload
-                :maxFiles="1"
-                @images="mainProofImage = $event"
-                :error="disputeForm.errors.proof_image"
+                :maxFiles="MAX_MAIN_IMAGES"
+                @images="handleMainImageUpload"
+                :error="disputeForm.errors.proof_image || mainImageError"
                 class="w-full aspect-video"
               />
             </div>
             <p class="text-xs text-muted-foreground">
-              Upload a clear photo showing the main issue
+              Upload a clear photo showing the main issue (Maximum 1 image)
+            </p>
+            <p v-if="mainImageError" class="text-sm text-destructive mt-1">
+              {{ mainImageError }}
             </p>
           </div>
 
@@ -186,14 +227,18 @@ const handleDisputeSubmit = () => {
               <div class="max-h-[300px] overflow-hidden rounded-lg">
                 <ImageUpload
                   :maxFiles="MAX_ADDITIONAL_IMAGES"
-                  @images="additionalImages = $event"
+                  @images="handleAdditionalImagesUpload"
                   class="w-full aspect-video"
+                  :error="additionalImagesError"
                   multiple
                 />
               </div>
               <div class="space-y-2">
                 <p class="text-xs text-muted-foreground">
                   Upload up to {{ MAX_ADDITIONAL_IMAGES }} additional photos as evidence
+                </p>
+                <p v-if="additionalImagesError" class="text-sm text-destructive mt-1">
+                  {{ additionalImagesError }}
                 </p>
                 <!-- Add scrollable preview section -->
                 <div v-if="additionalImages.length > 0" class="border rounded-md p-2 mt-2">
