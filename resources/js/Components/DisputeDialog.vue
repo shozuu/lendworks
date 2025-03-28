@@ -49,14 +49,43 @@ const selectedDisputeImage = ref([]);
 const isOtherReason = computed(() => disputeForm.reason === 'other');
 
 const handleDisputeSubmit = () => {
+  console.log('Starting dispute submission...', {
+    reason: disputeForm.reason,
+    description: disputeForm.issue_description,
+    imageSelected: selectedDisputeImage.value.length > 0,
+    imageData: selectedDisputeImage.value[0]
+  });
+
+  // Reset previous errors
+  disputeForm.clearErrors();
+
+  // Create form data and set values directly on disputeForm
+  disputeForm.reason = disputeForm.reason;
+  disputeForm.issue_description = disputeForm.issue_description;
   disputeForm.proof_image = selectedDisputeImage.value[0];
-  
+
+  console.log('Form data prepared:', {
+    hasReason: !!disputeForm.reason,
+    hasDescription: !!disputeForm.issue_description,
+    hasImage: !!disputeForm.proof_image
+  });
+
   disputeForm.post(route('rentals.raise-dispute', props.rental.id), {
     preserveScroll: true,
     onSuccess: () => {
+      console.log('Dispute submitted successfully');
       emit('update:show', false);
       disputeForm.reset();
       selectedDisputeImage.value = [];
+    },
+    onError: (errors) => {
+      console.error('Dispute submission failed:', errors);
+    },
+    onStart: () => {
+      console.log('Starting form submission...');
+    },
+    onFinish: () => {
+      console.log('Form submission completed');
     }
   });
 };

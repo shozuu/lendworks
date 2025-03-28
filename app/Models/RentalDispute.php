@@ -11,7 +11,7 @@ class RentalDispute extends Model
         'rental_request_id',
         'reason',
         'description',
-        'proof_path',
+        'old_proof_path', // Changed from proof_path to old_proof_path
         'status',
         'resolution_type',
         'verdict',
@@ -20,7 +20,8 @@ class RentalDispute extends Model
         'deposit_deduction_reason',
         'resolved_at',
         'resolved_by',
-        'raised_by'  // Add this line
+        'raised_by',
+        'proof_photos'  // Add this new field
     ];
 
     protected $casts = [

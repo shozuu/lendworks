@@ -395,43 +395,70 @@ class RentalRequestController extends Controller
         }
     }
 
-    // Add this method to handle dispute creation
     public function raiseDispute(Request $request, RentalRequest $rental)
     {
+        \Log::info('Starting dispute submission', [
+            'rental_id' => $rental->id,
+            'user_id' => auth()->id(),
+            'request_data' => $request->all()
+        ]);
+
         $validated = $request->validate([
             'reason' => 'required|string',
             'issue_description' => 'required|string',
             'proof_image' => 'required|image|max:5120'
         ]);
 
+        \Log::info('Validation passed', $validated);
+
         // Ensure user is lender and can raise dispute
         if (auth()->id() !== $rental->listing->user_id || !$rental->available_actions['canRaiseDispute']) {
+            \Log::error('Authorization failed', [
+                'user_id' => auth()->id(),
+                'is_lender' => auth()->id() === $rental->listing->user_id,
+                'can_raise_dispute' => $rental->available_actions['canRaiseDispute']
+            ]);
             abort(403);
         }
 
-        DB::transaction(function () use ($rental, $validated, $request) {
-            // Store proof image
-            $proofPath = $request->file('proof_image')->store('dispute-proofs', 'public');
+        try {
+            DB::transaction(function () use ($rental, $validated, $request) {
+                \Log::info('Starting image upload');
+                // Store proof image with correct disk
+                $proofPath = $request->file('proof_image')->store('dispute-proofs', 'public');
+                \Log::info('Image uploaded', ['path' => $proofPath]);
 
-            // Create new dispute record - keep old records
-            $dispute = $rental->disputes()->create([
-                'reason' => $validated['reason'],
-                'description' => $validated['issue_description'],
-                'proof_path' => $proofPath,
-                'status' => 'pending',
-                'raised_by' => auth()->id()
+                // Create new dispute record
+                $dispute = $rental->disputes()->create([
+                    'reason' => $validated['reason'],
+                    'description' => $validated['issue_description'],
+                    'old_proof_path' => $proofPath,
+                    'status' => 'pending',
+                    'raised_by' => auth()->id(),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                \Log::info('Dispute record created', ['dispute_id' => $dispute->id]);
+
+                // Update rental status
+                $rental->update(['status' => 'disputed']);
+
+                // Record timeline event
+                $rental->recordTimelineEvent('dispute_raised', auth()->id(), [
+                    'dispute_id' => $dispute->id,
+                    'reason' => $validated['reason']
+                ]);
+            });
+
+            \Log::info('Dispute submission completed successfully');
+            return back()->with('success', 'Dispute has been raised successfully.');
+        } catch (\Exception $e) {
+            \Log::error('Error in dispute submission', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
-
-            // Update rental status
-            $rental->update(['status' => 'disputed']);
-
-            // Record timeline event
-            $rental->recordTimelineEvent('dispute_raised', auth()->id(), [
-                'dispute_id' => $dispute->id,
-                'reason' => $validated['reason']
-            ]);
-        });
-
-        return back()->with('success', 'Dispute has been raised successfully.');
+            throw $e;
+        }
     }
 }
