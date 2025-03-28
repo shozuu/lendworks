@@ -91,7 +91,7 @@ class DisputeController extends Controller
             'status' => $dispute->status,
             'reason' => $dispute->reason,
             'description' => $dispute->description,
-            'proof_path' => $dispute->proof_path,
+            'old_proof_path' => $dispute->old_proof_path,  // Changed from proof_path
             'created_at' => $dispute->created_at,
             'resolution_type' => $dispute->resolution_type,
             'verdict' => $dispute->verdict,

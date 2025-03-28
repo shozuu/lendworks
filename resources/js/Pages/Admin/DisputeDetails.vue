@@ -280,7 +280,7 @@ const showCustomReason = computed(() => selectedReason.value === "custom");
 
 					<div class="space-y-2">
 						<h4 class="font-medium">Evidence Photo</h4>
-						<ProofImageViewer :image-path="dispute.proof_path" />
+						<ProofImageViewer :image-path="dispute.old_proof_path" />
 					</div>
 
 					<div class="space-y-2">
